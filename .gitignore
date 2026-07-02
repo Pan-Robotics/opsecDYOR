@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+.env
+
+# DYOR runtime artifacts
+.cache/
+*.duckdb
+*.duckdb.wal
+data/
+
+# Tooling
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.DS_Store
+
+# NOTE: tests/cassettes/ IS committed (recorded API responses for offline CI)

@@ -1,0 +1,101 @@
+interactions:
+- request:
+    body: ''
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      host:
+      - api.coingecko.com
+      user-agent:
+      - dyor/0.1
+    method: GET
+    uri: https://api.coingecko.com/api/v3/search?query=aave
+  response:
+    body:
+      string: !!binary |
+        H4sIAKNNN2oAA7SZXZOiOBSG/0oX1y3Kp9J3tu12z47rbKnzXVNWiEEZESzEme6d6v8+iYFAQqja
+        msQ70Zf3yMMJvAd+GTCL05Nx9/WXEW+MOwOAH8i4NVJwQHhrTLfAMV6fXg5hltQKtj0ef5ji7QPI
+        96hYQ3Bc5yDdG3e+e2sUu/MhxJpdURxPd/0+KdaLD2CLTib5vEVwn+FPh8svpz79qW/Zvuv1Lzv3
+        Sbleke1R2suzc7oxj+kWl0tAvkV/6nzZWe78eluCQMUuQemGZ3Hz9d3s4ZtIpJayr2bT+YMMiuUP
+        FbA4fkWlLKkIg/hRFk0/hoAA2mYF3MU8BfZdqy/YL+zbx6flSgoicGyF/nD9YUmCFFDtCeJGOTA3
+        BgHyKwKW7c4dOhTXxKRrUaTnJPnzwx56dnXYl5Lmv/NHheO+2NHjru24s987p8K5v3k/fyM786Wy
+        vipQnW4AtlsBALjA2n5WPPUXw/Jy0DDkIcD8hwBhsvgghUCVNQSq0w7BG1QQcAEdELBhCaFhyEPY
+        p1CA8HY+kUKgyhoC1WmG4DYg4AKma4dwYyNHEYXbQNGy5YEc9rkA5J+3CykQqqyBUJ12IO6oAoIL
+        mAAGvmcNR8pAsG0JpGXLAwlBIQC5H6+kQKiyBkJ1+oH4FRBcwLQi5Dp+NFz31pPs+KLOxa+4dLnz
+        eHKUCngW07kUD1XWeKhOP56gwoMLmM7IDpEz8tW5BBWXli0P5L/8WQDyZfFJCoQqayBUpx2I71ZA
+        cAEzCJHneSBQBoJtSyAtWx7IBog324ex/GZLlTUQqtPfIXYFBBcwR27oQ9eK1DvEroC0bHkgL5EI
+        5PNfciBUWQOhOv03XpY+cAEtN16WPhqGPIRTKi6T5Vy+TKiyhkB1+pcJG81wAdOxnVHkoKH6MmFz
+        WctWuJC2lsmiY5nkwjJZXGOZ4AjJgOACWjIpQ9Ew5CGg9LsAYTr/WwqBKmsIVKc/jlkVBFzARJuh
+        bwdOqB7HrApFy1ZMH0krfcw60kcipI/ZVbrCrtPHTEtX2HXgmMm74iee4wUKH6erJymGUltzKJXa
+        QTgsl5IKOkg4LJI2HXkU7QdZN7LRvaltPNK6zvjeiOgHUkJLVzAWnCUPY3s+iU+yHt8vH6QwSm0N
+        o1Tqh8HiOamghQWL5E1HYYmEhTjIfrxfySfZUttYIlSpP2ix5EkqmK7leg60gXrSYtGz7ctjKdod
+        surqkELskNVVOsR1LBa3SAVzMPICO3SVEznxLbG0fYUhH6RAnPLH87F8zKfaxpxPlfoDGMNCKpjR
+        KADWIFCf9NlTUImvcLNtd8t9V7eEYrfcX6dbGjGMVDAd1we+t9E377NQ1mkvBPc2pGUXpJMIaXkl
+        SD676JIKeBodDKIIqk/9Prv0tn1fv90a6BnuAN6fvGrCmzHMyk8QFGib5TESXkLRNzMn8ZpEvySO
+        aVQIu9C3D70simIYg6R3zJKXbSY8dZG8oni3mjyRweD/U8W11zBLixzAglGw/cGw8dKq49+Y+M+/
+        /gYAAP//AwBOsPYHdxsAAA==
+    headers:
+      access-control-allow-headers:
+      - Origin, X-Requested-With, Content-Type, Accept, Authorization
+      access-control-allow-methods:
+      - POST, PUT, DELETE, GET, OPTIONS
+      access-control-allow-origin:
+      - '*'
+      access-control-expose-headers:
+      - link, per-page, total
+      access-control-request-method:
+      - '*'
+      age:
+      - '459'
+      alt-svc:
+      - h3=":443"; ma=86400
+      cache-control:
+      - max-age=30, public, must-revalidate, s-maxage=600
+      cf-cache-status:
+      - HIT
+      cf-ray:
+      - a0efa8148bf6261f-LHR
+      connection:
+      - keep-alive
+      content-encoding:
+      - gzip
+      content-security-policy-report-only:
+      - script-src https://accounts.google.com/gsi/client; frame-src https://accounts.google.com/gsi/;
+        connect-src https://accounts.google.com/gsi/;
+      content-type:
+      - application/json; charset=utf-8
+      date:
+      - Sun, 21 Jun 2026 02:41:50 GMT
+      etag:
+      - W/"0813766bb5ce07143e716adcaf8039b8"
+      referrer-policy:
+      - strict-origin-when-cross-origin
+      server:
+      - cloudflare
+      strict-transport-security:
+      - max-age=600
+      - max-age=15724800; includeSubdomains
+      transfer-encoding:
+      - chunked
+      vary:
+      - Accept-Encoding, Origin
+      x-content-type-options:
+      - nosniff
+      x-frame-options:
+      - SAMEORIGIN
+      x-permitted-cross-domain-policies:
+      - none
+      x-request-id:
+      - 5b24654e-da25-4b95-8f72-143b2f2da1e9
+      x-runtime:
+      - '0.080033'
+      x-xss-protection:
+      - '0'
+    status:
+      code: 200
+      message: OK
+version: 1

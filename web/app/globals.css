@@ -1,0 +1,35 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  background: radial-gradient(1100px 550px at 75% -10%, #16314a 0%, transparent 60%), #050f19;
+  color: #e6eaf3;
+}
+
+@layer base {
+  /* Major headings use the Orbitron display face (matches cryptoopsec.com). */
+  h1, h2 {
+    font-family: "Orbitron", ui-sans-serif, system-ui, sans-serif;
+    letter-spacing: 0.01em;
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-xl border border-edge bg-panel p-5;
+  }
+  .pill {
+    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium;
+  }
+  .btn {
+    @apply rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-[#04101b] transition hover:bg-brand2 disabled:opacity-40;
+  }
+  .input {
+    @apply w-full rounded-lg border border-edge bg-panel2 px-4 py-3 text-sm text-white placeholder-muted outline-none focus:border-brand;
+  }
+}

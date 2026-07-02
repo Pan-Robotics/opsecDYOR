@@ -1,0 +1,83 @@
+# DYOR — Crypto Token Qualification Framework configuration.
+# Constants here go stale (RWA totals, treasury hurdle, supply figures). Refresh
+# on a schedule — see docs/STAGES.md.
+
+# ---------------------------------------------------------------------------
+# Macro reference constants (refresh periodically — these drift within months)
+# ---------------------------------------------------------------------------
+reference:
+  treasury_10y_yield_pct: 4.46        # risk-free hurdle (2026-06-18)
+  reference_date: "2026-06-18"
+
+# ---------------------------------------------------------------------------
+# API endpoints + rate limits (free-tier defaults; override keys via .env)
+# ---------------------------------------------------------------------------
+ingestion:
+  cache_dir: ".cache"
+  cache_ttl_seconds: 86400            # 24h on-disk cache to avoid credit burn
+  retry:
+    max_attempts: 5
+    backoff_base_seconds: 1.0         # exponential: base * 2**attempt
+  sources:
+    defillama:
+      base_urls:
+        api: "https://api.llama.fi"
+        coins: "https://coins.llama.fi"
+        stablecoins: "https://stablecoins.llama.fi"
+        yields: "https://yields.llama.fi"
+      rate_limit_per_min: 120         # no hard public limit; be polite
+    coingecko:
+      base_url: "https://api.coingecko.com/api/v3"
+      pro_base_url: "https://pro-api.coingecko.com/api/v3"
+      rate_limit_per_min: 12          # keyless free is strict/bursty; pace conservatively
+                                      # (client auto-raises to pro rate when a key is set)
+    github:
+      base_url: "https://api.github.com"
+      rate_limit_per_min: 80          # 5000/hr authed
+    santiment:
+      base_url: "https://api.santiment.net/graphql"
+      rate_limit_per_min: 10          # free: 1000/mo
+
+# ---------------------------------------------------------------------------
+# Scoring — domain weights (must sum to 1.0) + normalization defaults
+# ---------------------------------------------------------------------------
+scoring:
+  normalization: "percentile"         # percentile | zscore | minmax
+  # Rank each token's features against its class's FIXED reference basket
+  # (percentile-of-score) instead of the ad-hoc peer set, so a token's tier is
+  # reproducible across the analyze subject, peer tables, and the screener.
+  # Falls back to relative normalization for classes with no cached basket.
+  reference_anchored: true
+  # Penalize a token for missing a domain its class is DEFINED by (e.g. a DeFi
+  # app with no measurable fees/revenue/TVL) instead of renormalizing it away.
+  penalize_missing_core: true
+  missing_core_penalty: 0.0           # score assigned to the absent core domain
+  weights:
+    fundamental: 0.30                 # P/F, P/S, MC/TVL, real yield
+    tokenomics: 0.25                  # unlock overhang, float ratio, inflation
+    onchain: 0.20                     # concentration, address growth, reserves
+    social: 0.10                      # social volume, sentiment trend
+    dev: 0.15                         # commits, contributors, EC dev trend
+  # Final score -> risk tier mapping (score is 0..1)
+  tiers:
+    - { min: 0.80, label: "A — high conviction" }
+    - { min: 0.60, label: "B — qualified" }
+    - { min: 0.40, label: "C — watchlist" }
+    - { min: 0.00, label: "D — avoid" }
+
+# ---------------------------------------------------------------------------
+# Hard disqualifiers — gate, don't average. action: zero | cap
+# ---------------------------------------------------------------------------
+gating:
+  rules:
+    unverified_contract:   { action: "zero" }
+    anonymous_team:        { action: "cap", cap: 0.40 }
+    no_audit:              { action: "cap", cap: 0.50 }
+    extreme_fdv_mcap:      { action: "cap", cap: 0.40, threshold: 10.0 }   # FDV/MCAP > 10
+    dead_token:            { action: "zero" }
+  # dead-token criteria (any one trips it)
+  # NOTE: price drawdown from ATH is intentionally NOT a criterion — a deep
+  # drawdown alone is price action, not project death, and must not zero a token.
+  dead_token:
+    no_commits_days: 180              # no GitHub commits 6+ months
+    min_daily_volume_usd: 1000.0      # near-zero volume

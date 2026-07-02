@@ -1,0 +1,51 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dyor"
+version = "0.1.0"
+description = "Crypto Token Qualification Framework — normalize-then-gate multi-factor scorer"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = [
+    "httpx>=0.27",
+    "pandas>=2.1",
+    "numpy>=1.26",
+    "duckdb>=1.0",
+    "pydantic>=2.6",
+    "pydantic-settings>=2.2",
+    "pyyaml>=6.0",
+    "streamlit>=1.33",
+    "fastapi>=0.110",
+    "uvicorn>=0.27",
+    "mcp>=1.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-recording>=0.13",  # brings vcrpy
+    "vcrpy>=6.0",
+    "respx>=0.21",             # httpx mocking for error-path tests
+    "jsonschema>=4.21",
+]
+
+[project.scripts]
+dyor = "dyor.cli:main"
+dyor-mcp = "dyor.mcp_server:main"
+
+[tool.setuptools.packages.find]
+include = ["dyor*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+# Integration tests (cassette replay / live record) are opt-in. Default run is
+# offline and green: only the pure-function unit tests execute.
+addopts = "-m 'not integration' -ra"
+markers = [
+    "integration: hits external APIs via vcrpy cassettes (opt-in)",
+    "vcr: uses a recorded cassette",
+]

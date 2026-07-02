@@ -1,0 +1,96 @@
+interactions:
+- request:
+    body: ''
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      host:
+      - api.coingecko.com
+      user-agent:
+      - dyor/0.1
+    method: GET
+    uri: https://api.coingecko.com/api/v3/coins/markets?ids=bitcoin%2Cethereum&order=market_cap_desc&page=1&per_page=250&vs_currency=usd
+  response:
+    body:
+      string: !!binary |
+        H4sIAIviNmoAA5yU227bMAyG38XXiUJSZ98MGLA36NWGwdAcLzHqExy5W1D03Ufbaes07lYsyIXE
+        wy9S/qhvj0m5T9LkRxnztmySTXI61z/aajTFnLdNqAvefH7xl3U4jJZjjN0p3e1G83YynsS4PhT5
+        fcurevKcdrNrh7sq9IdidzlIdM3hExpvNKACYN186PuiiVnXlznrG2mJNkkd+vsiZnnokhTJWus9
+        SlTeLl1ZH5p79m+Sn0NVnbN9WQ2x2GcPoRpCLNvmJje2MVTZQ1sNY3fovJfWWdB84rE8HDNSRy5B
+        odKbpGp/XfbkyW2SqcAsPwZu9eKwXqi3nq7oc+4nPAehAGvdVdlLDdRgrHQISGsxt2roJSm+trLP
+        h4q7bA7Zaei66pykBKC01kbAc6drnjr8frUjTL/RHuKoTwbcvLktIUm3ijvWzvo5Yh/iiAQB6S3C
+        FswdulTbVJHQ2n1NxqhqvCfhcFqvaXrprBRERqo55kUV5RbsqAqQTn/BpY6qfVsmacPfnL9SOMVs
+        6Mac/VyK4YwtwaUUVHxjnPS0uRBfxGPRF0O9RJ5tr8h/eQ34T+bJ+gv1z4ctsTfkbrFHS0r4a+4J
+        HEmjQBqUK9jTX7C/Tr2m3ihrQHlt3BJ6tAoF2QX2XK6bLLfgc60g/8m9QnqfewkSHWpv9cewV9Yq
+        s449EhgnvTQMEWsSvqV/JWA5BDNIE/7KK54R/T7/RgskZvuWf3BbUnfoeaZSkEJK+cI/CCXJz0Oz
+        OgLSO3L8UDiL+HYGpslinFdn4DGJZV2cWIHr8gT8pDrwmsZXaSYsP7886VcnavRiGa+ePjZLqHmW
+        vv8BAAD//wMAe4Tr8T8GAAA=
+    headers:
+      access-control-allow-headers:
+      - Origin, X-Requested-With, Content-Type, Accept, Authorization
+      access-control-allow-methods:
+      - POST, PUT, DELETE, GET, OPTIONS
+      access-control-allow-origin:
+      - '*'
+      access-control-expose-headers:
+      - link, per-page, total
+      access-control-request-method:
+      - '*'
+      alt-svc:
+      - h3=":443"; ma=86400
+      cache-control:
+      - max-age=30, public, must-revalidate, s-maxage=60
+      cf-cache-status:
+      - MISS
+      cf-ray:
+      - a0ecff88bcc80050-LHR
+      connection:
+      - keep-alive
+      content-encoding:
+      - gzip
+      content-security-policy-report-only:
+      - script-src https://accounts.google.com/gsi/client; frame-src https://accounts.google.com/gsi/;
+        connect-src https://accounts.google.com/gsi/;
+      content-type:
+      - application/json; charset=utf-8
+      date:
+      - Sat, 20 Jun 2026 18:57:15 GMT
+      etag:
+      - W/"f7aebd7adddd12dff989049b552eef7b"
+      per-page:
+      - '250'
+      referrer-policy:
+      - strict-origin-when-cross-origin
+      server:
+      - cloudflare
+      strict-transport-security:
+      - max-age=600
+      - max-age=15724800; includeSubdomains
+      total:
+      - '2'
+      transfer-encoding:
+      - chunked
+      vary:
+      - Accept-Encoding, Origin
+      x-content-type-options:
+      - nosniff
+      x-data-source:
+      - '1.0'
+      x-frame-options:
+      - SAMEORIGIN
+      x-permitted-cross-domain-policies:
+      - none
+      x-request-id:
+      - 24548326-9114-4962-a7f3-5f71b8af16b2
+      x-runtime:
+      - '0.016627'
+      x-xss-protection:
+      - '0'
+    status:
+      code: 200
+      message: OK
+version: 1

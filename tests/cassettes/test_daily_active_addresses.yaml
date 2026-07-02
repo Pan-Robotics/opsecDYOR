@@ -1,0 +1,80 @@
+interactions:
+- request:
+    body: '{"query":"\n    query ($metric: String!, $slug: String!, $from: DateTime!,
+      $to: DateTime!) {\n      getMetric(metric: $metric) {\n        timeseriesData(slug:
+      $slug, from: $from, to: $to, interval: \"1d\") {\n          datetime\n          value\n        }\n      }\n    }\n    ","variables":{"metric":"daily_active_addresses","slug":"aave","from":"2026-05-25T00:00:00+00:00","to":"2026-06-18T00:00:00+00:00"}}'
+    headers:
+      accept:
+      - '*/*'
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '409'
+      content-type:
+      - application/json
+      host:
+      - api.santiment.net
+      user-agent:
+      - dyor/0.1
+    method: POST
+    uri: https://api.santiment.net/graphql
+  response:
+    body:
+      string: !!binary |
+        H4sIAAAAAAAA/33SsW7DMAwE0H/RnASkKImi567dMiXoYDRCYKBdEqeL4X9v7PkoQIstPxjk3RJu
+        4zyGYQn3Nn+2+TF9bw/z9Nue7TG158d+fV2279r2OgwhUixHyseYz0TDfi7hEP7Gn9f72nI90XrA
+        oiDBxB2imKTskwqJ5A4x/JecXCKESFXyBSOhpTjifaBgtuiTCEku4hPB+zLzSYKkxOQT2Ba21Bkf
+        10Uk+8Spi3TGx3Xh2FkyrItZdQWTk6S/Y4bhm6ovYPZVyBcwelU/E4bJq/jBMw4+pQ7BwTN1ZleH
+        dDLBwdO+4a91Xf8B1tYgbx4FAAA=
+    headers:
+      cache-control:
+      - max-age=0, private, must-revalidate
+      cf-cache-status:
+      - DYNAMIC
+      cf-ray:
+      - a0ed8cdfef7894a5-LHR
+      connection:
+      - keep-alive
+      content-encoding:
+      - gzip
+      content-type:
+      - application/json; charset=utf-8
+      date:
+      - Sat, 20 Jun 2026 20:33:45 GMT
+      nel:
+      - '{"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}'
+      report-to:
+      - '{"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=wdKr83VL9Ilss%2Foe0kJQtOmSOfYJ%2BJjXFNqwzpxgZgSj3A%2Bc3SQfLslaILILkukhLeGZPJ2HTdGOPwBksWjXlEPsC74jIbYUeAMtoJ9%2BlSHMDitKJzsyrkUfueU6jtK0yxRr"}]}'
+      server:
+      - cloudflare
+      set-cookie:
+      - INGRESSCOOKIE=1781987626.08.6642.290059|5b77cc458c44271666bbd94ca09c7cc3;
+        Path=/; Secure; HttpOnly; SameSite=Strict
+      strict-transport-security:
+      - max-age=31536000; includeSubDomains
+      transfer-encoding:
+      - chunked
+      x-ratelimit-limit:
+      - '100'
+      x-ratelimit-limit-hour:
+      - '500'
+      x-ratelimit-limit-minute:
+      - '100'
+      x-ratelimit-limit-month:
+      - '1000'
+      x-ratelimit-remaining:
+      - '96'
+      x-ratelimit-remaining-hour:
+      - '496'
+      x-ratelimit-remaining-minute:
+      - '96'
+      x-ratelimit-remaining-month:
+      - '996'
+      x-request-id:
+      - cc96d5ff7691e8dab7e9b3370469a060
+    status:
+      code: 200
+      message: OK
+version: 1

@@ -1,0 +1,44 @@
+interactions:
+- request:
+    body: ''
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      host:
+      - sourcify.dev
+      user-agent:
+      - dyor/0.1
+    method: GET
+    uri: https://sourcify.dev/server/v2/contract/1/0x0000000000000000000000000000000000000001
+  response:
+    body:
+      string: '{"match":null,"creationMatch":null,"runtimeMatch":null,"chainId":"1","address":"0x0000000000000000000000000000000000000001"}'
+    headers:
+      access-control-allow-origin:
+      - '*'
+      alt-svc:
+      - h3=":443"; ma=2592000,h3-29=":443"; ma=2592000
+      content-length:
+      - '124'
+      content-type:
+      - application/json; charset=utf-8
+      date:
+      - Sun, 21 Jun 2026 01:21:42 GMT
+      etag:
+      - W/"7c-WWexzexe+oxmeiya2eMZ9HLxYSQ"
+      server:
+      - Google Frontend
+      via:
+      - 1.1 google
+      x-cloud-trace-context:
+      - e952c47989203c0a3bb226bb24f46946
+      x-powered-by:
+      - Express
+    status:
+      code: 404
+      message: Not Found
+version: 1

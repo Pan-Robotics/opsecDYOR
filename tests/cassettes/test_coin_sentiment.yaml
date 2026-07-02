@@ -1,0 +1,120 @@
+interactions:
+- request:
+    body: ''
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      host:
+      - api.coingecko.com
+      user-agent:
+      - dyor/0.1
+    method: GET
+    uri: https://api.coingecko.com/api/v3/coins/aave?community_data=false&developer_data=false&localization=false&market_data=false&sparkline=false&tickers=false
+  response:
+    body:
+      string: !!binary |
+        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
+        vwAAAP//AwCuYQBv8RsAAA==
+    headers:
+      access-control-allow-headers:
+      - Origin, X-Requested-With, Content-Type, Accept, Authorization
+      access-control-allow-methods:
+      - POST, PUT, DELETE, GET, OPTIONS
+      access-control-allow-origin:
+      - '*'
+      access-control-expose-headers:
+      - link, per-page, total
+      access-control-request-method:
+      - '*'
+      alt-svc:
+      - h3=":443"; ma=86400
+      cache-control:
+      - max-age=30, public, must-revalidate, s-maxage=30
+      cf-cache-status:
+      - EXPIRED
+      cf-ray:
+      - a0ef737d6c78f7f1-LHR
+      connection:
+      - keep-alive
+      content-encoding:
+      - gzip
+      content-security-policy-report-only:
+      - script-src https://accounts.google.com/gsi/client; frame-src https://accounts.google.com/gsi/;
+        connect-src https://accounts.google.com/gsi/;
+      content-type:
+      - application/json; charset=utf-8
+      date:
+      - Sun, 21 Jun 2026 02:05:56 GMT
+      etag:
+      - W/"79dfe5444c484cff2aed06c6d3427e7d"
+      referrer-policy:
+      - strict-origin-when-cross-origin
+      server:
+      - cloudflare
+      strict-transport-security:
+      - max-age=600
+      - max-age=15724800; includeSubdomains
+      transfer-encoding:
+      - chunked
+      vary:
+      - Accept-Encoding, Origin
+      x-content-type-options:
+      - nosniff
+      x-data-source:
+      - '1.0'
+      x-frame-options:
+      - SAMEORIGIN
+      x-permitted-cross-domain-policies:
+      - none
+      x-request-id:
+      - da642be4-6080-416f-b1b6-7e15ae406f7c
+      x-runtime:
+      - '0.018241'
+      x-xss-protection:
+      - '0'
+    status:
+      code: 200
+      message: OK
+version: 1

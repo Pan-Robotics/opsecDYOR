@@ -1,0 +1,79 @@
+interactions:
+- request:
+    body: '{"query":"\n    query ($metric: String!, $slug: String!, $from: DateTime!,
+      $to: DateTime!) {\n      getMetric(metric: $metric) {\n        timeseriesData(slug:
+      $slug, from: $from, to: $to, interval: \"1d\") {\n          datetime\n          value\n        }\n      }\n    }\n    ","variables":{"metric":"dev_activity","slug":"aave","from":"2026-05-25T00:00:00+00:00","to":"2026-06-18T00:00:00+00:00"}}'
+    headers:
+      accept:
+      - '*/*'
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '399'
+      content-type:
+      - application/json
+      host:
+      - api.santiment.net
+      user-agent:
+      - dyor/0.1
+    method: POST
+    uri: https://api.santiment.net/graphql
+  response:
+    body:
+      string: !!binary |
+        H4sIAAAAAAAA/5XTOw7DIAwA0Lt4TiobAvnMXbt1atUhalEVqV0S0gVx90Jme7DkBfwAGUOC1xxn
+        mBK8Q7yEuC7POojLN2xhXcJ2PtL3VF2o0zCBQeNbdK1xV8TpiBs08Js/e0njCXPDe895I/ue8172
+        g3L/kfOD6C3q6rWk8SVYT1ZeYDQFlLDsAbLvON/J3mkaUEN5Qb3SD8p6R50nVHq2wU72bH9JLpis
+        7oKoU3q2wfIDJa/5wcX30gN65Jz/l8cPRK0EAAA=
+    headers:
+      cache-control:
+      - max-age=0, private, must-revalidate
+      cf-cache-status:
+      - DYNAMIC
+      cf-ray:
+      - a0ed8ce59a28950b-LHR
+      connection:
+      - keep-alive
+      content-encoding:
+      - gzip
+      content-type:
+      - application/json; charset=utf-8
+      date:
+      - Sat, 20 Jun 2026 20:33:45 GMT
+      nel:
+      - '{"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}'
+      report-to:
+      - '{"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=FwEKNK%2FFSQhDOqny8DRy66vGrOuJrmTRlGmjatuuJNxibApPFrKb7ZQ5dHL8bS4J2zi9Y1D%2Fd%2FPGxG0u6Bl4zDGJT%2FfZq5pYcWdVwt%2FlpemjtXvKkM0gUJF3D2Ee%2BkCiflDW"}]}'
+      server:
+      - cloudflare
+      set-cookie:
+      - INGRESSCOOKIE=1781987626.877.6642.81024|5b77cc458c44271666bbd94ca09c7cc3;
+        Path=/; Secure; HttpOnly; SameSite=Strict
+      strict-transport-security:
+      - max-age=31536000; includeSubDomains
+      transfer-encoding:
+      - chunked
+      x-ratelimit-limit:
+      - '100'
+      x-ratelimit-limit-hour:
+      - '500'
+      x-ratelimit-limit-minute:
+      - '100'
+      x-ratelimit-limit-month:
+      - '1000'
+      x-ratelimit-remaining:
+      - '95'
+      x-ratelimit-remaining-hour:
+      - '495'
+      x-ratelimit-remaining-minute:
+      - '95'
+      x-ratelimit-remaining-month:
+      - '995'
+      x-request-id:
+      - 15cf6a1741227502850dbbb7ce56f4f7
+    status:
+      code: 200
+      message: OK
+version: 1

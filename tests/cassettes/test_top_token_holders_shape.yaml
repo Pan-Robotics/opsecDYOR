@@ -1,0 +1,68 @@
+interactions:
+- request:
+    body: ''
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      host:
+      - api.ethplorer.io
+      user-agent:
+      - dyor/0.1
+    method: GET
+    uri: https://api.ethplorer.io/getTopTokenHolders/0x7fc66500c84a76ad7e9c93437bfc5ac33e2ddae9?apiKey=freekey&limit=10
+  response:
+    body:
+      string: !!binary |
+        H4sIAAAAAAAA/7WUy4oVQQyG36W3Hg65p8qlryEuUjdmMSicWSgM8+7GhXK6ziBubGho6FT9X5I/
+        eT2evj2PeXs5Pn5+PWKM23zJ7wN+yAjyUNEOXZtrCWuBAJMDpALgmMVh6XE5WjzH1z6Pj3RFdeHq
+        DmBgWm1+ILkcL09xy9/IVymX4xbfP/0+cdB+QhWKgvvxdtmAqkSQrgDVwQ5CMkcdjQvX6TYnzzqr
+        nID8WoFNizASO/kvHv7DI9cqG45v8QCFQR0faCKBm8wmaG2yNqqIa+iYs4B5Wcsk317PNKVmZqSF
+        0DCT3ml4p9nizYjE9JEmy0JE1jTvLKsqSuNlZQGsLFtfsqiYVLyn0ayNOOd9gpUhi3hPw1erG42e
+        44tXFWF67NTKdhaUWWGESMuOcTOqGmBoUaqLYPTZTzSbOu61UHj/eVDXUJo1zdpHtFZojWyg8SRl
+        VjJs5DBXb/9HXTw6rJYFH0VKLVNGurPlNDXuJOnssKHA9+pyUqerbuLyr+K9SroPaLm71e6B0xwQ
+        55iR2bdeotfV5r14zqS7Qs2RBtxA0DcSvov9KwmOTN54jLJihEXTTt1bpdmi4Ow9SwDZiPP2UNU0
+        lQrl8JmcxwOvtq+Oc7ilKSsgv+eIAhhVsIyc7jVEGbx0jtGbW45t15hWt1XGTFzyRi6KafgNRh5o
+        tnhMl5NjOd6+vP0EkTvqymYFAAA=
+    headers:
+      access-control-allow-headers:
+      - Authorization,Content-Type,Accept,Origin,User-Agent,DNT,Cache-Control,X-Mx-ReqToken,Keep-Alive,X-Requested-With,If-Modified-Since
+      access-control-allow-methods:
+      - GET, POST, OPTIONS, PUT, DELETE
+      access-control-allow-origin:
+      - '*'
+      alt-svc:
+      - h3=":443"; ma=86400
+      cf-cache-status:
+      - DYNAMIC
+      cf-ray:
+      - a0edb2f7ea62bef8-LHR
+      connection:
+      - keep-alive
+      content-encoding:
+      - gzip
+      content-type:
+      - application/json; charset=utf-8
+      date:
+      - Sat, 20 Jun 2026 20:59:45 GMT
+      etag:
+      - W/"566-qWcDSfSww5Cq14qtHKpUr1Eh6BA"
+      nel:
+      - '{"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}'
+      report-to:
+      - '{"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=C3l7pcfaz2cz71D4Qq3Qrcv3GXz6uD8xBouymjaEwBI5RhPRuMm%2BLgQkwoTLUtoBzUqJVtPty%2B4D3aYx7gvzOB9C7uacWl%2BQBedVouFmHzbVR2vr5umW5ggHUUOZRD%2FEA8M%3D"}]}'
+      server:
+      - cloudflare
+      transfer-encoding:
+      - chunked
+      x-powered-by:
+      - Express
+      x-quic:
+      - h3
+    status:
+      code: 200
+      message: OK
+version: 1
