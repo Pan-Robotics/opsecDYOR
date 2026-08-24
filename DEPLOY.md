@@ -138,3 +138,39 @@ cd /root/DYOR && .venv/bin/dyor reference          # rebuild per-class baskets
   `proxy_read_timeout` for the event stream). It's a read-only research surface with no
   auth; if you want to limit abuse, add an nginx `limit_req` zone for `/mcp` (and `/api/`),
   or put a bearer token in front. The same binary still works locally over stdio (`dyor-mcp`).
+
+## Scheduled refresh (cron)
+
+`dyor refresh` is the unit of scheduled work: snapshot the previous run →
+collect live → persist → alert on changes. Installed on the VPS as:
+
+```bash
+scp deploy/dyor-refresh.sh <VPS>:/usr/local/bin/dyor-refresh
+ssh <VPS> 'chmod +x /usr/local/bin/dyor-refresh && touch /var/log/dyor-refresh.log'
+scp deploy/dyor-refresh.cron <VPS>:/tmp/ && ssh <VPS> 'crontab /tmp/dyor-refresh.cron'
+```
+
+**Weekly, Sunday 03:07 UTC — deliberately not daily.** Santiment's free
+anonymous tier is ~1000 calls/month and each token costs 2, so a 60-token
+refresh is 120 calls: weekly is ~520/month and leaves headroom for the site's
+on-demand analyses. Daily would be ~3600/month, and an exhausted quota silently
+drops `address_growth`/`dev_commit_trend` — coverage falls and scores move. A
+Santiment key in `/root/DYOR/.env` makes daily affordable.
+
+**`TOP_N` must stay >= the current run size** (60). `refresh` persists a *new*
+run and the screener reads only the latest, so a smaller top-N shrinks the
+screener.
+
+The wrapper takes `flock -n -E 75` so two collectors never overlap, and logs to
+`/var/log/dyor-refresh.log` (monthly logrotate, 12 kept). Exit codes: `0` ok,
+`75` skipped because a run was already going, `1` collect returned nothing
+(nothing persisted), `143` terminated.
+
+### Installing the Python package on the server
+
+**Install editable — `pip install -e . --no-build-isolation --no-deps`.** A
+plain `pip install .` leaves a *copy* in `site-packages`, and then the console
+scripts (`dyor`, `dyor-mcp`) import that copy while uvicorn imports
+`/root/DYOR/dyor` (it inserts cwd on `sys.path`). An rsync deploy then updates
+the API but silently leaves the CLI and MCP server running old code. Editable
+means one copy, and rsync alone is a complete code deploy.

@@ -1,0 +1,12 @@
+# DYOR scheduled refresh — install with: crontab deploy/dyor-refresh.cron
+#
+# Weekly, Sunday 03:07 UTC. NOT daily: Santiment's free anonymous tier is ~1000
+# calls/month and each token costs 2, so a 60-token refresh is 120 calls —
+# weekly is ~520/month, leaving headroom for the site's on-demand analyses.
+# Daily would be ~3600/month; an exhausted quota silently drops address_growth
+# and dev_commit_trend, lowering coverage and shifting scores. With a Santiment
+# key in /root/DYOR/.env, daily becomes affordable.
+#
+# The wrapper handles flock (no overlapping collectors), logging and exit codes:
+#   script: /usr/local/bin/dyor-refresh   log: /var/log/dyor-refresh.log
+7 3 * * 0 /usr/local/bin/dyor-refresh
