@@ -113,11 +113,18 @@ R=$(ssh $H '/usr/local/bin/dyor-refresh >/dev/null 2>&1; echo $?')
 [ "$R" = "75" ] && ok "flock overlap guard" "rc=75 (skipped, run in flight)" || wr "flock overlap guard" "rc=$R"
 
 sec "G · BEHAVIOURAL REGRESSION (production)"
-ssh $H 'pgrep -f "bin/dyor refresh" >/dev/null' && INFLIGHT=yes || INFLIGHT=no
+# Detect an in-flight run via the lock, not pgrep: an ssh'd `pgrep -f "dyor
+# refresh"` matches its own `bash -c` command line and always reports a hit.
+ssh $H 'flock -n /run/dyor-refresh.lock true' >/dev/null 2>&1 && INFLIGHT=no || INFLIGHT=yes
 if [ "$INFLIGHT" = yes ]; then
   C=$(curl -s -o /dev/null -w '%{http_code}' --max-time 40 "$BASE/api/screener?source=stored")
   chk "screener up DURING live collect" "$C" "200"
-  H2=$(ssh $H 'for P in $(pgrep -f "bin/dyor refresh"); do ls -l /proc/$P/fd 2>/dev/null | grep -ci duckdb; done | paste -sd+ | bc')
+  # count only the python collector; flock/bash wrappers (and this very command)
+  # also match the pattern, so filter on the executable
+  H2=$(ssh $H 'n=0; for P in $(pgrep -f "bin/dyor refresh"); do
+        case "$(readlink /proc/$P/exe 2>/dev/null)" in *python*) ;; *) continue ;; esac
+        n=$((n + $(ls -l /proc/$P/fd 2>/dev/null | grep -ci duckdb)))
+      done; echo $n')
   chk "refresh holds 0 DB locks mid-collect" "$H2" "0"
 else
   wr "concurrency check" "no refresh in flight to test against"
