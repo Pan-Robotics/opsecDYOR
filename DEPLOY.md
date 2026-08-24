@@ -174,3 +174,25 @@ scripts (`dyor`, `dyor-mcp`) import that copy while uvicorn imports
 `/root/DYOR/dyor` (it inserts cwd on `sys.path`). An rsync deploy then updates
 the API but silently leaves the CLI and MCP server running old code. Editable
 means one copy, and rsync alone is a complete code deploy.
+
+## Deployment sweep
+
+`deploy/deployment-sweep.sh` verifies a deploy end to end and prints a PASS/FAIL
+table: source-of-truth (clean tree, HEAD == origin, tests), code parity
+(server `dyor/` tree checksum == local, editable import, each shipped fix
+present in the *imported* module), services (pm2 + listening ports), the HTTP
+surface (every web page, API route, MCP handshake, TLS expiry, the main site's
+Tools link in the served bundle), data (runs, basket rows/classes, latest run
+size), scheduling (crontab, cron enabled, wrapper, logrotate, flock guard) and
+a behavioural regression (screener stays up during a live collect; a same-class
+persist does not move another token's score).
+
+```bash
+deploy/deployment-sweep.sh            # uses ssh host alias "cryptoopsec"
+DYOR_SSH_HOST=myhost deploy/deployment-sweep.sh
+```
+
+**Run it when no refresh is in flight.** The collector and the API share one
+outbound IP, and CoinGecko's keyless limit is per IP with separate token buckets
+per process — so during a refresh, on-demand `analyze` backs off against 429s and
+can exceed a 90s client timeout. This is also why the cron slot is 03:07 UTC.
