@@ -52,6 +52,15 @@ class SantimentClient:
             PROJECT_ROOT / ingestion["cache_dir"] / self.name,
             ingestion["cache_ttl_seconds"],
         )
+        # Only ~35% of our gecko_ids are Santiment slugs, so most calls fail with
+        # "is not an existing slug" — and each failure still costs a call against
+        # the ~1000/month free tier. Remember the misses for much longer than a
+        # normal response: a slug that doesn't exist rarely starts existing, and
+        # a stale miss self-corrects on the next expiry.
+        self.miss_cache = FileCache(
+            PROJECT_ROOT / ingestion["cache_dir"] / f"{self.name}-misses",
+            src.get("miss_cache_ttl_seconds", 30 * 86400),
+        )
         headers = {"Content-Type": "application/json", "User-Agent": "dyor/0.1"}
         key = get_settings().santiment_api_key
         if key:
@@ -103,10 +112,23 @@ class SantimentClient:
         `daily_active_addresses`, `dev_activity`) but only within the last ~30
         days. Social metrics (`social_volume_total`) require a key.
         """
+        miss_key = {"unsupported": [metric, slug]}
+        if self.use_cache and self.miss_cache.get(self.url, miss_key) is not None:
+            return []  # known-untracked slug — don't spend a call to be told again
+
         gql = self._TIMESERIES.format(interval=interval)
-        data = self.query(gql, {
-            "metric": metric, "slug": slug, "from": from_iso, "to": to_iso,
-        })
+        try:
+            data = self.query(gql, {
+                "metric": metric, "slug": slug, "from": from_iso, "to": to_iso,
+            })
+        except RuntimeError as exc:
+            # Remember only "this slug does not exist" — never a rate limit, a
+            # quota exhaustion or a subscription restriction, which are
+            # transient or key-dependent and must stay loud.
+            if self.use_cache and "is not an existing slug" in str(exc):
+                self.miss_cache.set(self.url, miss_key, True)
+                return []
+            raise
         return data["getMetric"]["timeseriesData"]
 
     def daily_active_addresses(self, slug: str, from_iso: str, to_iso: str) -> list[dict[str, Any]]:

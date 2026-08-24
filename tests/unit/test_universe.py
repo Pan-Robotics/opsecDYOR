@@ -61,3 +61,37 @@ def test_auto_resolution_fields():
 def test_category_filter():
     targets = targets_from_protocols(PROTOCOLS, {}, top_n=10, category="Dexs")
     assert {t.gecko_id for t in targets} == {"uniswap", "curve-dao-token"}
+
+
+def test_basket_targets_cover_every_class():
+    """The screener universe must keep all five asset classes; TVL rank alone
+    yields a DeFi-only set."""
+    from dyor.classes import REFERENCE_BASKETS
+    from dyor.universe import basket_targets
+
+    protos = [{"gecko_id": "aave", "slug": "aave", "category": "Lending", "tvl": 1}]
+    targets = basket_targets(protos, {"aave": "0xabc"})
+    ids = {t.gecko_id for t in targets}
+    expected = {g for ids_ in REFERENCE_BASKETS.values() for g in ids_}
+    assert ids == expected
+    assert len(targets) == len(expected)          # dogecoin is in two baskets, listed once
+    aave = next(t for t in targets if t.gecko_id == "aave")
+    assert aave.defillama_slug == "aave" and aave.eth_contract == "0xabc"
+    btc = next(t for t in targets if t.gecko_id == "bitcoin")
+    assert btc.santiment_slug == "bitcoin" and btc.defillama_slug is None
+
+
+def test_fetch_universe_union_prefers_tvl_target_and_never_duplicates():
+    from dyor.universe import basket_targets, targets_from_protocols
+
+    protos = [
+        {"gecko_id": "aave", "slug": "aave", "category": "Lending", "tvl": 100},
+        {"gecko_id": "obscure", "slug": "obscure", "category": "Yield", "tvl": 90},
+    ]
+    tv = targets_from_protocols(protos, {}, top_n=2)
+    have = {t.gecko_id for t in tv}
+    union = tv + [t for t in basket_targets(protos, {}) if t.gecko_id not in have]
+    ids = [t.gecko_id for t in union]
+    assert len(ids) == len(set(ids))              # no duplicate gecko_id
+    assert ids.count("aave") == 1
+    assert "obscure" in ids and "bitcoin" in ids  # TVL entrant and basket major both kept

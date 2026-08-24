@@ -157,9 +157,20 @@ on-demand analyses. Daily would be ~3600/month, and an exhausted quota silently
 drops `address_growth`/`dev_commit_trend` — coverage falls and scores move. A
 Santiment key in `/root/DYOR/.env` makes daily affordable.
 
-**`TOP_N` must stay >= the current run size** (60). `refresh` persists a *new*
-run and the screener reads only the latest, so a smaller top-N shrinks the
-screener.
+`refresh` also **unions in every class reference basket** (~56 tokens on top of
+the TVL slice), so the screener keeps bitcoin, ethereum, the memecoins and the
+stablecoins regardless of weekly TVL churn — ranking on TVL alone dropped
+ethereum, chainlink and celestia in one run and left a DeFi-only board. Pass
+`--no-baskets` to opt out; `dyor collect` takes `--include-baskets` to opt in.
+Effective universe at `TOP_N=60` is ~116 tokens.
+
+Santiment cost stays low because only ~35% of our gecko_ids are Santiment slugs
+and the client **remembers the misses for 30 days**: ~232 calls on the first run,
+~81/week after — roughly 350/month against the ~1000 free tier.
+
+**`TOP_N` must not shrink the universe below the current run.** `refresh`
+persists a *new* run and the screener reads only the latest, so a smaller top-N
+shrinks the screener.
 
 The wrapper takes `flock -n -E 75` so two collectors never overlap, and logs to
 `/var/log/dyor-refresh.log` (monthly logrotate, 12 kept). Exit codes: `0` ok,

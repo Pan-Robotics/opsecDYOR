@@ -298,3 +298,58 @@ def test_santiment_slug_override_applied():
 
     assert SLUG_OVERRIDES["polkadot"] == "polkadot-new"
     assert SLUG_OVERRIDES["starknet"] == "starknet-token"
+
+
+def test_santiment_caches_untracked_slug_misses(tmp_path, monkeypatch, sample_config):
+    """~65% of our gecko_ids aren't Santiment slugs and each failed lookup still
+    costs a call against the ~1000/month free tier. A known miss must not be
+    re-queried."""
+    import httpx
+
+    from dyor.ingestion import santiment as san_mod
+
+    monkeypatch.setattr(san_mod, "PROJECT_ROOT", tmp_path)
+    client = san_mod.SantimentClient(sample_config)
+    calls = {"n": 0}
+
+    def fake_post(url, json=None):
+        calls["n"] += 1
+        return httpx.Response(
+            200,
+            json={"errors": [{"message": 'Can\'t fetch daily_active_addresses for project '
+                                         'with slug kpk, Reason: "The slug \\"kpk\\" is not '
+                                         'an existing slug."'}]},
+            request=httpx.Request("POST", url),
+        )
+
+    monkeypatch.setattr(client._client, "post", fake_post)
+    assert client.daily_active_addresses("kpk", "2026-01-01", "2026-01-28") == []
+    assert client.daily_active_addresses("kpk", "2026-02-01", "2026-02-28") == []
+    client.close()
+    assert calls["n"] == 1  # second lookup served from the miss cache
+
+
+def test_santiment_does_not_cache_transient_failures(tmp_path, monkeypatch, sample_config):
+    """Rate limits, quota exhaustion and subscription limits must stay loud —
+    caching them would silently zero a feed for a month."""
+    import httpx
+    import pytest
+
+    from dyor.ingestion import santiment as san_mod
+
+    monkeypatch.setattr(san_mod, "PROJECT_ROOT", tmp_path)
+    client = san_mod.SantimentClient(sample_config)
+
+    def fake_post(url, json=None):
+        return httpx.Response(
+            200,
+            json={"errors": [{"message": "API rate limit exceeded for your subscription"}]},
+            request=httpx.Request("POST", url),
+        )
+
+    monkeypatch.setattr(client._client, "post", fake_post)
+    with pytest.raises(RuntimeError):
+        client.daily_active_addresses("aave", "2026-01-01", "2026-01-28")
+    with pytest.raises(RuntimeError):   # still raises, not cached away
+        client.daily_active_addresses("aave", "2026-01-01", "2026-01-28")
+    client.close()

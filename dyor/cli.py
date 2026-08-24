@@ -78,7 +78,8 @@ def _cmd_collect(args: argparse.Namespace) -> int:
         from dyor.universe import fetch_universe
 
         targets = fetch_universe(
-            top_n=args.top_n or 50, category=args.category, use_cache=not args.no_cache)
+            top_n=args.top_n or 50, category=args.category, use_cache=not args.no_cache,
+            include_baskets=args.include_baskets)
         print(f"built universe of {len(targets)} targets"
               + (f" in category '{args.category}'" if args.category else ""), file=sys.stderr)
 
@@ -136,7 +137,8 @@ def _cmd_refresh(args: argparse.Namespace) -> int:
     targets = None
     if args.top_n or args.category:
         from dyor.universe import fetch_universe
-        targets = fetch_universe(top_n=args.top_n or 50, category=args.category)
+        targets = fetch_universe(top_n=args.top_n or 50, category=args.category,
+                                 include_baskets=not args.no_baskets)
 
     with Collector() as collector:
         records = collector.collect(targets)
@@ -319,6 +321,10 @@ def main(argv: list[str] | None = None) -> int:
     refresh.add_argument("--top-n", type=int, help="build a top-N universe instead of the curated set")
     refresh.add_argument("--category", help="restrict the built universe to one category")
     refresh.add_argument("--no-narratives", action="store_true", help="skip the narrative-rotation alert pass")
+    refresh.add_argument("--no-baskets", action="store_true",
+                         help="don't pin the class reference baskets into the universe "
+                              "(by default they are unioned in, so the screener keeps the "
+                              "majors and every asset class regardless of TVL churn)")
     refresh.set_defaults(func=_cmd_refresh)
 
     score = sub.add_parser("score", help="score a token universe")
@@ -334,6 +340,8 @@ def main(argv: list[str] | None = None) -> int:
     collect.add_argument("--top-n", type=int, help="build a universe of the top-N protocols by TVL (else the curated DeFi set)")
     collect.add_argument("--category", help="restrict the built universe to one DefiLlama category (e.g. Lending)")
     collect.add_argument("--peer-groups", action="store_true", help="normalize within category instead of across the whole universe")
+    collect.add_argument("--include-baskets", action="store_true",
+                         help="union the class reference baskets into the built universe")
     collect.set_defaults(func=_cmd_collect)
 
     args = parser.parse_args(argv)
