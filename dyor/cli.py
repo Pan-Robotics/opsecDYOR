@@ -121,8 +121,17 @@ def _cmd_refresh(args: argparse.Namespace) -> int:
     from dyor.collect import Collector
     from dyor.store import db
 
+    # DuckDB is single-writer ACROSS PROCESSES: a second process cannot open the
+    # file read-write at all. So read the previous run and release the lock
+    # immediately — holding it through the (20+ minute) collect below would lock
+    # the API out of the store for the whole run, breaking the screener and
+    # silently emptying analyze's peer set.
     con = db.connect()
-    prev_results = score_universe(db.latest_records(con))  # last run (may be empty)
+    try:
+        prev_records = db.latest_records(con)
+    finally:
+        con.close()
+    prev_results = score_universe(prev_records)  # last run (may be empty)
 
     targets = None
     if args.top_n or args.category:
@@ -132,8 +141,18 @@ def _cmd_refresh(args: argparse.Namespace) -> int:
     with Collector() as collector:
         records = collector.collect(targets)
         errors = collector.errors
-    run_id = db.persist_records(con, records)
-    con.close()
+
+    if not records:
+        # Persisting an empty run would make it the "latest" one and blank the
+        # screener. A collect that returns nothing is a failure, not a result.
+        print("refresh: collect returned no records — nothing persisted", file=sys.stderr)
+        return 1
+
+    con = db.connect()
+    try:
+        run_id = db.persist_records(con, records)
+    finally:
+        con.close()
 
     curr_results = score_universe(records)
 
