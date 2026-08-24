@@ -115,3 +115,47 @@ def test_relative_score_is_universe_dependent():
     a = {r.token: r for r in score_universe(_WEAK, reference_anchored=False)}["rpl"]
     b = {r.token: r for r in score_universe(_STRONG, reference_anchored=False)}["rpl"]
     assert a.domain_scores["fundamental"] != pytest.approx(b.domain_scores["fundamental"])
+
+
+def test_reference_distributions_ignore_latest_persisted_run(monkeypatch):
+    """The anchor is the curated basket ONLY — persisting a run must not move it.
+
+    Regression for the 2026-08-24 drift finding: mixing the latest stored run
+    into the anchor re-scored 29/32 tokens (6 tier flips) when an unrelated
+    same-class token was persisted.
+    """
+    import dyor.reference as reference
+
+    basket = [{"token": "a", "price_to_fees": 10.0}, {"token": "b", "price_to_fees": 20.0}]
+    monkeypatch.setattr(reference, "reference_peers", lambda cls: list(basket))
+    monkeypatch.setattr(reference, "_basket_version", lambda cls: "v1")
+    reference.clear_distribution_cache()
+    before = reference.reference_distributions("defi")["price_to_fees"].tolist()
+
+    # a fresh run landing in the store must be invisible to the anchor
+    basket_plus_stored = basket + [{"token": "zz", "price_to_fees": 0.01}]
+    monkeypatch.setattr(
+        reference, "_same_class_stored", lambda cls: basket_plus_stored, raising=False
+    )
+    after = reference.reference_distributions("defi")["price_to_fees"].tolist()
+    assert after == before == [10.0, 20.0]
+    reference.clear_distribution_cache()
+
+
+def test_reference_distributions_refresh_on_basket_version(monkeypatch):
+    """A `dyor reference` rebuild (new version) is picked up without a process
+    restart — no more warm-worker-vs-fresh-CLI disagreement."""
+    import dyor.reference as reference
+
+    peers = {"v1": [{"token": "a", "price_to_fees": 10.0}],
+             "v2": [{"token": "a", "price_to_fees": 10.0},
+                    {"token": "b", "price_to_fees": 30.0}]}
+    version = {"now": "v1"}
+    monkeypatch.setattr(reference, "reference_peers", lambda cls: list(peers[version["now"]]))
+    monkeypatch.setattr(reference, "_basket_version", lambda cls: version["now"])
+    reference.clear_distribution_cache()
+    assert reference.reference_distributions("defi")["price_to_fees"].tolist() == [10.0]
+
+    version["now"] = "v2"  # rebuild landed in another process
+    assert reference.reference_distributions("defi")["price_to_fees"].tolist() == [10.0, 30.0]
+    reference.clear_distribution_cache()

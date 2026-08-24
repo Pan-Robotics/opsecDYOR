@@ -19,14 +19,14 @@ TO = "2026-06-18T00:00:00+00:00"
 
 
 def test_daily_active_addresses(sample_config):
-    with SantimentClient(sample_config) as client:
+    with SantimentClient(sample_config, use_cache=False) as client:
         series = client.daily_active_addresses("aave", FROM, TO)
     assert isinstance(series, list) and series
     assert {"datetime", "value"} <= set(series[0])
 
 
 def test_dev_activity(sample_config):
-    with SantimentClient(sample_config) as client:
+    with SantimentClient(sample_config, use_cache=False) as client:
         series = client.dev_activity("aave", FROM, TO)
     assert isinstance(series, list) and series
     assert {"datetime", "value"} <= set(series[0])

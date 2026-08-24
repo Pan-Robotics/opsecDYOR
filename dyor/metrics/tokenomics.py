@@ -30,8 +30,13 @@ def unlock_pct_of_volume(unlock_value_usd: Number, avg_daily_volume_usd: Number)
 
 
 def float_ratio(circulating_supply: Number, total_supply: Number) -> float | None:
-    """Circulating ÷ total. Low float + high FDV = classic overhang setup."""
-    return _safe_div(circulating_supply, total_supply)
+    """Circulating ÷ total, clamped to [0, 1]. Low float + high FDV = classic
+    overhang setup. Providers occasionally report circulating marginally above
+    total (rounding), which would leak an out-of-contract value into scoring."""
+    ratio = _safe_div(circulating_supply, total_supply)
+    if ratio is None:
+        return None
+    return min(max(ratio, 0.0), 1.0)
 
 
 def inflation_rate(new_supply_annual: Number, circulating_supply: Number) -> float | None:

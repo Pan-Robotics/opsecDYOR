@@ -27,7 +27,7 @@ from dyor.ingestion.cryptorank import CryptoRankClient
 from dyor.ingestion.defillama import DefiLlamaClient
 from dyor.ingestion.ethplorer import EthplorerClient
 from dyor.ingestion.github import GitHubClient
-from dyor.ingestion.santiment import SantimentClient
+from dyor.ingestion.santiment import SLUG_OVERRIDES, SantimentClient
 from dyor.ingestion.sourcify import SourcifyClient
 from dyor.classes import classify_asset
 from dyor.metrics import onchain, tokenomics, valuation
@@ -335,7 +335,7 @@ class Collector:
         self.cg = CoinGeckoClient(self.config, use_cache=use_cache)
         self.dl = DefiLlamaClient(self.config, use_cache=use_cache)
         self.gh = GitHubClient(self.config, use_cache=use_cache)
-        self.san = SantimentClient(self.config)
+        self.san = SantimentClient(self.config, use_cache=use_cache)
         self.cr = CryptoRankClient(self.config, use_cache=use_cache)
         self.eth = EthplorerClient(self.config, use_cache=use_cache)
         self.sf = SourcifyClient(self.config, use_cache=use_cache)
@@ -362,8 +362,14 @@ class Collector:
 
         active-address growth + dev-activity trend are free/anonymous; social
         volume needs a key, so it's only attempted when one is configured.
+
+        The window is rounded to UTC midnight: a `now()`-based window changes
+        every call, which both defeats the on-disk cache (the free tier is
+        1000 calls/month) and makes `dev_commit_trend` drift between runs with
+        no underlying data change.
         """
-        to = datetime.now(timezone.utc)
+        slug = SLUG_OVERRIDES.get(slug, slug)
+        to = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
         frm = to - timedelta(days=_SANTIMENT_WINDOW_DAYS)
         fi, ti = frm.isoformat(), to.isoformat()
 

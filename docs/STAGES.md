@@ -70,7 +70,14 @@ correctly flags high-FDV/low-float unlock overhangs and dead tokens.
 - [x] **Auto identity-resolution** — `defillama_slug` from the protocol, `eth_contract` from CoinGecko `/coins/list` platforms (one call), `santiment_slug`/`cryptorank_key` best-effort = gecko_id (misses → honest diagnostics), `category` attached as the peer group.
 - [x] **Category-relative normalization** — `score_universe(..., peer_groups=True)` ranks each metric within its `_group` (the doc's "compare within category"); CLI `--peer-groups`, dashboard "Score within category" toggle.
 - [x] **CLI**: `dyor collect --top-n N [--category Lending] [--peer-groups]`. Live-verified end-to-end; the `dead_token` gate fires on real small-cap lending tokens.
-- NOTE: for auto-built universes (no `github_org`), `dead_token` leans on the 99%-drawdown / low-volume criteria — broad universes may want a looser `drawdown_from_ath_pct` in config.
+- NOTE: for auto-built universes (no `github_org`), `dead_token` can only fall back
+  on the low-volume criterion (drawdown was deliberately removed as a dead-token
+  criterion — price action alone must not zero a token; see `config.yaml`).
+- KNOWN LIMIT (2026-08-24 integration test): three of the five gate rules are
+  inert on live data — `anonymous_team`/`no_audit` read fields only the sample
+  data carries, and `unverified_contract` needs an explicit `False` that open
+  sources never emit. Live gating is effectively `extreme_fdv_mcap` + low-volume
+  `dead_token`. Populating team/audit facts needs a keyed or curated source.
 
 ### Reliability hardening (done)
 - [x] **Data-coverage / confidence** score per token (features-present ÷ total) — in `ScoreResult`, CLI, and UI; sparse scores no longer read as confident.

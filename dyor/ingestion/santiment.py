@@ -16,18 +16,42 @@ from typing import Any
 
 import httpx
 
-from dyor.config import get_settings, load_config
-from dyor.ingestion.base import RateLimiter
+from dyor.config import PROJECT_ROOT, get_settings, load_config
+from dyor.ingestion.base import FileCache, RateLimiter
+
+# gecko_id → Santiment slug where they differ. The collector's best-effort
+# `santiment_slug = gecko_id` misses these (verified against Santiment's own
+# allProjects list, 2026-08-24); two are L1 reference-basket members, so the
+# mapping directly widens the anchored address-growth/dev distributions.
+SLUG_OVERRIDES: dict[str, str] = {
+    "polkadot": "polkadot-new",
+    "starknet": "starknet-token",
+    "tornado-cash": "torn",
+    "quickswap": "p-quickswap-new",
+    "benqi": "a-benqi",
+    "bsquared-network": "bnb-bsquared-network",
+    "veno-finance": "veno-finance-vno",
+    "rain": "arb-rain",
+}
 
 
 class SantimentClient:
     name = "santiment"
 
-    def __init__(self, config: dict | None = None) -> None:
+    def __init__(self, config: dict | None = None, *, use_cache: bool = True) -> None:
         cfg = config if config is not None else load_config()
-        src = cfg["ingestion"]["sources"]["santiment"]
+        ingestion = cfg["ingestion"]
+        src = ingestion["sources"]["santiment"]
         self.url = src["base_url"]
         self.limiter = RateLimiter(src["rate_limit_per_min"])
+        # The free tier is 1000 calls/MONTH — without a cache, every analyze
+        # burns 2 of them live (~500 analyses/month for the whole service).
+        # POSTs are cached on (url, query+variables), same TTL as the GETs.
+        self.use_cache = use_cache
+        self.cache = FileCache(
+            PROJECT_ROOT / ingestion["cache_dir"] / self.name,
+            ingestion["cache_ttl_seconds"],
+        )
         headers = {"Content-Type": "application/json", "User-Agent": "dyor/0.1"}
         key = get_settings().santiment_api_key
         if key:
@@ -35,6 +59,11 @@ class SantimentClient:
         self._client = httpx.Client(timeout=30.0, headers=headers)
 
     def query(self, graphql: str, variables: dict | None = None) -> dict[str, Any]:
+        cache_key = {"q": graphql, "v": variables or {}}
+        if self.use_cache:
+            cached = self.cache.get(self.url, cache_key)
+            if cached is not None:
+                return cached
         self.limiter.acquire()
         resp = self._client.post(
             self.url, json={"query": graphql, "variables": variables or {}}
@@ -43,6 +72,8 @@ class SantimentClient:
         payload = resp.json()
         if "errors" in payload:
             raise RuntimeError(f"santiment GraphQL error: {payload['errors']}")
+        if self.use_cache:
+            self.cache.set(self.url, cache_key, payload["data"])
         return payload["data"]
 
     # `interval` is a Santiment custom scalar; inline it as a literal (it's

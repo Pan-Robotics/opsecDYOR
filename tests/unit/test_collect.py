@@ -262,3 +262,39 @@ def test_record_is_scorable():
     results = score_universe([rec, build_record("uni", {**MARKET, "id": "uni"})])
     assert len(results) == 2
     assert all(0.0 <= r.final_score <= 1.0 or math.isnan(r.final_score) for r in results)
+
+
+def test_santiment_query_served_from_cache(tmp_path, monkeypatch, sample_config):
+    """POSTs are cached on (url, query+variables) — the free tier is 1000
+    calls/month, so a repeat query within TTL must not hit the network."""
+    import httpx
+
+    from dyor.ingestion import santiment as san_mod
+
+    monkeypatch.setattr(san_mod, "PROJECT_ROOT", tmp_path)
+    client = san_mod.SantimentClient(sample_config)
+    calls = {"n": 0}
+
+    def fake_post(url, json=None):
+        calls["n"] += 1
+        return httpx.Response(
+            200,
+            json={"data": {"getMetric": {"timeseriesData": [{"datetime": "d", "value": 1}]}}},
+            request=httpx.Request("POST", url),
+        )
+
+    monkeypatch.setattr(client._client, "post", fake_post)
+    first = client.query("{q}", {"slug": "aave"})
+    second = client.query("{q}", {"slug": "aave"})
+    client.close()
+    assert first == second
+    assert calls["n"] == 1
+
+
+def test_santiment_slug_override_applied():
+    """gecko_ids that Santiment tracks under a different slug are remapped
+    (polkadot/aptos-class basket members were silently 'empty' before)."""
+    from dyor.ingestion.santiment import SLUG_OVERRIDES
+
+    assert SLUG_OVERRIDES["polkadot"] == "polkadot-new"
+    assert SLUG_OVERRIDES["starknet"] == "starknet-token"

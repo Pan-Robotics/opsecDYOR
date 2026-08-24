@@ -42,6 +42,12 @@ def test_float_ratio_and_inflation():
     assert tokenomics.inflation_rate(20, 1_000) == pytest.approx(0.02)
 
 
+def test_float_ratio_clamped_to_unit_interval():
+    # providers occasionally report circulating marginally above total (rounding)
+    assert tokenomics.float_ratio(1_000.4, 1_000) == 1.0
+    assert tokenomics.float_ratio(0, 1_000) == 0.0
+
+
 def test_insider_share_handles_zero_total():
     assert tokenomics.insider_share(10, 0) is None
 

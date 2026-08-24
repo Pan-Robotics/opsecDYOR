@@ -119,13 +119,21 @@ MEME_IDS = {"dogecoin", "shiba-inu", "pepe", "dogwifcoin", "bonk", "floki",
 # Curated reference baskets — representative tokens per class, so a token can be
 # scored against same-class peers (an L1 vs L1s, not vs DeFi apps). Collected and
 # cached by `dyor reference`; used by analyze peer_mode="class".
+# The anchor distributions are built from these ONLY (see dyor/reference.py) —
+# a wider basket gives smoother percentiles, so defi/l1 are deliberately broad.
+# Changing a basket changes every same-class score: rebuild with `dyor reference`.
 REFERENCE_BASKETS: dict[str, list[str]] = {
     "l1": ["ethereum", "solana", "avalanche-2", "cardano", "polkadot", "near",
-           "aptos", "sui", "tron", "the-open-network", "internet-computer", "sei-network"],
+           "aptos", "sui", "tron", "the-open-network", "internet-computer", "sei-network",
+           "binancecoin", "cosmos", "celestia"],
     "monetary": ["bitcoin", "litecoin", "bitcoin-cash", "monero", "zcash", "dash", "dogecoin"],
     "meme": ["dogecoin", "shiba-inu", "pepe", "dogwifcoin", "bonk", "floki", "popcat"],
     "defi": ["aave", "uniswap", "lido-dao", "gmx", "curve-dao-token", "maker",
-             "compound-governance-token", "pendle", "convex-finance", "rocket-pool"],
+             "compound-governance-token", "pendle", "convex-finance", "rocket-pool",
+             "pancakeswap-token", "sushi", "1inch", "balancer", "yearn-finance",
+             "synthetix-network-token", "morpho", "aerodrome-finance", "velodrome-finance",
+             "raydium", "jupiter-exchange-solana", "ethena", "frax-share",
+             "stargate-finance", "jito-governance-token", "dydx-chain"],
     "stablecoin": ["tether", "usd-coin", "dai", "ethena-usde", "first-digital-usd",
                    "true-usd", "frax"],
 }
