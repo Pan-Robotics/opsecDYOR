@@ -109,8 +109,15 @@ ssh $H '[ -x /usr/local/bin/dyor-refresh ]' && ok "wrapper executable" || no "wr
 ssh $H '[ -f /etc/logrotate.d/dyor-refresh ]' && ok "logrotate config" || no "logrotate config"
 ssh $H 'logrotate -d /etc/logrotate.d/dyor-refresh >/dev/null 2>&1' && ok "logrotate config valid" || no "logrotate config valid"
 ssh $H '[ -w /var/log/dyor-refresh.log ]' && ok "log writable" || no "log writable"
-R=$(ssh $H '/usr/local/bin/dyor-refresh >/dev/null 2>&1; echo $?')
-[ "$R" = "75" ] && ok "flock overlap guard" "rc=75 (skipped, run in flight)" || wr "flock overlap guard" "rc=$R"
+# Exercise the guard WITHOUT invoking the wrapper: calling dyor-refresh here
+# would start a real ~25-minute collect (and burn ~120 Santiment calls) whenever
+# the lock happened to be free. Hold the lock in a throwaway process instead and
+# check that a second acquisition is refused with the wrapper's -E code.
+R=$(ssh $H 'flock /run/dyor-refresh.lock sleep 4 >/dev/null 2>&1 &
+            sleep 1
+            flock -n -E 75 /run/dyor-refresh.lock true; echo $?
+            wait' 2>/dev/null | head -1)
+[ "$R" = "75" ] && ok "flock overlap guard" "second acquisition refused (rc=75)" || no "flock overlap guard" "rc=$R"
 
 sec "G · BEHAVIOURAL REGRESSION (production)"
 # Detect an in-flight run via the lock, not pgrep: an ssh'd `pgrep -f "dyor
