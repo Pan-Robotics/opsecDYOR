@@ -235,8 +235,10 @@ covering the frozen anchor, version-keyed cache, Santiment cache, slug map, and
 the clamp).
 
 **Notes.** Rebuilding the baskets is a deliberate one-time recalibration — local
-scores shift once against the new anchor, then stay put. The deployed VPS still
-runs pre-fix code and DB until the next deploy (rsync + `pm2 restart`, per
-`DEPLOY.md`); until then the live site retains the drift behaviour. Remaining
+scores shift once against the new anchor, then stay put. **Deployed to the VPS
+the same day** (commit `0973ff0` → github.com/Pan-Robotics/opsecDYOR; code
+rsync'd, verified baskets grafted into the server DB preserving its own 11 runs,
+`dyor-api`+`dyor-mcp` restarted). Live drift regression PASSED: analyzing
+litecoin (same class, persisted) left bitcoin's score bit-identical. Remaining
 known limits: `social_trend`/`inflation_rate` stay relative (key-gated / no
 source), and three gate rules stay inert on live data (§6).
