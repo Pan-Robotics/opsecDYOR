@@ -143,6 +143,28 @@ export default function Home() {
         </div>
       </section>
 
+      {/* testimonial — unsolicited public feedback on X from a source in the data stack */}
+      <section>
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">What others are saying</h2>
+        <figure className="card mt-4 border-brand/30 bg-gradient-to-br from-panel to-panel2">
+          <blockquote className="text-lg leading-relaxed text-white">
+            <span aria-hidden="true" className="mr-1 font-orbitron text-2xl text-brand">“</span>
+            Nice work — and thanks for including{" "}
+            <a href="https://x.com/ethplorer" target="_blank" rel="noopener noreferrer"
+              className="text-brand hover:text-brand2">@ethplorer</a>{" "}
+            in the data stack. We tested four projects in DYOR and found its risk signals broadly
+            aligned with our own framework based on stablecoin reserves and the Printing-Press
+            Index (PPI).
+          </blockquote>
+          <figcaption className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
+            <a href="https://x.com/ethplorer" target="_blank" rel="noopener noreferrer"
+              className="font-semibold text-white hover:text-brand">Ethplorer</a>
+            <span className="text-muted">Ethereum token explorer &amp; analytics · on X</span>
+            <span className="pill border border-edge bg-panel2 text-muted">holder-concentration source</span>
+          </figcaption>
+        </figure>
+      </section>
+
       {/* CTA */}
       <section className="card flex flex-col items-start gap-3 bg-gradient-to-br from-panel to-panel2 sm:flex-row sm:items-center sm:justify-between">
         <div>
