@@ -26,7 +26,7 @@ Deliverables:
 - [~] **Social trend** via Santiment `social_volume_total` — wired but **key-gated** (restricted anonymously); populates with `DYOR_SANTIMENT_API_KEY`
 - [~] **Precise** unlock %-of-volume (next-event $ ÷ volume): metric + parser + wiring DONE, needs a keyed source
       (DefiLlama Pro `/emissions` = 402, or CryptoRank v1 `currencies/token-unlock`). The open v0 overhang covers the gating signal meanwhile.
-- [ ] **Reserve-trend** (exchange reserves) — needs a keyed source (Glassnode / CryptoQuant)
+- [ ] **Reserve-trend** (exchange reserves) — needs a keyed source (Glassnode / CryptoQuant). Removed from the class specs until then (2026-09-26) so it no longer deflates coverage; same for `inflation_rate`.
 - [ ] Gini/Nakamoto concentration beyond top-10, multi-chain holders (L2/own-chain) — needs Nansen/Covalent
 - [ ] Electric Capital `open-dev-data` DuckDB load (ecosystem→repo taxonomy) for fuller dev coverage
 
@@ -124,3 +124,12 @@ score AND cannot be derived from free sources.
   sources** — wire to CryptoQuant/CoinGlass/Glassnode/RWA.xyz directly.
 - Refresh stale constants (treasury hurdle, RWA totals, supply) on a schedule.
 - Keep predictions/price-targets OUT of the scorer — they are not data.
+
+### Data-source coverage pass (2026-09-26)
+- [x] CoinGecko `coin_meta` also yields TVL (fallback for slug-less tokens), watchlist count (`watchlist_users`, social, all classes), supply flags, repo URLs.
+- [x] DefiLlama chain-level fees/revenue/TVL for L1 tokens (`/v2/chains`, `/overview/fees/{chain}`).
+- [x] DefiLlama `audits`/`audit_links` → `audited`; the `no_audit` gate fires on open data.
+- [x] Santiment slug map (id / contract / name / unique ticker) — 68 → 94 of 116 tokens.
+- [x] Sourcify on Arbitrum/Base/OP/Polygon/BSC/Avalanche, not only Ethereum.
+- [x] GitHub org discovery from DefiLlama/CoinGecko; feed gated on `DYOR_GITHUB_TOKEN`.
+- [x] One enrichment routine (`universe.make_target`) for universe, baskets and analyze.

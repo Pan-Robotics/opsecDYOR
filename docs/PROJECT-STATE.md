@@ -352,6 +352,31 @@ the same day. The important state changes:
 - Server: `.env` (mode 600) holds the CryptoRank key; pm2-logrotate installed;
   cron wrapper uses the shared lock path.
 
+## 8c. September 2026 — data-source coverage pass
+
+Audit question: is every supplier's schema parsed, is anything dropped, and does
+each token get every feed free data allows? Baseline (Sep 20 run, 117 tokens):
+**42.9% of class-spec feature slots had data**; 106 slots belonged to features
+with no source at all; L1 `mc_tvl` was 1/17; Santiment resolved 59% of tokens.
+Changes (commit `e68acd2`, `docs/DATA-COVERAGE-2026-09-26.md` has the numbers):
+
+- Specs list only producible features (`inflation_rate`, `reserve_trend` out);
+  `watchlist_users` (CoinGecko watchlist count) added to every class.
+- CoinGecko `coin_meta` yields TVL (fallback for slug-less tokens), watchlist,
+  supply flags and repo URLs in the same call. `developer_data` /
+  `community_data` are null on the free tier — not requested.
+- DefiLlama chain-level fees/revenue/TVL for L1s; protocol `github` and
+  `audits` flow into Targets. **`no_audit` now fires on open data** (an explicit
+  "0" on DefiLlama; any audit link counts as audited) — ~26 of the top-80
+  protocols are capped at 0.5 by design. Disable by removing the rule from
+  `config.yaml gating.rules` if that is not wanted.
+- Santiment slug map by id / main contract / name / unique ticker (68 → 94/116).
+- Sourcify on six EVM chains; GitHub org auto-discovered but the feed is gated
+  on `DYOR_GITHUB_TOKEN` (anonymous is 60/hour) — **a free token turns the
+  dead-token gate on for nearly every token**.
+- `universe.make_target` is the one enrichment path for universe, baskets and
+  analyze, so the anchor and live records share feature sets. Baskets rebuilt.
+
 ## 9. Gaps in this reconstruction
 
 Honest about what couldn't be recovered:

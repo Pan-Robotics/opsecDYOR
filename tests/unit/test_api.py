@@ -134,6 +134,7 @@ def test_methodology_marks_inert_gate_rules():
     g = body["gating"]
     assert g["extreme_fdv_mcap"]["active_on_open_data"] is True
     assert g["dead_token"]["active_on_open_data"] is True
+    assert g["no_audit"]["active_on_open_data"] is True          # DefiLlama audit record
     assert g["unverified_contract"]["active_on_open_data"] is False
     assert g["anonymous_team"]["active_on_open_data"] is False
 

@@ -99,18 +99,29 @@ never as fabricated values. Every record carries a per-source `_feeds` map;
 `dyor refresh` prints per-source counts and raises a **critical `feed_outage`
 alert** when a source errors on most tokens.
 
-Current sources: DefiLlama (fees/revenue/TVL), CoinGecko (market, categories,
-sentiment), Santiment free tier (address growth, dev activity — cached, with
-untracked slugs remembered for 30 days), Ethplorer `freekey` (holder
-concentration, Ethereum only), Sourcify (contract verification, True-or-unknown),
-GitHub (last push). **CryptoRank's open v0 endpoint went behind a Cloudflare
-challenge in Sep 2026**; with `DYOR_CRYPTORANK_API_KEY` the client uses the
-documented v3 API, and the unlock-overhang feature activates only on a plan that
-exposes the vesting endpoints (Pro) — a supply figure alone cannot tell a vesting
-lock from un-mined supply.
+Current sources, and what each contributes:
 
-Three of the five gate rules (`unverified_contract`, `anonymous_team`, `no_audit`)
-cannot fire on open data and are marked inactive in the methodology.
+| Source | Features | Reach |
+|---|---|---|
+| DefiLlama protocols | P/F, P/S, MC/TVL, real yield, value accrual; `github` org; `audits` → the `no_audit` gate | protocols with a `gecko_id` |
+| DefiLlama chains | the same fundamentals **chain-wide** for L1 tokens with no protocol slug | every chain in `/v2/chains` |
+| CoinGecko | market/supply, categories (classification), sentiment, **watchlist count** (attention), **TVL fallback**, repo URLs | every token |
+| Santiment (free) | address growth, dev-activity trend — slug resolved by id / contract / name / ticker | ~80% of tokens |
+| Ethplorer `freekey` | top-10 holder concentration | Ethereum ERC-20s |
+| Sourcify | contract verification (True-or-unknown) on Ethereum, Arbitrum, Base, OP, Polygon, BSC, Avalanche | any EVM deployment |
+| GitHub | last push (dead-token gate) — **needs `DYOR_GITHUB_TOKEN`**, anonymous is 60/hour | tokens with a known org |
+| CryptoRank | unlock overhang, next-unlock $ — **Pro plan only** (v0 died Sep 2026; v3 free plan has no vesting endpoints) | off until upgraded |
+
+Every record carries a per-source `_feeds` status. A spec only lists features
+some source can produce (there is no free source for inflation rate or exchange
+reserves, so they are not scored). One enrichment routine
+(`universe.make_target`) attaches the same feeds whether a token arrives via
+the TVL universe, a reference basket, or on-demand analyze — so the anchor and
+the live record are measured on the same features.
+
+`no_audit` now fires on DefiLlama's audit record (an explicit "0"; any audit link
+counts as audited). `unverified_contract` and `anonymous_team` still cannot fire
+on open data and are marked inactive in the methodology.
 
 ## Stage plan
 

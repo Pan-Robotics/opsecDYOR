@@ -71,12 +71,12 @@ def _dead_token(rec: dict, _rule: dict, cfg: dict) -> bool:
     return vol is not None and vol < crit.get("min_daily_volume_usd", 1000.0)
 
 
-# Rules whose inputs the open-data collector actually produces. `team_anonymous`
-# and `audited` exist only in the sample data (no keyless source), and
-# `contract_verified` is True-or-None by design (Sourcify can't prove a
-# negative), so `unverified_contract` never fires on live data either. The
-# methodology surfaces this rather than listing five "active" gates.
-OPEN_DATA_ACTIVE: frozenset[str] = frozenset({"extreme_fdv_mcap", "dead_token"})
+# Rules whose inputs the open-data collector actually produces. `audited` comes
+# from DefiLlama's audit record (since 2026-09-26). `team_anonymous` has no
+# keyless source, and `contract_verified` is True-or-None by design (Sourcify
+# can't prove a negative), so `unverified_contract` never fires on live data.
+# The methodology surfaces this rather than listing five "active" gates.
+OPEN_DATA_ACTIVE: frozenset[str] = frozenset({"extreme_fdv_mcap", "dead_token", "no_audit"})
 
 
 def rule_activity(config: dict | None = None) -> dict[str, dict]:

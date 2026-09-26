@@ -59,4 +59,4 @@ def test_missing_data_does_not_trip(cfg):
 def test_rule_activity_flags_open_data_reality(cfg):
     act = gate.rule_activity(cfg)
     assert set(act) == set(cfg["gating"]["rules"])
-    assert {n for n, r in act.items() if r["active_on_open_data"]} == {"extreme_fdv_mcap", "dead_token"}
+    assert {n for n, r in act.items() if r["active_on_open_data"]} == {"extreme_fdv_mcap", "dead_token", "no_audit"}
