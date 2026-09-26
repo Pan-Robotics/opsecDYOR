@@ -16,7 +16,10 @@ install -m 0644 "$HERE/nginx-dyor-ratelimit.conf" "$ZONES"
 if grep -q "zone=dyor_live" "$VHOST"; then
   echo "rate limits already present in $VHOST"
 else
-  cp "$VHOST" "$VHOST.bak.$(date +%s)"
+  # Back up OUTSIDE sites-enabled — nginx globs that directory, so a backup left
+  # there is parsed as a second vhost and fails `nginx -t` (duplicate listen).
+  BACKUPS=/root/nginx-backups; mkdir -p "$BACKUPS"
+  cp "$VHOST" "$BACKUPS/$(basename "$VHOST").bak.$(date +%s)"
   python3 - "$VHOST" <<'PY'
 import re, sys
 p = sys.argv[1]; s = open(p).read()
