@@ -17,7 +17,7 @@ from typing import Any
 import httpx
 
 from dyor.config import PROJECT_ROOT, get_settings, load_config
-from dyor.ingestion.base import FileCache, RateLimiter
+from dyor.ingestion.base import FileCache, _evict_once, shared_limiter
 
 # gecko_id → Santiment slug where they differ. The collector's best-effort
 # `santiment_slug = gecko_id` misses these (verified against Santiment's own
@@ -43,7 +43,7 @@ class SantimentClient:
         ingestion = cfg["ingestion"]
         src = ingestion["sources"]["santiment"]
         self.url = src["base_url"]
-        self.limiter = RateLimiter(src["rate_limit_per_min"])
+        self.limiter = shared_limiter(self.name, src["rate_limit_per_min"])  # one bucket per process
         # The free tier is 1000 calls/MONTH — without a cache, every analyze
         # burns 2 of them live (~500 analyses/month for the whole service).
         # POSTs are cached on (url, query+variables), same TTL as the GETs.
@@ -61,6 +61,12 @@ class SantimentClient:
             PROJECT_ROOT / ingestion["cache_dir"] / f"{self.name}-misses",
             src.get("miss_cache_ttl_seconds", 30 * 86400),
         )
+        if use_cache:
+            # This client doesn't go through BaseClient, so it must evict for
+            # itself — and it is the biggest cache: the day-rounded window makes
+            # every week's positive entries a fresh key that otherwise lives forever.
+            _evict_once(self.cache)
+            _evict_once(self.miss_cache)
         headers = {"Content-Type": "application/json", "User-Agent": "dyor/0.1"}
         key = get_settings().santiment_api_key
         if key:

@@ -209,3 +209,22 @@ def test_cryptorank_keyless_uses_config_flag(monkeypatch, sample_config):
     cl = cryptorank.CryptoRankClient(cfg)
     assert cl.enabled is False and "disabled in config" in cl.disabled_reason
     cl.close()
+
+
+def test_santiment_cache_evicts_expired_entries_on_init(tmp_path, monkeypatch, sample_config):
+    """SantimentClient bypasses BaseClient, so eviction must be wired explicitly —
+    its positive cache grew ~230 files/week forever on the server."""
+    import os
+
+    from dyor.ingestion import base, santiment as san_mod
+
+    monkeypatch.setattr(san_mod, "PROJECT_ROOT", tmp_path)
+    monkeypatch.setattr(base, "_EVICTED_DIRS", set())
+    d = tmp_path / sample_config["ingestion"]["cache_dir"] / "santiment"
+    d.mkdir(parents=True)
+    stale = d / "old.json"; stale.write_text("{}")
+    t = 0
+    os.utime(stale, (t, t))
+    fresh = d / "new.json"; fresh.write_text("{}")
+    san_mod.SantimentClient(sample_config).close()
+    assert not stale.exists() and fresh.exists()
