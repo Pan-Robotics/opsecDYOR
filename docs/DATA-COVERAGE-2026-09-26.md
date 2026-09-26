@@ -63,9 +63,52 @@ Worst features by class (present / applicable):
 
 ---
 
-## 3. After — same universe, new code
+## 3. After — same universe, new code (run `20260926T052451`, 114 tokens)
 
-_(filled from the post-deploy run — see below)_
+Overall feature-slot outcome: **present 56.4%** (was 42.9%) · derived-null
+16.8% · off 18.9% · empty 8.0% · **error 0** (was 11.6%) · **no-source 0**
+(was 6.9%).
+
+Per-token class-relative coverage: **28 tokens ≥ 70%** (was 3), 4 at 100%;
+the 40–60% band holds 79 tokens (was 71 in 30–60%).
+
+Feed reach per run: Santiment `ok` **48 → 69**, DefiLlama `ok` 74 → 84 (chain
+fallback), Sourcify `ok` 72 → 81 (multi-chain), CryptoRank `error` 116 → `off`.
+
+| Class | Feature | Before | After |
+|---|---|---:|---:|
+| l1 | `mc_tvl` | 1 / 17 | **10 / 16** |
+| l1 | `price_to_fees` | 10 / 17 | **15 / 16** |
+| l1 | `price_to_sales` | 8 / 17 | **14 / 16** |
+| l1 | `dev_commit_trend` | 11 / 17 | **15 / 16** |
+| l1 | `watchlist_users` | — | **16 / 16** |
+| defi | `mc_tvl` | 55 / 77 | **73 / 76** |
+| defi | `price_to_fees` | 44 / 77 | 50 / 76 |
+| defi | `address_growth` | 32 / 77 | **45 / 76** |
+| defi | `dev_commit_trend` | 23 / 77 | 31 / 76 |
+| defi | `watchlist_users` | — | **76 / 76** |
+| meme | `address_growth` | 3 / 8 | **7 / 7** |
+| stablecoin | `address_growth` | 5 / 9 | **8 / 9** |
+| all | `inflation_rate`, `reserve_trend` | 0 (dead slots) | removed from specs |
+
+Gate flags on the corrected run: `no_audit` 17 (all DeFi protocols — Jupiter,
+Babylon, Starknet, Obol, mETH …), `extreme_fdv_mcap` 2, `dead_token` 10
+(low-volume, unchanged). Tiers: A 1 · B 21 · C 41 · D 51. Bitcoin 0.769 (B,
+67% coverage), Ethereum 0.624 (B), Solana 0.764 (B, 79%), Aave 0.433 (C, 80%).
+Scores re-anchored once against the rebuilt baskets (new feature, new feeds);
+they now stay put.
+
+**A bug the first run caught.** The first run with DefiLlama audits flagged
+bitcoin, ethereum, solana, polkadot, tron, BNB and celestia with `no_audit` —
+their DefiLlama rows are *Chain*-category entries carrying `audits: "0"`, which
+means nothing for an L1 or a monetary asset; the top-80 probe had excluded Chain
+rows, so it never showed. Fixed within the hour (`352e6fa`): audits are read
+only from application-protocol rows and `audited` is set only for DeFi-class
+records. The same run showed the chain-level fallback was all-or-nothing (L1
+`mc_tvl` stuck at 5/16); each field now falls back on its own → 10/16.
+
+What still limits the L1s: 5 chains report zero TVL on DefiLlama (ICP, Binance
+row, …) and 12 of 16 have no Ethereum ERC-20 for holder concentration.
 
 ---
 

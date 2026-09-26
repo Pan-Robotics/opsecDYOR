@@ -252,3 +252,11 @@ group-writable on Ubuntu and logrotate silently skips such parents otherwise.
 **Web changes need a rebuild.** An rsync alone leaves the old `.next` serving 200s;
 `deploy/deployment-sweep.sh` now fails if the server's build is older than its
 sources.
+
+## Coverage matrix
+
+`deploy/coverage-matrix.py` prints, for the latest persisted run, how many
+tokens of each class have each scored feature and *why* the rest don't (source
+off / empty / error / no source / derived-null), plus the per-token coverage
+distribution. Run it on the server after a refresh to see what a data-source
+change bought: `ssh <VPS> '/root/DYOR/.venv/bin/python /root/DYOR/deploy/coverage-matrix.py'`.
