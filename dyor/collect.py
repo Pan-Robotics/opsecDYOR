@@ -21,7 +21,7 @@ from typing import Any, Callable
 
 import httpx
 
-from dyor.config import get_settings, load_config
+from dyor.config import get_settings, load_config, redact_secrets
 from dyor.ingestion.coingecko import CoinGeckoClient
 from dyor.ingestion.cryptorank import CryptoRankClient
 from dyor.ingestion.defillama import DefiLlamaClient
@@ -323,6 +323,18 @@ def _feed_status(configured: bool, value: Any, errored: bool) -> str:
     return "ok" if value not in (None, [], {}) else "empty"
 
 
+def feed_summary(records: list[dict[str, Any]]) -> dict[str, dict[str, int]]:
+    """{feed: {status: count}} across a collection — the per-source view that
+    `refresh` prints and `alerts.feed_outage_alerts` reasons over. A source that
+    is `error` for most tokens is an outage, and it should look like one."""
+    out: dict[str, dict[str, int]] = {}
+    for rec in records:
+        for feed, status in (rec.get("_feeds") or {}).items():
+            bucket = out.setdefault(feed, {})
+            bucket[status] = bucket.get(status, 0) + 1
+    return out
+
+
 class Collector:
     """Fetches live data for a set of targets and emits scoring records.
 
@@ -348,10 +360,10 @@ class Collector:
         slug) is treated as no-data (→ empty), not an error."""
         try:
             return fn()
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             if not _is_not_found(exc):
                 self.errors.append({"token": token, "source": source,
-                                    "error": f"{type(exc).__name__}: {exc}"})
+                                    "error": redact_secrets(f"{type(exc).__name__}: {exc}")})
             return None
 
     def _errored(self, token: str, source: str) -> bool:
@@ -416,22 +428,30 @@ class Collector:
                 holders_rev = self._try("defillama", tok, lambda s=slug: self.dl.fees_summary(s, "dailyHoldersRevenue"))
                 tvl = self._try("defillama", tok, lambda s=slug: self.dl.tvl(s))
                 if self.dl.has_pro:  # Pro-only emissions endpoint
-                    unlock = self._try("defillama", tok, lambda s=slug: parse_unlock(self.dl.emissions(s), market))
+                    unlock = self._try("defillama", tok,
+                                       lambda s=slug, m=market: parse_unlock(self.dl.emissions(s), m))
 
             if target.github_org:
                 last_push = self._try("github", tok, lambda o=target.github_org: self.gh.org_latest_push(o))
 
             santiment = self._santiment_growth(tok, target.santiment_slug) if target.santiment_slug else {}
 
-            # Unlock overhang + VC backing via CryptoRank v0 (open, no key)
+            # Unlock overhang + VC backing via CryptoRank (v0 open path is dead
+            # since 2026-09 and disabled in config; a key re-enables via v3).
             overhang = None
             vc = {}
-            if target.cryptorank_key:
+            cr_on = bool(target.cryptorank_key) and self.cr.enabled
+            if cr_on:
                 coin = self._try("cryptorank", tok, lambda k=target.cryptorank_key: self.cr.coin(k))
                 if coin:
                     overhang = tokenomics.unlock_overhang(
                         coin.get("availableSupply"), coin.get("maxSupply"), coin.get("hasVesting"))
                     vc = vc_backing(coin)
+                    # CryptoRank Pro exposes the next unlock's USD value — the
+                    # precise `unlock_pct_of_volume` input otherwise gated behind
+                    # DefiLlama Pro. DefiLlama wins if both are configured.
+                    if unlock is None and coin.get("nextUnlockUsd"):
+                        unlock = {"next_unlock_usd": float(coin["nextUnlockUsd"])}
 
             # CoinGecko coin meta: coarse social sentiment + categories (for class).
             meta = self._try("coingecko", tok, lambda t=tok: self.cg.coin_meta(t)) or {}
@@ -472,7 +492,7 @@ class Collector:
             record["_feeds"] = {
                 "coingecko": "ok",
                 "defillama": _feed_status(bool(target.defillama_slug), fees or tvl, self._errored(tok, "defillama")),
-                "cryptorank": _feed_status(bool(target.cryptorank_key), overhang, self._errored(tok, "cryptorank")),
+                "cryptorank": _feed_status(cr_on, overhang, self._errored(tok, "cryptorank")),
                 "ethplorer": _feed_status(bool(target.eth_contract), eth_holders, self._errored(tok, "ethplorer")),
                 "sourcify": _feed_status(bool(target.eth_contract), contract_verified, self._errored(tok, "sourcify")),
                 "santiment": _feed_status(bool(target.santiment_slug), santiment.get("address_growth"), self._errored(tok, "santiment")),
@@ -485,7 +505,7 @@ class Collector:
         for client in (self.cg, self.dl, self.gh, self.san, self.cr, self.eth, self.sf):
             client.close()
 
-    def __enter__(self) -> "Collector":
+    def __enter__(self) -> Collector:
         return self
 
     def __exit__(self, *exc: object) -> None:

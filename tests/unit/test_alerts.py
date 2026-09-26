@@ -137,3 +137,26 @@ def test_refresh_refuses_to_persist_an_empty_collect(monkeypatch, tmp_path):
         assert db.latest_records(con) == []
     finally:
         con.close()
+
+
+def test_feed_outage_alert_fires_on_systematic_errors():
+    """The CryptoRank incident: one source erroring on every token must be a
+    critical alert, not a number buried in 'N feed error(s)'."""
+    from dyor.alerts import feed_outage_alerts
+
+    recs = [{"token": f"t{i}", "_feeds": {"cryptorank": "error", "defillama": "ok",
+                                          "github": "off"}} for i in range(10)]
+    recs[0]["_feeds"]["defillama"] = "error"  # one-off — below threshold
+    alerts = feed_outage_alerts(recs)
+    assert [a.subject for a in alerts] == ["cryptorank"]
+    assert alerts[0].severity == "critical" and "10/10" in alerts[0].message
+
+
+def test_feed_outage_ignores_off_feeds_and_is_wired_into_evaluate():
+    from dyor.alerts import evaluate
+
+    recs = [{"token": "a", "_feeds": {"github": "off", "santiment": "empty"}}]
+    assert not [a for a in evaluate([], [], records=recs) if a.kind == "feed_outage"]
+    recs = [{"token": "a", "_feeds": {"ethplorer": "error"}}, {"token": "b", "_feeds": {"ethplorer": "error"}}]
+    kinds = [a.kind for a in evaluate([], [], records=recs)]
+    assert "feed_outage" in kinds

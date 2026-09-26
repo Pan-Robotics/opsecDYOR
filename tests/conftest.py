@@ -15,6 +15,27 @@ CASSETTE_DIR = Path(__file__).parent / "cassettes"
 
 
 @pytest.fixture(autouse=True)
+def _isolate_store_and_cache(tmp_path, monkeypatch):
+    """No test may touch the real DuckDB or on-disk cache.
+
+    `db.connect()` with no path, the reference-basket readers, and every client's
+    FileCache all resolve to project paths at import time; point them at a
+    per-test temp dir instead, and drop the anchor cache so a basket built in
+    one test cannot leak into the next.
+    """
+    from dyor.store import db as _db
+    from dyor.ingestion import base as _base, santiment as _san
+    from dyor.reference import clear_distribution_cache
+
+    monkeypatch.setattr(_db, "DEFAULT_DB_PATH", tmp_path / "data" / "dyor.duckdb")
+    monkeypatch.setattr(_base, "PROJECT_ROOT", tmp_path)
+    monkeypatch.setattr(_san, "PROJECT_ROOT", tmp_path)
+    clear_distribution_cache()
+    yield
+    clear_distribution_cache()
+
+
+@pytest.fixture(autouse=True)
 def _no_ratelimit_sleep(monkeypatch):
     """Rate-limit + backoff sleeps are pointless against cassettes / pure
     functions — skip them so the suite (esp. integration replay) stays fast."""

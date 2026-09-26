@@ -17,7 +17,13 @@ class GitHubClient(BaseClient):
     name = "github"
     default_rate_per_min = 80.0  # 5000/hr authed
 
+    # Unauthenticated GitHub is 60 requests per HOUR. Pacing at the configured
+    # authed rate without a token would 403 as soon as the target list grew.
+    UNAUTHED_RATE_PER_MIN = 1.0
+
     def __init__(self, config: dict | None = None, **kwargs) -> None:
+        if not get_settings().github_token and "rate_per_min" not in kwargs:
+            kwargs["rate_per_min"] = self.UNAUTHED_RATE_PER_MIN
         super().__init__(config, **kwargs)
         self.base_url = self.config["ingestion"]["sources"]["github"]["base_url"]
 

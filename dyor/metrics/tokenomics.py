@@ -56,12 +56,15 @@ def unlock_overhang(
 
     The "supply glut" risk: tokens contractually scheduled to hit the market.
     Counted only when `has_vesting` is true — structurally-uncreated supply (e.g.
-    un-mined BTC) is NOT a pending-dump overhang, so it returns 0.0 there. This
-    is the open-data proxy for unlock pressure (CryptoRank v0), distinct from a
-    raw float ratio which conflates vesting locks with uncreated supply.
+    un-mined BTC) is NOT a pending-dump overhang, so it returns 0.0 there. When
+    the vesting status is UNKNOWN (None) the answer is None, not the raw locked
+    fraction: without that flag the number would conflate vesting locks with
+    uncreated supply, which is the very error this feature exists to avoid.
 
-    Lower is better. Returns None if supply data is missing.
+    Lower is better. Returns None if supply or vesting data is missing.
     """
+    if has_vesting is None:
+        return None
     if has_vesting is False:
         return 0.0
     if available_supply is None or not max_supply or max_supply <= 0:

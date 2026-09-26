@@ -56,16 +56,24 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(
         env_prefix="DYOR_",
-        env_file=".env",
+        # Anchored to the project, not the CWD — `dyor` run from any directory
+        # (or a cron with a different cwd) must still see the same secrets.
+        env_file=str(PROJECT_ROOT / ".env"),
         env_file_encoding="utf-8",
         extra="ignore",
     )
 
     github_token: str | None = None
     coingecko_api_key: str | None = None
+    # "demo" (free key: public host, x-cg-demo-api-key) or "pro" (pro-api host,
+    # x-cg-pro-api-key). Both key formats look alike, so this can't be inferred.
+    coingecko_api_tier: str = "demo"
     santiment_api_key: str | None = None
     defillama_api_key: str | None = None  # Pro — unlocks emissions/unlocks endpoints
     alert_webhook: str | None = None      # Slack/Discord-compatible URL for `dyor refresh`
+    # Required (as X-Admin-Token) to trigger a screener rebuild over the API.
+    # Unset = the endpoint is disabled; the weekly cron is the normal path.
+    admin_token: str | None = None
 
     # Stage 2 paid add-ons
     tokenterminal_api_key: str | None = None
@@ -80,10 +88,33 @@ class Settings(BaseSettings):
 def load_config(path: str | Path | None = None) -> dict[str, Any]:
     """Parse and cache `config.yaml`."""
     cfg_path = Path(path) if path else DEFAULT_CONFIG_PATH
-    with open(cfg_path, "r", encoding="utf-8") as fh:
+    with open(cfg_path, encoding="utf-8") as fh:
         return yaml.safe_load(fh)
 
 
 @functools.lru_cache(maxsize=1)
 def get_settings() -> Settings:
     return Settings()
+
+
+def collect_lock_path() -> Path:
+    """The ONE lock every live collector takes (cron wrapper, API build job).
+
+    DuckDB is single-writer across processes and every collector shares the same
+    upstream rate limits, so collections must never overlap. Override with
+    $DYOR_COLLECT_LOCK; the cron wrapper flocks the same file.
+    """
+    return Path(os.environ.get("DYOR_COLLECT_LOCK") or (PROJECT_ROOT / "data" / ".collect.lock"))
+
+
+def redact_secrets(text: str) -> str:
+    """Mask every configured secret that appears in `text` (URLs, error messages).
+
+    Some providers take the key in the URL path (DefiLlama Pro), and httpx puts
+    the URL in its exception text — so anything that logs an error string must
+    pass it through here first.
+    """
+    for value in get_settings().model_dump().values():
+        if isinstance(value, str) and len(value) >= 8 and value in text:
+            text = text.replace(value, "***")
+    return text

@@ -69,6 +69,10 @@ def test_unlock_overhang_counts_only_when_vesting():
     # missing supply → undefined
     assert tokenomics.unlock_overhang(None, 100, True) is None
     assert tokenomics.unlock_overhang(50, 0, True) is None
+    # UNKNOWN vesting status must not yield the raw locked fraction — that would
+    # count un-mined BTC as an unlock cliff (the CryptoRank v3 free plan has
+    # supply but no vesting endpoint).
+    assert tokenomics.unlock_overhang(22, 100, None) is None
 
 
 # -- onchain ----------------------------------------------------------------

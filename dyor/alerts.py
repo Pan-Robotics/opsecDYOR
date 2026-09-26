@@ -100,6 +100,32 @@ def unlock_alerts(records: Iterable[dict], threshold: float = 0.5) -> list[Alert
     return out
 
 
+def feed_outage_alerts(records: Iterable[dict], threshold: float = 0.5) -> list[Alert]:
+    """A configured feed erroring on >= `threshold` of tokens is a source outage.
+
+    Motivating incident: CryptoRank's open endpoint went behind a Cloudflare
+    challenge in Sep 2026; every token's `_feeds.cryptorank` read `error` for
+    weeks while `refresh` printed only a total count. `off` feeds (not
+    configured / disabled) are excluded — they are not failures.
+    """
+    counts: dict[str, dict[str, int]] = {}
+    for rec in records:
+        for feed, status in (rec.get("_feeds") or {}).items():
+            if status == "off":
+                continue
+            c = counts.setdefault(feed, {"n": 0, "error": 0})
+            c["n"] += 1
+            if status == "error":
+                c["error"] += 1
+    out: list[Alert] = []
+    for feed, c in sorted(counts.items()):
+        if c["n"] and c["error"] / c["n"] >= threshold:
+            out.append(Alert("feed_outage", feed,
+                             f"{c['error']}/{c['n']} tokens errored ({c['error'] / c['n']:.0%}) "
+                             f"— source down, blocked, or quota exhausted", "critical"))
+    return out
+
+
 def narrative_alerts(categories: Iterable[dict], threshold: float = 10.0) -> list[Alert]:
     out: list[Alert] = []
     for cat in categories:
@@ -123,6 +149,8 @@ def evaluate(
     alerts += tier_change_alerts(prev, curr)
     alerts += score_change_alerts(prev, curr, drop=drop, rise=rise)
     if records is not None:
+        records = list(records)
+        alerts += feed_outage_alerts(records)
         alerts += unlock_alerts(records, unlock_threshold)
     if narratives is not None:
         alerts += narrative_alerts(narratives, narrative_threshold)
@@ -160,5 +188,5 @@ def emit(alerts: list[Alert]) -> None:
     if url and alerts:
         try:
             webhook_sink(alerts, url)
-        except Exception as exc:  # noqa: BLE001 — a down webhook must not crash a run
+        except Exception as exc:  # a down webhook must not crash a run
             print(f"(alert webhook failed: {type(exc).__name__})")

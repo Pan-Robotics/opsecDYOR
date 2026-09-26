@@ -147,7 +147,7 @@ class SantimentClient:
     def close(self) -> None:
         self._client.close()
 
-    def __enter__(self) -> "SantimentClient":
+    def __enter__(self) -> SantimentClient:
         return self
 
     def __exit__(self, *exc: object) -> None:

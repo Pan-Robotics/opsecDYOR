@@ -30,13 +30,32 @@ ingestion:
       base_url: "https://api.coingecko.com/api/v3"
       pro_base_url: "https://pro-api.coingecko.com/api/v3"
       rate_limit_per_min: 12          # keyless free is strict/bursty; pace conservatively
-                                      # (client auto-raises to pro rate when a key is set)
+                                      # (a key raises this: demo 30/min, pro 400/min —
+                                      # set DYOR_COINGECKO_API_TIER=demo|pro to match the key)
+    cryptorank:
+      # The open v0 endpoint went behind a Cloudflare challenge in Sep 2026 (HTTP
+      # 403 for any non-browser client). Disabled so the feed reports `off`
+      # (honest coverage) instead of erroring on every token every week.
+      # Setting DYOR_CRYPTORANK_API_KEY switches to the keyed v3 API and
+      # re-enables the feed automatically.
+      enabled: false
+      rate_limit_per_min: 60
     github:
       base_url: "https://api.github.com"
       rate_limit_per_min: 80          # 5000/hr authed
     santiment:
       base_url: "https://api.santiment.net/graphql"
       rate_limit_per_min: 10          # free: 1000/mo
+
+# ---------------------------------------------------------------------------
+# Store — persisted collection runs
+# ---------------------------------------------------------------------------
+store:
+  keep_runs: 156                      # prune older runs after each refresh (3y weekly)
+  # A new run smaller than this fraction of the previous one is refused unless
+  # forced — it would silently shrink the screener (a top-30 rebuild, or
+  # `dyor refresh` with no --top-n, replaced a 117-token universe in production).
+  min_run_fraction: 0.5
 
 # ---------------------------------------------------------------------------
 # Scoring — domain weights (must sum to 1.0) + normalization defaults

@@ -13,6 +13,7 @@ import json
 import math
 import sys
 
+from dyor.config import load_config
 from dyor.pipeline import score_universe
 from dyor.sample_data import SAMPLE_UNIVERSE
 
@@ -54,7 +55,7 @@ def _to_dict(r) -> dict:
 
 def _cmd_score(args: argparse.Namespace) -> int:
     if args.json:
-        with open(args.json, "r", encoding="utf-8") as fh:
+        with open(args.json, encoding="utf-8") as fh:
             records = json.load(fh)
     else:
         records = SAMPLE_UNIVERSE
@@ -84,6 +85,7 @@ def _cmd_collect(args: argparse.Namespace) -> int:
               + (f" in category '{args.category}'" if args.category else ""), file=sys.stderr)
 
     with Collector(use_cache=not args.no_cache) as collector:
+        _note_disabled_feeds(collector)
         records = collector.collect(targets)
         errors = collector.errors
 
@@ -100,8 +102,13 @@ def _cmd_collect(args: argparse.Namespace) -> int:
         from dyor.store import db
 
         con = db.connect()
-        run_id = db.persist_records(con, records)
-        con.close()
+        try:
+            run_id = db.persist_run(con, records, force=getattr(args, "force", False))
+        except db.RunShrinkRefused as exc:
+            print(f"not persisted: {exc}", file=sys.stderr)
+            return 1
+        finally:
+            con.close()
         print(f"persisted {len(records)} records as run {run_id}", file=sys.stderr)
 
     results = score_universe(records, peer_groups=args.peer_groups)
@@ -141,6 +148,7 @@ def _cmd_refresh(args: argparse.Namespace) -> int:
                                  include_baskets=not args.no_baskets)
 
     with Collector() as collector:
+        _note_disabled_feeds(collector)
         records = collector.collect(targets)
         errors = collector.errors
 
@@ -152,9 +160,16 @@ def _cmd_refresh(args: argparse.Namespace) -> int:
 
     con = db.connect()
     try:
-        run_id = db.persist_records(con, records)
+        run_id = db.persist_run(con, records, force=getattr(args, "force", False))
+        keep = int(load_config().get("store", {}).get("keep_runs", 0) or 0)
+        pruned = db.prune_runs(con, keep) if keep else 0
+    except db.RunShrinkRefused as exc:
+        print(f"refresh: not persisted — {exc}", file=sys.stderr)
+        return 1
     finally:
         con.close()
+    if pruned:
+        print(f"refresh: pruned {pruned} rows from runs older than the newest {keep}", file=sys.stderr)
 
     curr_results = score_universe(records)
 
@@ -166,8 +181,32 @@ def _cmd_refresh(args: argparse.Namespace) -> int:
     found = alerts.evaluate(prev_results, curr_results, records=records, narratives=narratives)
     print(f"refresh: run {run_id}, {len(records)} tokens, {len(errors)} feed error(s), "
           f"{len(found)} alert(s)", file=sys.stderr)
+    _print_feed_summary(records, errors)
     alerts.emit(found)
     return 0
+
+
+def _note_disabled_feeds(collector) -> None:
+    """A feed that is configured-but-off is worth one line, not silence."""
+    reason = getattr(getattr(collector, "cr", None), "disabled_reason", None)
+    if reason:
+        print(f"note: {reason}", file=sys.stderr)
+
+
+def _print_feed_summary(records: list[dict], errors: list[dict]) -> None:
+    """Per-source status counts + one example error per source, so an outage is
+    diagnosable from the cron log without querying the store."""
+    from dyor.collect import feed_summary
+
+    for feed, counts in sorted(feed_summary(records).items()):
+        cells = "  ".join(f"{k}={v}" for k, v in sorted(counts.items()))
+        print(f"  feed {feed:<11} {cells}", file=sys.stderr)
+    seen: set[str] = set()
+    for e in errors:
+        if e["source"] in seen:
+            continue
+        seen.add(e["source"])
+        print(f"  e.g. {e['source']:<11} {e['token']}: {e['error'][:160]}", file=sys.stderr)
 
 
 def _try(fn):
@@ -243,7 +282,7 @@ def _cmd_screen(args: argparse.Namespace) -> int:
     print(f"{'TOKEN':<18}{'CLASS':<14}{'SCORE':>6} {'TIER':<8} CONF")
     for r in rows:
         sc = "  n/a" if r["score"] is None else f"{r['score']:.3f}"
-        print(f"{r['token']:<18}{str(r['class']):<14}{sc:>6} {r['tier'][:1]:<8} {r['confidence']}")
+        print(f"{r['token']:<18}{r['class']!s:<14}{sc:>6} {r['tier'][:1]:<8} {r['confidence']}")
     print(f"\n{len(rows)} match of {len(records)}", file=sys.stderr)
     return 0
 
@@ -321,6 +360,8 @@ def main(argv: list[str] | None = None) -> int:
     refresh.add_argument("--top-n", type=int, help="build a top-N universe instead of the curated set")
     refresh.add_argument("--category", help="restrict the built universe to one category")
     refresh.add_argument("--no-narratives", action="store_true", help="skip the narrative-rotation alert pass")
+    refresh.add_argument("--force", action="store_true",
+                         help="persist even if the run is much smaller than the previous one")
     refresh.add_argument("--no-baskets", action="store_true",
                          help="don't pin the class reference baskets into the universe "
                               "(by default they are unioned in, so the screener keeps the "
@@ -342,6 +383,8 @@ def main(argv: list[str] | None = None) -> int:
     collect.add_argument("--peer-groups", action="store_true", help="normalize within category instead of across the whole universe")
     collect.add_argument("--include-baskets", action="store_true",
                          help="union the class reference baskets into the built universe")
+    collect.add_argument("--force", action="store_true",
+                         help="with --persist: allow a run much smaller than the previous one")
     collect.set_defaults(func=_cmd_collect)
 
     args = parser.parse_args(argv)
