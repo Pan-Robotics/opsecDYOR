@@ -68,9 +68,24 @@ def _dead_token(rec: dict, _rule: dict, cfg: dict) -> bool:
     if days is not None and days >= crit.get("no_commits_days", 180):
         return True
     vol = rec.get("daily_volume_usd")
-    if vol is not None and vol < crit.get("min_daily_volume_usd", 1000.0):
-        return True
-    return False
+    return vol is not None and vol < crit.get("min_daily_volume_usd", 1000.0)
+
+
+# Rules whose inputs the open-data collector actually produces. `team_anonymous`
+# and `audited` exist only in the sample data (no keyless source), and
+# `contract_verified` is True-or-None by design (Sourcify can't prove a
+# negative), so `unverified_contract` never fires on live data either. The
+# methodology surfaces this rather than listing five "active" gates.
+OPEN_DATA_ACTIVE: frozenset[str] = frozenset({"extreme_fdv_mcap", "dead_token"})
+
+
+def rule_activity(config: dict | None = None) -> dict[str, dict]:
+    """{rule: {**rule_cfg, "active_on_open_data": bool}} for the methodology."""
+    cfg = config if config is not None else load_config()
+    return {
+        name: {**rule_cfg, "active_on_open_data": name in OPEN_DATA_ACTIVE}
+        for name, rule_cfg in cfg["gating"]["rules"].items()
+    }
 
 
 RULES = {

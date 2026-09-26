@@ -8,7 +8,7 @@ own kind (L1↔L1, DeFi↔DeFi) without a slow live collect every time.
 
 from __future__ import annotations
 
-from functools import lru_cache
+from functools import cache
 from typing import Any
 
 import numpy as np
@@ -124,7 +124,7 @@ def reference_distributions(asset_class: str | None) -> dict[str, np.ndarray]:
     return _distributions_for(asset_class, _basket_version(asset_class))
 
 
-@lru_cache(maxsize=None)
+@cache
 def _distributions_for(asset_class: str, version: str) -> dict[str, np.ndarray]:
     recs = reference_peers(asset_class)
 

@@ -17,7 +17,7 @@ def score_portfolio(queries: list[str], config: dict | None = None,
     from dyor.analyze import analyze_token
 
     holdings: list[dict[str, Any]] = []
-    for q in queries[:25]:
+    for q in queries[:10]:  # each holding is a live collect against shared quotas
         res = analyze_token(q, config, peer_mode=peer_mode)
         if res.resolved is None:
             holdings.append({"query": q, "error": "unresolved"})

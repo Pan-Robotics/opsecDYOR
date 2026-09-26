@@ -1,21 +1,6 @@
 from dyor.store import db
 
 
-def test_land_and_read_latest():
-    con = db.connect(":memory:")
-    db.land_raw(con, "defillama", "protocols", [{"slug": "aave"}])
-    db.land_raw(con, "defillama", "protocols", [{"slug": "aave-v3"}])
-    latest = db.latest_raw(con, "defillama", "protocols")
-    assert latest == [{"slug": "aave-v3"}]  # most recent wins
-    con.close()
-
-
-def test_latest_raw_missing_is_none():
-    con = db.connect(":memory:")
-    assert db.latest_raw(con, "nope", "nope") is None
-    con.close()
-
-
 def test_persist_and_latest_records():
     con = db.connect(":memory:")
     db.persist_records(con, [{"token": "aave", "price_to_fees": 10.0}])
@@ -89,20 +74,64 @@ def test_runs_and_records_for_run_and_history():
     con.close()
 
 
-def test_upsert_crosswalk_replaces():
+
+def test_persist_run_refuses_a_drastic_shrink(sample_config):
+    """A top-30 rebuild replaced a 114-token public screener on 2026-09-11."""
+    import pytest
+
     con = db.connect(":memory:")
-    rows = [{
-        "chain_address": "ethereum:0xabc", "chain": "ethereum", "address": "0xabc",
-        "gecko_id": "foo", "defillama_slug": None, "cmc_id": None,
-        "symbol": "foo", "name": "Foo",
-    }]
-    assert db.upsert_crosswalk(con, rows) == 1
-    rows[0]["defillama_slug"] = "foo-protocol"
-    db.upsert_crosswalk(con, rows)
-    got = con.execute(
-        "SELECT defillama_slug FROM crosswalk WHERE chain_address = 'ethereum:0xabc'"
-    ).fetchone()
-    assert got[0] == "foo-protocol"  # replaced, not duplicated
-    count = con.execute("SELECT COUNT(*) FROM crosswalk").fetchone()[0]
-    assert count == 1
+    db.persist_records(con, [{"token": f"t{i}"} for i in range(100)])
+    with pytest.raises(db.RunShrinkRefused):
+        db.persist_run(con, [{"token": "only"}], config=sample_config)
+    assert len(db.latest_records(con)) == 100          # untouched
+    db.persist_run(con, [{"token": f"t{i}"} for i in range(60)], config=sample_config)  # 60% ok
+    assert len(db.latest_records(con)) == 60
+    db.persist_run(con, [{"token": "only"}], config=sample_config, force=True)
+    assert len(db.latest_records(con)) == 1
     con.close()
+
+
+def test_persist_run_first_run_has_nothing_to_shrink(sample_config):
+    con = db.connect(":memory:")
+    db.persist_run(con, [{"token": "a"}], config=sample_config)
+    assert len(db.latest_records(con)) == 1
+    con.close()
+
+
+def test_refresh_in_latest_run_only_touches_tokens_on_the_board():
+    """The public analyze endpoint must not insert arbitrary tokens."""
+    con = db.connect(":memory:")
+    db.persist_records(con, [{"token": "aave", "price_to_fees": 10.0}])
+    assert db.refresh_in_latest_run(con, {"token": "aave", "price_to_fees": 12.0}) is True
+    assert db.refresh_in_latest_run(con, {"token": "scamcoin", "price_to_fees": 0.1}) is False
+    latest = db.latest_records(con)
+    assert {r["token"] for r in latest} == {"aave"}
+    assert latest[0]["price_to_fees"] == 12.0
+    con.close()
+
+
+def test_prune_runs_keeps_newest():
+    con = db.connect(":memory:")
+    for i in range(5):
+        db.persist_records(con, [{"token": "a", "i": i}])
+    assert db.prune_runs(con, keep=2) == 3
+    kept = [r for r, _ in db.runs(con)]
+    assert len(kept) == 2
+    assert db.latest_records(con)[0]["i"] == 4
+    assert db.prune_runs(con, keep=0) == 0            # keep=0 is a no-op, never wipes
+    con.close()
+
+
+def test_read_only_connect_falls_back_before_first_write(tmp_path):
+    path = tmp_path / "x.duckdb"
+    con = db.connect(path, read_only=True)               # file absent → normal open + DDL
+    assert db.latest_records(con) == []
+    con.close()
+    con = db.connect(path); db.persist_records(con, [{"token": "a"}]); con.close()
+    ro = db.connect(path, read_only=True)
+    assert [r["token"] for r in db.latest_records(ro)] == ["a"]
+    import duckdb
+    import pytest
+    with pytest.raises(duckdb.Error):                       # genuinely read-only
+        db.persist_records(ro, [{"token": "b"}])
+    ro.close()

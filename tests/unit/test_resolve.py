@@ -159,3 +159,22 @@ def test_extract_links_parses_coin_detail():
     assert len(out["explorers"]) == 2  # empties filtered
 
     assert _extract_links({})["homepage"] is None  # no links → all None/empty
+
+
+def test_gecko_id_validation_blocks_path_and_query_injection():
+    from dyor.resolve import is_gecko_id
+    assert is_gecko_id("usd-coin") and is_gecko_id("bitcoin") and is_gecko_id("1inch")
+    for bad in ("../simple/price?ids=bitcoin", "bit coin", "BITCOIN", "a/b", "", "x" * 101):
+        assert not is_gecko_id(bad), bad
+
+
+def test_resolve_never_uses_raw_text_as_a_coin_id(sample_config):
+    from dyor.resolve import resolve_query
+
+    class Client:
+        def search(self, q): return {"coins": []}
+        def coin_detail(self, cid):
+            raise AssertionError(f"coin_detail called with {cid!r}")
+        def close(self): pass
+
+    assert resolve_query("../simple/price?ids=bitcoin", sample_config, client=Client()) is None

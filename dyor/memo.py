@@ -75,7 +75,7 @@ def memo_from_analysis(d: dict) -> str:
     # Break your thesis (answered with data)
     lines.append("\n## Break your thesis")
     ag = feats.get("address_growth")
-    lines.append(f"- **Retention / usage:** active-address growth "
+    lines.append("- **Retention / usage:** active-address growth "
                  + (f"{ag:+.0%}." if ag is not None else "not available."))
     lines.append("- **Supply shock:** "
                  + (f"~{oh:.0%} of supply still unlocking — watch the schedule." if oh else

@@ -8,6 +8,8 @@ isolation has no percentiles to rank against.
 
 from __future__ import annotations
 
+import os
+import threading
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -17,6 +19,19 @@ from dyor.resolve import ResolvedToken, resolve_query
 from dyor.sample_data import SAMPLE_UNIVERSE
 from dyor.scoring.composite import ScoreResult
 from dyor.pipeline import score_universe
+
+
+class AnalysisBusy(RuntimeError):
+    """Too many live analyses in flight; the caller should retry (HTTP 503)."""
+
+
+# Every live analysis is ~10 upstream calls on shared per-IP rate limits and a
+# monthly Santiment quota, and each one parks a uvicorn worker thread for
+# 30–90 s. Bound the concurrency so a burst degrades to "try again" instead of
+# exhausting the quota (which silently drops features and moves scores) or
+# stalling the whole API.
+_LIVE_SLOTS = threading.BoundedSemaphore(max(1, int(os.environ.get("DYOR_MAX_LIVE_ANALYSES", "4"))))
+_LIVE_WAIT_S = float(os.environ.get("DYOR_LIVE_WAIT_SECONDS", "20"))
 
 
 @dataclass
@@ -91,12 +106,23 @@ def analyze_token(
     """
     cfg = config if config is not None else load_config()
 
+    if not _LIVE_SLOTS.acquire(timeout=_LIVE_WAIT_S):
+        raise AnalysisBusy("too many live analyses in flight — try again shortly")
+    try:
+        return _analyze_locked(query, cfg, peers=peers, peer_mode=peer_mode,
+                               penalize_missing_core=penalize_missing_core,
+                               use_cache=use_cache, persist=persist)
+    finally:
+        _LIVE_SLOTS.release()
+
+
+def _analyze_locked(query, cfg, *, peers, peer_mode, penalize_missing_core, use_cache, persist):
     with Collector(cfg, use_cache=use_cache) as collector:
         # Share the Collector's CoinGecko client so resolution + collection pace
         # against ONE rate limiter (avoids self-inflicted 429s on the free tier).
         try:
             resolved = resolve_query(query, cfg, use_cache=use_cache, client=collector.cg)
-        except Exception as exc:  # noqa: BLE001 — surface, don't crash the UI
+        except Exception as exc:  # surface, don't crash the UI
             return AnalyzeResult(query=query, resolved=None,
                                  errors=[{"token": query, "source": "resolve",
                                           "error": f"{type(exc).__name__}: {exc}"}])
@@ -145,19 +171,22 @@ def analyze_token(
     )
 
 
-def _persist_live(record: dict) -> None:
-    """Write a freshly collected record into the latest stored run (best-effort)
-    so the screener self-heals to the same data. Never breaks the analysis."""
+def _persist_live(record: dict) -> bool:
+    """Refresh a freshly collected record IN PLACE in the latest stored run so
+    the screener self-heals to the same data. Only tokens already on the board
+    are touched — the API is public, and an unconditional upsert let any visitor
+    insert any CoinGecko token into the public screener. Never breaks the
+    analysis; returns whether a row was refreshed."""
     try:
         from dyor.store import db
 
         con = db.connect()
         try:
-            db.upsert_into_latest_run(con, record)
+            return db.refresh_in_latest_run(con, record)
         finally:
             con.close()
     except Exception:
-        pass
+        return False
 
 
 def _stored_peers() -> list[dict]:
@@ -165,7 +194,7 @@ def _stored_peers() -> list[dict]:
     try:
         from dyor.store import db
 
-        con = db.connect()
+        con = db.connect(read_only=True)
         try:
             return db.latest_records(con)
         finally:

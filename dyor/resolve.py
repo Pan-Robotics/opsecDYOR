@@ -22,6 +22,14 @@ from dyor.config import load_config
 
 _EVM_RE = re.compile(r"^0x[0-9a-fA-F]{40}$")
 _SOLANA_RE = re.compile(r"^[1-9A-HJ-NP-Za-km-z]{32,44}$")
+# A CoinGecko coin id. Anything else must never be built into a URL path — a
+# query like "../simple/price?ids=…" would otherwise reach an arbitrary
+# CoinGecko endpoint through the server (and spend a configured key on it).
+GECKO_ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,99}$")
+
+
+def is_gecko_id(value: str) -> bool:
+    return bool(GECKO_ID_RE.match(value or ""))
 
 # EVM chains tried (in order) when resolving a bare 0x address with no chain hint.
 _EVM_PLATFORMS = [
@@ -165,13 +173,16 @@ def resolve_query(
         # name / symbol
         hit = _best_search_hit(client.search(q).get("coins", []), q)
         if not hit:
-            # the query may itself be a CoinGecko id (e.g. "usd-coin")
-            try:
-                detail = client.coin_detail(q)
-                if detail.get("id"):
-                    return _from_coin_detail(detail, matched_by="id", query=query)
-            except Exception:
-                pass
+            # the query may itself be a CoinGecko id (e.g. "usd-coin") — but only
+            # a well-formed one is allowed anywhere near a URL path
+            qid = q.lower()
+            if is_gecko_id(qid):
+                try:
+                    detail = client.coin_detail(qid)
+                    if detail.get("id"):
+                        return _from_coin_detail(detail, matched_by="id", query=query)
+                except Exception:
+                    pass
             return None
         detail = client.coin_detail(hit["id"])
         matched = "symbol" if (hit.get("symbol") or "").lower() == q.lower() else "name"

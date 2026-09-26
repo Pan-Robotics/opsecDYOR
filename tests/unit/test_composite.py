@@ -55,3 +55,13 @@ def test_score_token_precomputed_gate(sample_config):
         config=sample_config,
     )
     assert res.final_score == pytest.approx(0.5)
+
+
+def test_to_tier_does_not_depend_on_config_order(sample_config):
+    import copy
+    from dyor.scoring.composite import to_tier
+
+    cfg = copy.deepcopy(sample_config)
+    cfg["scoring"]["tiers"] = list(reversed(cfg["scoring"]["tiers"]))   # ascending
+    assert to_tier(0.85, cfg).startswith("A")
+    assert to_tier(0.05, cfg).startswith("D")

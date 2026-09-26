@@ -183,7 +183,15 @@ def classify_asset(
     # are platforms, not DeFi apps.
     if gid in L1_IDS:
         return "l1"
-    if has_fees or defillama_category or "decentralized finance (defi)" in cats:
+    # DefiLlama lists chains/CEXs/bridges as "protocols" too. A Chain entry is an
+    # L1 signal for tokens outside the hardcoded id-set; CEX/Bridge entries are
+    # not evidence of a DeFi cash-flow app (they'd be penalised for "no
+    # fundamentals" and land in D).
+    dl_cat = (defillama_category or "").strip().lower()
+    if dl_cat == "chain":
+        return "l1"
+    dl_is_app = bool(dl_cat) and dl_cat not in {"cex", "bridge"}
+    if has_fees or dl_is_app or "decentralized finance (defi)" in cats:
         return "defi"
     # Broad L1-by-category check last (a DeFi app with a stray platform tag stays DeFi).
     if "layer 1 (l1)" in cats or "smart contract platform" in cats:

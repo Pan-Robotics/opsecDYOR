@@ -1,8 +1,7 @@
 import math
 
-import pytest
 
-from dyor.classes import STATIC_WEIGHTS, class_profile, classify_asset
+from dyor.classes import class_profile, classify_asset
 from dyor.pipeline import score_universe
 
 
@@ -140,3 +139,11 @@ def test_penalty_can_be_disabled(sample_config):
     res = score_universe([no_fund, {"token": "p", "_class": "defi", "value_accrual": 0.1}], cfg)
     g = next(r for r in res if r.token == "g")
     assert "fundamental" not in g.domain_scores or math.isnan(g.domain_scores.get("fundamental", float("nan")))
+
+
+def test_defillama_chain_entry_is_an_l1_signal_not_defi():
+    """An L1 outside the hardcoded id-set with a DefiLlama 'Chain' row must not
+    be scored as a DeFi app and penalised for having no fundamentals."""
+    assert classify_asset(gecko_id="some-new-l1", defillama_category="Chain", has_fees=True) == "l1"
+    assert classify_asset(gecko_id="some-cex-token", defillama_category="CEX") == "general"
+    assert classify_asset(gecko_id="a-lending-app", defillama_category="Lending") == "defi"

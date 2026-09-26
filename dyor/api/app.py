@@ -1,19 +1,25 @@
 """DYOR REST API (FastAPI).
 
-    uvicorn dyor.api.app:app --reload --port 8000
+    uvicorn dyor.api.app:app --reload --port 8077     # 8000 is taken locally
 
 Exposes the scoring engine so any frontend (the Next.js app, scripts, external
-tools) can consume it. CORS is open for local dev.
+tools) can consume it. In production nginx serves it same-origin under
+/api/ (with per-IP rate limits — see deploy/); CORS is open only so the local
+Next dev server on :3000 can call it.
 """
 
 from __future__ import annotations
 
+import hmac
 from typing import Any
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
 from dyor.api import jobs
+from dyor.config import get_settings
+from dyor.resolve import is_gecko_id
+from dyor.scoring.gate import rule_activity
 
 from dyor.api.serialize import (
     analyze_to_dict, chart_summary, class_to_dict, record_to_dict, score_to_dict,
@@ -36,10 +42,10 @@ app.add_middleware(
 
 
 def _records(source: str) -> list[dict[str, Any]]:
-    """Records for the sample set or the last persisted run."""
+    """Records for the sample set or the last persisted run (read-only open)."""
     if source == "stored":
         from dyor.store import db
-        con = db.connect()
+        con = db.connect(read_only=True)
         try:
             return db.latest_records(con)
         finally:
@@ -59,11 +65,19 @@ def analyze(
     penalize_missing_core: bool | None = Query(
         None, description="floor a missing core domain (None = config default)"),
 ) -> dict[str, Any]:
-    """Resolve + score one token against a peer baseline."""
-    from dyor.analyze import analyze_token
+    """Resolve + score one token against a peer baseline.
 
-    res = analyze_token(q, peer_mode=peer_mode,
-                        penalize_missing_core=penalize_missing_core, persist=True)
+    `persist=True` refreshes the token IN PLACE in the saved universe when it is
+    already on the board (live self-heal); it never adds tokens to the public
+    screener."""
+    from dyor.analyze import AnalysisBusy, analyze_token
+
+    try:
+        res = analyze_token(q, peer_mode=peer_mode,
+                            penalize_missing_core=penalize_missing_core, persist=True)
+    except AnalysisBusy as exc:
+        raise HTTPException(status_code=503, detail=str(exc),
+                            headers={"Retry-After": "20"}) from exc
     if res.resolved is None:
         raise HTTPException(status_code=404, detail=f"could not resolve '{q}'")
     return analyze_to_dict(res)
@@ -76,15 +90,7 @@ def screener(
     penalize_missing_core: bool | None = None,
 ) -> dict[str, Any]:
     """Ranked universe from the sample set or the last persisted run."""
-    if source == "stored":
-        from dyor.store import db
-        con = db.connect()
-        try:
-            records = db.latest_records(con)
-        finally:
-            con.close()
-    else:
-        records = SAMPLE_UNIVERSE
+    records = _records(source)
 
     results = score_universe(records, peer_groups=peer_groups,
                              penalize_missing_core=penalize_missing_core)
@@ -99,9 +105,21 @@ def screener(
 
 
 @app.post("/api/screener/build")
-def screener_build(top_n: int = 30, category: str | None = None) -> dict[str, Any]:
-    """Start a background universe collection (top-N by TVL → persist). Poll the
-    returned job_id; when done, re-fetch /api/screener?source=stored."""
+def screener_build(
+    top_n: int = 60,
+    category: str | None = None,
+    x_admin_token: str | None = Header(None),
+) -> dict[str, Any]:
+    """Start a background universe collection (top-N by TVL ∪ reference baskets
+    → persist). Admin-only: requires the X-Admin-Token header to match
+    DYOR_ADMIN_TOKEN; with no token configured the endpoint is disabled. The
+    weekly `dyor refresh` cron is the normal path — this is for operators.
+    Poll the returned job_id; when done, re-fetch /api/screener?source=stored."""
+    expected = get_settings().admin_token
+    if not expected:
+        raise HTTPException(403, "screener rebuilds are disabled (set DYOR_ADMIN_TOKEN)")
+    if not x_admin_token or not hmac.compare_digest(x_admin_token, expected):
+        raise HTTPException(403, "invalid admin token")
     return {"job_id": jobs.start_build(top_n, category)}
 
 
@@ -113,15 +131,7 @@ def screener_build_status(job_id: str) -> dict[str, Any]:
 @app.get("/api/token-record")
 def token_record(source: str = "stored", token: str = Query(...)) -> dict[str, Any]:
     """The full record for one token in the screener set (for drill-down)."""
-    from dyor.store import db
-    if source == "stored":
-        con = db.connect()
-        try:
-            records = db.latest_records(con)
-        finally:
-            con.close()
-    else:
-        records = SAMPLE_UNIVERSE
+    records = _records(source if source == "stored" else "sample")
     rec = next((r for r in records if r.get("token") == token), None)
     if rec is None:
         raise HTTPException(404, f"token '{token}' not in {source}")
@@ -160,11 +170,14 @@ def screen_endpoint(
 @app.get("/api/portfolio")
 def portfolio_endpoint(tokens: str = Query(..., description="comma-separated holdings"),
                        peer_mode: str = "class") -> dict[str, Any]:
-    """Score a portfolio of holdings (comma-separated names/symbols/addresses)."""
+    """Score a portfolio of holdings (comma-separated names/symbols/addresses).
+    Capped at 10 — every holding is a live collection against shared quotas."""
     from dyor.portfolio import score_portfolio
     qs = [t.strip() for t in tokens.split(",") if t.strip()]
     if not qs:
         raise HTTPException(400, "no tokens provided")
+    if len(qs) > 10:
+        raise HTTPException(422, f"at most 10 holdings per request (got {len(qs)})")
     return score_portfolio(qs, peer_mode=peer_mode)
 
 
@@ -186,6 +199,8 @@ def backtest_endpoint() -> dict[str, Any]:
 def chart(id: str = Query(..., description="CoinGecko coin id"), days: int = 30) -> dict[str, Any]:
     """Historical price chart for a token (downsampled, with period change)."""
     from dyor.ingestion.coingecko import CoinGeckoClient
+    if not is_gecko_id(id):
+        raise HTTPException(422, "id must be a CoinGecko coin id (lowercase letters, digits, hyphens)")
     days = max(1, min(days, 365))
     with CoinGeckoClient(load_config()) as cg:
         data = cg.market_chart(id, days=days)
@@ -212,7 +227,9 @@ def methodology() -> dict[str, Any]:
         "weights": cfg["scoring"]["weights"],
         "tiers": [{"label": t["label"], "min": t["min"], "color": tier_color(t["label"])}
                   for t in cfg["scoring"]["tiers"]],
-        "gating": cfg["gating"]["rules"],
+        # each rule carries `active_on_open_data` — three of the five can't fire
+        # without a keyed source, and a "transparent" methodology should say so
+        "gating": rule_activity(cfg),
         "reference": cfg["reference"],
         "domains": {k: {"label": v[0], "description": v[1]} for k, v in DOMAIN_META.items()},
         "glossary": [{"key": k, "label": v[0], "meaning": v[1], "direction": v[2]}

@@ -1,12 +1,14 @@
-"""DuckDB-backed raw store.
+"""DuckDB-backed store for collection runs and reference baskets.
 
-ELT pattern: land raw JSON payloads first (immutable, source-of-truth), transform
-later. DuckDB is ideal for a single-founder build — embedded, zero-ops, fast SQL
-over JSON/parquet (Electric Capital's own tooling uses it).
+Two tables:
+  token_records(run_id, collected_at, token, record)       — one row per token
+      per collection run; the screener reads the newest run.
+  reference_records(asset_class, token, updated_at, record) — the curated
+      per-class baskets that anchor scoring (see dyor/reference.py).
 
-Two core tables:
-  raw_responses(source, key, fetched_at, payload)  — every API response, verbatim
-  crosswalk(...)                                    — token identity (see identity/)
+DuckDB is single-writer ACROSS PROCESSES: a second process cannot open the file
+read-write at all. Readers therefore open `read_only=True` (which also skips
+the DDL), and writers keep their connection for as short a window as possible.
 """
 
 from __future__ import annotations
@@ -18,33 +20,19 @@ from typing import Any
 
 import duckdb
 
-from dyor.config import PROJECT_ROOT
+from dyor.config import PROJECT_ROOT, load_config
 
 DEFAULT_DB_PATH = PROJECT_ROOT / "data" / "dyor.duckdb"
 
 _SCHEMA = """
-CREATE TABLE IF NOT EXISTS raw_responses (
-    source     VARCHAR NOT NULL,
-    key        VARCHAR NOT NULL,
-    fetched_at TIMESTAMP NOT NULL,
-    payload    JSON NOT NULL
-);
-CREATE TABLE IF NOT EXISTS crosswalk (
-    chain_address VARCHAR PRIMARY KEY,   -- canonical key, lowercase 'chain:0x..'
-    chain         VARCHAR,
-    address       VARCHAR,
-    gecko_id      VARCHAR,               -- CoinGecko id (canonical entity)
-    defillama_slug VARCHAR,              -- joined via gecko_id
-    cmc_id        VARCHAR,
-    symbol        VARCHAR,
-    name          VARCHAR
-);
 CREATE TABLE IF NOT EXISTS token_records (
     run_id       VARCHAR NOT NULL,       -- groups one collection run
     collected_at TIMESTAMP NOT NULL,
     token        VARCHAR NOT NULL,
     record       JSON NOT NULL           -- the full computed scoring record
 );
+CREATE INDEX IF NOT EXISTS idx_token_records_run ON token_records(run_id);
+CREATE INDEX IF NOT EXISTS idx_token_records_at  ON token_records(collected_at);
 CREATE TABLE IF NOT EXISTS reference_records (
     asset_class  VARCHAR NOT NULL,       -- the class this basket represents
     token        VARCHAR NOT NULL,
@@ -54,51 +42,77 @@ CREATE TABLE IF NOT EXISTS reference_records (
 """
 
 
-def connect(path: str | Path | None = None) -> duckdb.DuckDBPyConnection:
-    """Open (and initialize) a DuckDB database. Use ':memory:' for tests."""
+class RunShrinkRefused(RuntimeError):
+    """Persisting this run would replace the screener's universe with a much
+    smaller one. Raised instead of silently shrinking the public board."""
+
+
+def connect(path: str | Path | None = None, *, read_only: bool = False) -> duckdb.DuckDBPyConnection:
+    """Open a DuckDB database. Use ':memory:' for tests.
+
+    `read_only=True` opens without the write lock (other read-only openers can
+    coexist) and skips schema DDL; it falls back to a normal open when the file
+    does not exist yet so first-run readers still see empty tables.
+    """
     db_path = path if path is not None else DEFAULT_DB_PATH
-    if db_path != ":memory:":
-        Path(db_path).parent.mkdir(parents=True, exist_ok=True)
-        db_path = str(db_path)
-    con = duckdb.connect(db_path)
+    if db_path == ":memory:":
+        con = duckdb.connect(db_path)
+        con.execute(_SCHEMA)
+        return con
+    p = Path(db_path)
+    if read_only and p.exists():
+        return duckdb.connect(str(p), read_only=True)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    con = duckdb.connect(str(p))
     con.execute(_SCHEMA)
     return con
 
 
-def land_raw(con: duckdb.DuckDBPyConnection, source: str, key: str, payload: Any) -> None:
-    """Append one raw API response to `raw_responses`."""
-    con.execute(
-        "INSERT INTO raw_responses VALUES (?, ?, ?, ?)",
-        [source, key, datetime.now(timezone.utc), json.dumps(payload)],
-    )
+# --- collection runs ------------------------------------------------------------
 
-
-def latest_raw(con: duckdb.DuckDBPyConnection, source: str, key: str) -> Any | None:
-    """Most recent landed payload for (source, key), or None."""
-    row = con.execute(
-        """
-        SELECT payload FROM raw_responses
-        WHERE source = ? AND key = ?
-        ORDER BY fetched_at DESC LIMIT 1
-        """,
-        [source, key],
-    ).fetchone()
-    return json.loads(row[0]) if row else None
+def _new_run_id(now: datetime) -> str:
+    return now.strftime("%Y%m%dT%H%M%S%fZ")
 
 
 def persist_records(con: duckdb.DuckDBPyConnection, records: list[dict[str, Any]]) -> str:
-    """Persist one collection run of computed scoring records. Returns the run_id.
+    """Append one collection run (no size check). Returns the run_id.
 
-    Records are append-only and grouped by run_id (a UTC timestamp string) so the
-    history is preserved and `latest_records` can pull the newest run.
+    Prefer `persist_run`, which refuses to shrink the universe; this is the raw
+    primitive for tests and deliberate one-off writes.
     """
     now = datetime.now(timezone.utc)
-    run_id = now.strftime("%Y%m%dT%H%M%S%fZ")
+    run_id = _new_run_id(now)
     con.executemany(
         "INSERT INTO token_records VALUES (?, ?, ?, ?)",
         [[run_id, now, r.get("token"), json.dumps(r)] for r in records],
     )
     return run_id
+
+
+def persist_run(
+    con: duckdb.DuckDBPyConnection,
+    records: list[dict[str, Any]],
+    *,
+    config: dict | None = None,
+    force: bool = False,
+) -> str:
+    """Persist a run as the new latest universe, refusing a drastic shrink.
+
+    The screener reads only the newest run, so a small run silently replaces the
+    whole board — a top-30 rebuild and a `dyor refresh` with no `--top-n` (the
+    6-token curated set) both did this in production. Below
+    `store.min_run_fraction` of the previous run, raise `RunShrinkRefused`
+    unless `force=True`.
+    """
+    cfg = config if config is not None else load_config()
+    min_fraction = float(cfg.get("store", {}).get("min_run_fraction", 0.5))
+    prev = latest_records(con)
+    if prev and not force and len(records) < len(prev) * min_fraction:
+        raise RunShrinkRefused(
+            f"refusing to persist {len(records)} tokens over a {len(prev)}-token run "
+            f"(< {min_fraction:.0%}); pass force=True / --force if this is intended"
+        )
+    return persist_records(con, records)
 
 
 def latest_records(con: duckdb.DuckDBPyConnection) -> list[dict[str, Any]]:
@@ -111,21 +125,31 @@ def latest_records(con: duckdb.DuckDBPyConnection) -> list[dict[str, Any]]:
     return records_for_run(con, run[0])
 
 
-def upsert_into_latest_run(con: duckdb.DuckDBPyConnection, record: dict[str, Any]) -> str:
-    """Refresh ONE token's record in the most recent run (live self-heal).
+def token_in_latest_run(con: duckdb.DuckDBPyConnection, token: str) -> bool:
+    run = con.execute(
+        "SELECT run_id FROM token_records ORDER BY collected_at DESC LIMIT 1"
+    ).fetchone()
+    if not run:
+        return False
+    row = con.execute(
+        "SELECT 1 FROM token_records WHERE run_id = ? AND token = ? LIMIT 1", [run[0], token]
+    ).fetchone()
+    return row is not None
 
-    When a token is analyzed live, write its fresh record back so the screener
-    (which reads `latest_records`) agrees on next view — without spawning a new
-    one-token run that would replace the whole universe. The row's timestamp is
-    bumped to now but it stays under the latest run_id, so `latest_records` keeps
-    returning the same (now-refreshed) universe. Bootstraps a run if empty.
+
+def upsert_into_latest_run(con: duckdb.DuckDBPyConnection, record: dict[str, Any]) -> str:
+    """Write ONE token's record into the most recent run, adding it if absent.
+
+    Operator primitive. The public API uses `refresh_in_latest_run`, which only
+    refreshes tokens already on the board — otherwise any visitor's analysis
+    would insert arbitrary tokens into the public screener.
     """
     token = record.get("token")
     now = datetime.now(timezone.utc)
     run = con.execute(
         "SELECT run_id FROM token_records ORDER BY collected_at DESC LIMIT 1"
     ).fetchone()
-    run_id = run[0] if run else now.strftime("%Y%m%dT%H%M%S%fZ")
+    run_id = run[0] if run else _new_run_id(now)
     con.execute(
         "DELETE FROM token_records WHERE run_id = ? AND token = ?", [run_id, token]
     )
@@ -135,6 +159,50 @@ def upsert_into_latest_run(con: duckdb.DuckDBPyConnection, record: dict[str, Any
     )
     return run_id
 
+
+def refresh_in_latest_run(con: duckdb.DuckDBPyConnection, record: dict[str, Any]) -> bool:
+    """Live self-heal: replace a token's row in the latest run IF it is already
+    there. Returns False (and writes nothing) for a token not on the board."""
+    token = record.get("token")
+    if not token or not token_in_latest_run(con, token):
+        return False
+    upsert_into_latest_run(con, record)
+    return True
+
+
+def runs(con: duckdb.DuckDBPyConnection) -> list[tuple[str, Any]]:
+    """All collection runs as (run_id, collected_at), oldest first."""
+    return con.execute(
+        "SELECT run_id, MIN(collected_at) AS first_at FROM token_records "
+        "GROUP BY run_id ORDER BY first_at"
+    ).fetchall()
+
+
+def records_for_run(con: duckdb.DuckDBPyConnection, run_id: str) -> list[dict[str, Any]]:
+    """All token records landed under one run_id."""
+    rows = con.execute(
+        "SELECT record FROM token_records WHERE run_id = ?", [run_id]
+    ).fetchall()
+    return [json.loads(r[0]) for r in rows]
+
+
+def prune_runs(con: duckdb.DuckDBPyConnection, keep: int) -> int:
+    """Delete all but the newest `keep` runs. Returns rows removed.
+
+    History is append-only and feeds the backtest, so keep plenty (the default
+    `store.keep_runs` is three years of weekly runs) — but not forever.
+    """
+    all_runs = [rid for rid, _ in runs(con)]
+    if keep < 1 or len(all_runs) <= keep:
+        return 0
+    stale = all_runs[: len(all_runs) - keep]
+    before = con.execute("SELECT COUNT(*) FROM token_records").fetchone()[0]
+    con.executemany("DELETE FROM token_records WHERE run_id = ?", [[r] for r in stale])
+    after = con.execute("SELECT COUNT(*) FROM token_records").fetchone()[0]
+    return before - after
+
+
+# --- reference baskets ----------------------------------------------------------
 
 def upsert_reference(con: duckdb.DuckDBPyConnection, asset_class: str,
                      records: list[dict[str, Any]]) -> int:
@@ -156,33 +224,3 @@ def reference_records(con: duckdb.DuckDBPyConnection, asset_class: str) -> list[
         "SELECT record FROM reference_records WHERE asset_class = ?", [asset_class]
     ).fetchall()
     return [json.loads(r[0]) for r in rows]
-
-
-def runs(con: duckdb.DuckDBPyConnection) -> list[tuple[str, Any]]:
-    """All collection runs as (run_id, collected_at), oldest first."""
-    return con.execute(
-        "SELECT run_id, MIN(collected_at) AS first_at FROM token_records "
-        "GROUP BY run_id ORDER BY first_at"
-    ).fetchall()
-
-
-def records_for_run(con: duckdb.DuckDBPyConnection, run_id: str) -> list[dict[str, Any]]:
-    """All token records landed under one run_id."""
-    rows = con.execute(
-        "SELECT record FROM token_records WHERE run_id = ?", [run_id]
-    ).fetchall()
-    return [json.loads(r[0]) for r in rows]
-
-
-def upsert_crosswalk(con: duckdb.DuckDBPyConnection, rows: list[dict[str, Any]]) -> int:
-    """Replace-insert crosswalk rows. Returns the number written."""
-    if not rows:
-        return 0
-    cols = ["chain_address", "chain", "address", "gecko_id",
-            "defillama_slug", "cmc_id", "symbol", "name"]
-    con.executemany(
-        f"INSERT OR REPLACE INTO crosswalk ({', '.join(cols)}) "
-        f"VALUES ({', '.join('?' for _ in cols)})",
-        [[r.get(c) for c in cols] for r in rows],
-    )
-    return len(rows)

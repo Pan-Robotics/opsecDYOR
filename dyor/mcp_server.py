@@ -67,7 +67,7 @@ def _trim_analysis(d: dict[str, Any], peer_limit: int = 8) -> dict[str, Any]:
 
 
 @mcp.tool()
-def analyze_token(query: str, peer_mode: str = "stored",
+def analyze_token(query: str, peer_mode: str = "class",
                   penalize_missing_core: bool | None = None) -> dict[str, Any]:
     """Vet ONE crypto token. Resolve it by name ("Aave"), symbol ("UNI"), or
     contract address (any chain — resolves the unified token cross-chain), then
@@ -78,8 +78,9 @@ def analyze_token(query: str, peer_mode: str = "stored",
     FDV/MCAP), non-fatal advisories, per-domain scores, a market snapshot, data
     coverage, feed status, and the ranked peer set the score is relative to.
 
-    peer_mode: "stored" (last saved universe), "sample" (built-in set), or
-    "category" (live top-6 of the token's own category — slower, fairest).
+    peer_mode: "class" (default — the token's own asset class, fairest),
+    "stored" (last saved universe), "sample" (built-in set), or "category"
+    (live top-6 of the token's own category — slower).
     penalize_missing_core: floor a DeFi token's score if it has no
     fees/revenue/TVL data (default = config). This is a research aid, not advice.
     """
@@ -109,7 +110,7 @@ def resolve_token(query: str) -> dict[str, Any]:
 
 
 @mcp.tool()
-def compare_tokens(queries: list[str], peer_mode: str = "stored") -> dict[str, Any]:
+def compare_tokens(queries: list[str], peer_mode: str = "class") -> dict[str, Any]:
     """Analyze and compare several tokens at once. Pass a list of names/symbols/
     addresses. Returns a compact ranked summary (token, class, score, tier,
     coverage, flags) — for a quick like-for-like read. Use `analyze_token` for the
@@ -155,7 +156,7 @@ def screen_tokens(
 ) -> dict[str, Any]:
     """Screen the saved universe by criteria — e.g. asset_class="defi", min_tier="B",
     min_real_yield=0.045 (4.5%), no_flags=true. Returns matching tokens ranked
-    high→low. Build/refresh the universe with `dyor collect --top-n N --persist`."""
+    high→low. The universe is rebuilt weekly by the scheduled `dyor refresh`."""
     from dyor.screen import screen
     from dyor.store import db
 
@@ -178,7 +179,7 @@ def score_portfolio(tokens: list[str], peer_mode: str = "class") -> dict[str, An
     barbell-heuristic notes (is there a monetary anchor? over-diversified?)."""
     from dyor.portfolio import score_portfolio as _sp
 
-    return _sp(tokens, peer_mode=peer_mode)
+    return _sp(tokens[:10], peer_mode=peer_mode)  # each holding is a live analysis
 
 
 @mcp.tool()
@@ -228,12 +229,13 @@ def methodology() -> dict[str, Any]:
     explain the scoring transparently."""
     from dyor.app.copy import DOMAIN_META, FEATURE_META
     from dyor.config import load_config
+    from dyor.scoring.gate import rule_activity
 
     cfg = load_config()
     return {
         "weights": cfg["scoring"]["weights"],
         "tiers": cfg["scoring"]["tiers"],
-        "gates": cfg["gating"]["rules"],
+        "gates": rule_activity(cfg),  # each with active_on_open_data
         "reference": cfg["reference"],
         "domains": {k: {"label": v[0], "description": v[1]} for k, v in DOMAIN_META.items()},
         "glossary": [{"key": k, "label": v[0], "meaning": v[1], "direction": v[2]}
