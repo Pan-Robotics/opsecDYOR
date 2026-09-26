@@ -2,17 +2,24 @@
 
 Instead of hand-mapping a handful of tokens, build a universe automatically:
 take the top-N protocols by TVL (optionally within a category), keep only those
-with a CoinGecko `gecko_id` (so market data exists), and **auto-resolve** the
-optional ids:
+with a CoinGecko `gecko_id` (so market data exists), and **auto-resolve** every
+optional id a feed needs. `make_target` is the ONE place that enrichment lives,
+so the TVL universe, the reference baskets and on-demand analyze all attach the
+same feeds to a token:
 
-  * defillama_slug  — the protocol's own slug
-  * eth_contract    — from CoinGecko `/coins/list` platforms (one call, all coins)
-  * santiment_slug / cryptorank_key — best-effort = gecko_id (misses degrade to
-    honest n/a via the collector's diagnostics, never a fabricated value)
-  * category        — the DefiLlama category, used as the peer group
+  * defillama_slug          — the protocol's own slug (fees/revenue/TVL)
+  * chain_name              — DefiLlama chain with this gecko_id (L1 fundamentals:
+                              chain-level fees/revenue/TVL when there is no slug)
+  * eth_contract            — Ethereum contract (Ethplorer holder concentration)
+  * verify_chain_id/address — first contract on a Sourcify-supported chain
+  * github_org              — from DefiLlama's `github` list, else caller-supplied
+  * audits / has_audit_links— DefiLlama's audit record (the `no_audit` gate)
+  * santiment_slug / cryptorank_key — best-effort = gecko_id; the collector
+                              upgrades the Santiment slug via `resolve_slug_map`
+  * category                — the DefiLlama category, used as the peer group
 
-`targets_from_protocols` is pure (data in → Targets out) so it unit-tests on
-fixtures; `fetch_universe` does the two network calls.
+`targets_from_protocols` and `basket_targets` are pure (data in → Targets out)
+so they unit-test on fixtures; `fetch_universe` does the network calls.
 """
 
 from __future__ import annotations
@@ -25,6 +32,13 @@ from dyor.config import load_config
 # Categories that aren't protocol tokens we score the same way.
 DEFAULT_EXCLUDE = frozenset({"CEX", "Chain", "Bridge"})
 
+# CoinGecko platform id → EVM chain id, in the order Sourcify is tried. Ethereum
+# first (also feeds Ethplorer); the rest cover the common L2/alt-L1 deployments.
+VERIFY_CHAINS: list[tuple[str, int]] = [
+    ("ethereum", 1), ("arbitrum-one", 42161), ("base", 8453), ("optimistic-ethereum", 10),
+    ("polygon-pos", 137), ("binance-smart-chain", 56), ("avalanche", 43114),
+]
+
 
 def eth_contracts_from_coins_list(coins_list: Iterable[dict[str, Any]]) -> dict[str, str]:
     """{gecko_id: lowercased Ethereum contract} from `/coins/list?include_platform`."""
@@ -36,6 +50,71 @@ def eth_contracts_from_coins_list(coins_list: Iterable[dict[str, Any]]) -> dict[
     return out
 
 
+def platforms_from_coins_list(coins_list: Iterable[dict[str, Any]]) -> dict[str, dict[str, str]]:
+    """{gecko_id: {platform: lowercased contract}} — every chain, for Sourcify
+    and Santiment contract matching."""
+    out: dict[str, dict[str, str]] = {}
+    for coin in coins_list:
+        plats = {k: v.strip().lower() for k, v in (coin.get("platforms") or {}).items() if k and v}
+        if coin.get("id") and plats:
+            out[coin["id"]] = plats
+    return out
+
+
+def pick_verify_contract(platforms: dict[str, str] | None) -> tuple[int, str] | None:
+    """(chain_id, address) of the first deployment on a Sourcify-supported chain."""
+    for platform, chain_id in VERIFY_CHAINS:
+        addr = (platforms or {}).get(platform)
+        if addr:
+            return chain_id, addr.lower()
+    return None
+
+
+def chain_index(chains: Iterable[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    """gecko_id → {name, tvl} from DefiLlama `/v2/chains` (highest TVL wins)."""
+    out: dict[str, dict[str, Any]] = {}
+    for row in chains:
+        gid = row.get("gecko_id")
+        if not gid or not row.get("name"):
+            continue
+        tvl = row.get("tvl") or 0
+        if gid not in out or tvl > (out[gid].get("tvl") or 0):
+            out[gid] = {"name": row["name"], "tvl": tvl}
+    return out
+
+
+def make_target(
+    gecko_id: str,
+    *,
+    dl_info: dict[str, Any] | None = None,
+    platforms: dict[str, str] | None = None,
+    chain: dict[str, Any] | None = None,
+    github_org: str | None = None,
+    category: str | None = None,
+) -> Target:
+    """Attach every resolvable feed id to a token. `dl_info` is a DefiLlama
+    protocol row (slug/category/github/audits/audit_links); `chain` is the
+    `chain_index` entry; `platforms` is CoinGecko's platform→contract map."""
+    info = dl_info or {}
+    plats = platforms or {}
+    verify = pick_verify_contract(plats)
+    dl_github = info.get("github") or []
+    return Target(
+        gecko_id=gecko_id,
+        defillama_slug=info.get("slug"),
+        github_org=github_org or (dl_github[0] if dl_github else None),
+        santiment_slug=gecko_id,
+        cryptorank_key=gecko_id,
+        eth_contract=plats.get("ethereum"),
+        category=category if category is not None else info.get("category"),
+        chain_name=(chain or {}).get("name"),
+        verify_chain_id=verify[0] if verify else None,
+        verify_address=verify[1] if verify else None,
+        audits=None if info.get("audits") is None else str(info.get("audits")),
+        has_audit_links=bool(info.get("audit_links")),
+    )
+
+
 def targets_from_protocols(
     protocols: Iterable[dict[str, Any]],
     eth_contracts: dict[str, str] | None = None,
@@ -43,13 +122,19 @@ def targets_from_protocols(
     top_n: int = 50,
     category: str | None = None,
     exclude_categories: frozenset[str] = DEFAULT_EXCLUDE,
+    platforms: dict[str, dict[str, str]] | None = None,
+    chains: dict[str, dict[str, Any]] | None = None,
 ) -> list[Target]:
-    """Top-N protocols by TVL → auto-resolved Targets.
+    """Top-N protocols by TVL → fully-resolved Targets.
 
     Keeps only protocols with a `gecko_id`; optionally restricts to one category.
     De-dupes by gecko_id (a token can run several protocols) keeping highest TVL.
+    `eth_contracts` is accepted for back-compat; `platforms` supersedes it.
     """
-    eth_contracts = eth_contracts or {}
+    plat_map = dict(platforms or {})
+    for gid, addr in (eth_contracts or {}).items():
+        plat_map.setdefault(gid, {}).setdefault("ethereum", addr)
+    chains = chains or {}
 
     best: dict[str, dict[str, Any]] = {}
     for p in protocols:
@@ -66,17 +151,9 @@ def targets_from_protocols(
             best[gid] = p
 
     ranked = sorted(best.values(), key=lambda p: p.get("tvl") or 0, reverse=True)[:top_n]
-
     return [
-        Target(
-            gecko_id=p["gecko_id"],
-            defillama_slug=p.get("slug"),
-            github_org=None,                       # not cheaply auto-derivable
-            santiment_slug=p["gecko_id"],          # best-effort
-            cryptorank_key=p["gecko_id"],          # best-effort
-            eth_contract=eth_contracts.get(p["gecko_id"]),
-            category=p.get("category"),
-        )
+        make_target(p["gecko_id"], dl_info=p, platforms=plat_map.get(p["gecko_id"]),
+                    chain=chains.get(p["gecko_id"]))
         for p in ranked
     ]
 
@@ -86,6 +163,8 @@ def basket_targets(
     eth_contracts: dict[str, str] | None = None,
     *,
     classes: Iterable[str] | None = None,
+    platforms: dict[str, dict[str, str]] | None = None,
+    chains: dict[str, dict[str, Any]] | None = None,
 ) -> list[Target]:
     """Targets for every token in the class reference baskets (pure).
 
@@ -96,7 +175,10 @@ def basket_targets(
     """
     from dyor.classes import REFERENCE_BASKETS
 
-    eth_contracts = eth_contracts or {}
+    plat_map = dict(platforms or {})
+    for gid, addr in (eth_contracts or {}).items():
+        plat_map.setdefault(gid, {}).setdefault("ethereum", addr)
+    chains = chains or {}
     by_gecko = {p["gecko_id"]: p for p in protocols if p.get("gecko_id")}
     wanted = list(classes) if classes is not None else list(REFERENCE_BASKETS)
 
@@ -105,16 +187,24 @@ def basket_targets(
         for gid in REFERENCE_BASKETS.get(cls, []):
             if gid in seen:
                 continue
-            p = by_gecko.get(gid, {})
-            seen[gid] = Target(
-                gecko_id=gid,
-                defillama_slug=p.get("slug"),
-                santiment_slug=gid,
-                cryptorank_key=gid,
-                eth_contract=eth_contracts.get(gid),
-                category=p.get("category"),
-            )
+            seen[gid] = make_target(gid, dl_info=by_gecko.get(gid), platforms=plat_map.get(gid),
+                                    chain=chains.get(gid))
     return list(seen.values())
+
+
+def fetch_identity_maps(config: dict | None = None, *, use_cache: bool = True):
+    """(protocols, platforms_by_gecko_id, chain_index) — the three cached calls
+    every universe/basket/analyze build needs."""
+    cfg = config if config is not None else load_config()
+    from dyor.ingestion.coingecko import CoinGeckoClient
+    from dyor.ingestion.defillama import DefiLlamaClient
+
+    with DefiLlamaClient(cfg, use_cache=use_cache) as dl:
+        protocols = dl.protocols()
+        chains = chain_index(dl.chains())
+    with CoinGeckoClient(cfg, use_cache=use_cache) as cg:
+        platforms = platforms_from_coins_list(cg.coins_list())
+    return protocols, platforms, chains
 
 
 def fetch_universe(
@@ -125,7 +215,7 @@ def fetch_universe(
     use_cache: bool = True,
     include_baskets: bool = False,
 ) -> list[Target]:
-    """Build a live universe: DefiLlama protocols + CoinGecko coin list.
+    """Build a live universe: DefiLlama protocols + chains + CoinGecko coin list.
 
     `include_baskets` unions in every reference-basket token so the screener
     keeps the majors and all five asset classes regardless of TVL churn. A
@@ -133,16 +223,12 @@ def fetch_universe(
     slug/category), so the union never duplicates a gecko_id.
     """
     cfg = config if config is not None else load_config()
-    from dyor.ingestion.coingecko import CoinGeckoClient
-    from dyor.ingestion.defillama import DefiLlamaClient
+    protocols, platforms, chains = fetch_identity_maps(cfg, use_cache=use_cache)
 
-    with DefiLlamaClient(cfg, use_cache=use_cache) as dl:
-        protocols = dl.protocols()
-    with CoinGeckoClient(cfg, use_cache=use_cache) as cg:
-        eth_contracts = eth_contracts_from_coins_list(cg.coins_list())
-
-    targets = targets_from_protocols(protocols, eth_contracts, top_n=top_n, category=category)
+    targets = targets_from_protocols(protocols, top_n=top_n, category=category,
+                                     platforms=platforms, chains=chains)
     if include_baskets and not category:  # a category filter is a deliberate narrowing
         have = {t.gecko_id for t in targets}
-        targets += [t for t in basket_targets(protocols, eth_contracts) if t.gecko_id not in have]
+        targets += [t for t in basket_targets(protocols, platforms=platforms, chains=chains)
+                    if t.gecko_id not in have]
     return targets

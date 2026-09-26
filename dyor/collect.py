@@ -27,7 +27,7 @@ from dyor.ingestion.cryptorank import CryptoRankClient
 from dyor.ingestion.defillama import DefiLlamaClient
 from dyor.ingestion.ethplorer import EthplorerClient
 from dyor.ingestion.github import GitHubClient
-from dyor.ingestion.santiment import SLUG_OVERRIDES, SantimentClient
+from dyor.ingestion.santiment import SLUG_OVERRIDES, SantimentClient, resolve_slug_map
 from dyor.ingestion.sourcify import SourcifyClient
 from dyor.classes import classify_asset
 from dyor.metrics import onchain, tokenomics, valuation
@@ -54,6 +54,12 @@ class Target:
     cryptorank_key: str | None = None
     eth_contract: str | None = None
     category: str | None = None  # peer group for category-relative scoring
+    # --- added 2026-09 so every token gets as many feeds as free data allows ---
+    chain_name: str | None = None        # DefiLlama chain → chain-level fees/revenue/TVL (L1s)
+    verify_chain_id: int | None = None   # Sourcify: first deployment on a supported chain
+    verify_address: str | None = None
+    audits: str | None = None            # DefiLlama audit count ("0" = explicitly none on record)
+    has_audit_links: bool = False
 
 
 # A small default DeFi universe: fee-generating protocols with known CoinGecko
@@ -217,6 +223,8 @@ def build_record(
     contract_verified: bool | None = None,
     social_sentiment: float | None = None,
     vc: dict[str, Any] | None = None,
+    watchlist_users: int | None = None,
+    audited: bool | None = None,
 ) -> dict[str, Any]:
     """Pure transform: raw API payloads → one scoring record.
 
@@ -266,6 +274,7 @@ def build_record(
         # --- social ---
         "social_trend": social_trend,          # Santiment (key-gated)
         "social_sentiment": social_sentiment,  # CoinGecko up-votes (keyless, coarse)
+        "watchlist_users": watchlist_users,    # CoinGecko watchlist count (keyless, broad)
         # --- dev ---
         "dev_commit_trend": dev_commit_trend,          # Santiment dev-activity trend
         "days_since_last_commit": days_since(last_push_iso),  # GitHub last push (gate)
@@ -274,6 +283,8 @@ def build_record(
         "drawdown_from_ath_pct": _drawdown_from_ath(market.get("ath_change_percentage")),
         # --- gate input: contract verification (Sourcify; True or None, never False) ---
         "contract_verified": contract_verified,
+        # --- gate input: audit on record (DefiLlama; True / explicit False / None) ---
+        "audited": audited,
         # --- informational (not scored): VC backing from CryptoRank v0 ---
         "num_vc_backers": (vc or {}).get("num_backers"),
         "had_public_sale": (vc or {}).get("had_public_sale"),
@@ -289,6 +300,35 @@ def build_record(
             "price_change_24h_pct": market.get("price_change_percentage_24h"),
         },
     }
+
+
+def audited_from_defillama(audits: str | None, has_audit_links: bool) -> bool | None:
+    """DefiLlama's audit record → the `no_audit` gate input.
+
+    `audits` is a count as a string. A positive count, or any audit link, is a
+    positive signal; an explicit "0" is DefiLlama stating none is on record
+    (26 of the top-80 protocols in Sep 2026 — none of them majors). Absence of
+    the field stays None: we never infer a negative from missing data.
+    """
+    if has_audit_links:
+        return True
+    if audits is None or str(audits).strip() == "":
+        return None
+    try:
+        return int(str(audits)) > 0
+    except ValueError:
+        return None
+
+
+def github_org_from_repos(repos: list[str] | None) -> str | None:
+    """'https://github.com/aave/aave-protocol' → 'aave' (the org)."""
+    for url in repos or []:
+        parts = url.rstrip("/").split("github.com/")
+        if len(parts) == 2 and parts[1]:
+            org = parts[1].split("/")[0].strip()
+            if org:
+                return org
+    return None
 
 
 def _safe(call: Callable[[], Any]) -> Any | None:
@@ -351,8 +391,19 @@ class Collector:
         self.cr = CryptoRankClient(self.config, use_cache=use_cache)
         self.eth = EthplorerClient(self.config, use_cache=use_cache)
         self.sf = SourcifyClient(self.config, use_cache=use_cache)
-        self._has_santiment_key = bool(get_settings().santiment_api_key)
+        settings = get_settings()
+        self._has_santiment_key = bool(settings.santiment_api_key)
+        # Unauthenticated GitHub is 60 requests/HOUR: with no token the feed is
+        # off rather than adding a minute of sleep per token to every refresh.
+        self._github_enabled = bool(settings.github_token)
         self.errors: list[dict[str, str]] = []
+        self.notes: list[str] = []
+        if self.cr.disabled_reason:
+            self.notes.append(self.cr.disabled_reason)
+        if not self._github_enabled:
+            self.notes.append("GitHub feed is off — set DYOR_GITHUB_TOKEN (free) to enable "
+                              "days_since_last_commit / the dead_token gate for ~all tokens")
+        self._chains: dict[str, dict[str, Any]] | None = None
 
     def _try(self, source: str, token: str, fn: Callable[[], Any]) -> Any | None:
         """Run a fetch. A genuine failure (rate-limit, 5xx, timeout) is logged to
@@ -368,6 +419,31 @@ class Collector:
 
     def _errored(self, token: str, source: str) -> bool:
         return any(e["token"] == token and e["source"] == source for e in self.errors)
+
+    def _santiment_slugs(self, targets: list[Target]) -> dict[str, str]:
+        """gecko_id → best Santiment slug for this run (one cached allProjects
+        call + the cached coins_list). Best-effort: any failure → identity map."""
+        try:
+            projects = self.san.all_projects()
+            if not projects:
+                return {}
+            coins = {c["id"]: c for c in self.cg.coins_list() if c.get("id")}
+            return resolve_slug_map(projects, coins, [t.gecko_id for t in targets])
+        except Exception as exc:
+            self.errors.append({"token": "*", "source": "santiment",
+                                "error": redact_secrets(f"slug map: {type(exc).__name__}: {exc}")})
+            return {}
+
+    def _chain_tvl(self, chain_name: str) -> float | None:
+        """Chain TVL from the cached `/v2/chains` list."""
+        if self._chains is None:
+            from dyor.universe import chain_index
+            try:
+                self._chains = {v["name"]: v for v in chain_index(self.dl.chains()).values()}
+            except Exception:
+                self._chains = {}
+        row = self._chains.get(chain_name)
+        return row.get("tvl") if row else None
 
     def _santiment_growth(self, token: str, slug: str) -> dict[str, float | None]:
         """Fetch Santiment series for one slug and reduce to growth signals.
@@ -410,6 +486,7 @@ class Collector:
         if not market_rows:  # markets is the backbone — without it there's nothing to score
             return []
         markets = {m["id"]: m for m in market_rows}
+        san_slugs = self._santiment_slugs(targets) if any(t.santiment_slug for t in targets) else {}
 
         records: list[dict[str, Any]] = []
         for target in targets:
@@ -431,10 +508,30 @@ class Collector:
                     unlock = self._try("defillama", tok,
                                        lambda s=slug, m=market: parse_unlock(self.dl.emissions(s), m))
 
-            if target.github_org:
-                last_push = self._try("github", tok, lambda o=target.github_org: self.gh.org_latest_push(o))
+            # Chain-level fallback: an L1's product IS the chain. When there is no
+            # protocol slug (or it yielded nothing), DefiLlama's chain-wide fees,
+            # revenue and TVL are the right fundamentals.
+            if target.chain_name and fees is None and revenue is None and tvl is None:
+                cn = target.chain_name
+                fees = self._try("defillama", tok, lambda c=cn: self.dl.chain_fees_summary(c))
+                revenue = self._try("defillama", tok, lambda c=cn: self.dl.chain_fees_summary(c, "dailyRevenue"))
+                tvl = self._try("defillama", tok, lambda c=cn: self._chain_tvl(c))
 
-            santiment = self._santiment_growth(tok, target.santiment_slug) if target.santiment_slug else {}
+            # CoinGecko coin meta: sentiment, categories, TVL fallback, watchlist,
+            # GitHub repos — one call. Fetched before GitHub so the repo list can
+            # supply an org for tokens that have none configured.
+            meta = self._try("coingecko", tok, lambda t=tok: self.cg.coin_meta(t)) or {}
+            if tvl is None and meta.get("tvl_usd"):
+                tvl = meta["tvl_usd"]
+
+            gh_org = target.github_org or github_org_from_repos(meta.get("github_repos"))
+            gh_on = bool(gh_org) and self._github_enabled
+            if gh_on:
+                last_push = self._try("github", tok, lambda o=gh_org: self.gh.org_latest_push(o))
+
+            san_slug = san_slugs.get(tok) or (SLUG_OVERRIDES.get(target.santiment_slug, target.santiment_slug)
+                                              if target.santiment_slug else None)
+            santiment = self._santiment_growth(tok, san_slug) if san_slug else {}
 
             # Unlock overhang + VC backing via CryptoRank (v0 open path is dead
             # since 2026-09 and disabled in config; a key re-enables via v3).
@@ -453,8 +550,6 @@ class Collector:
                     if unlock is None and coin.get("nextUnlockUsd"):
                         unlock = {"next_unlock_usd": float(coin["nextUnlockUsd"])}
 
-            # CoinGecko coin meta: coarse social sentiment + categories (for class).
-            meta = self._try("coingecko", tok, lambda t=tok: self.cg.coin_meta(t)) or {}
             sentiment_pct = meta.get("sentiment")
             social_sentiment = sentiment_pct / 100.0 if sentiment_pct is not None else None
             categories = meta.get("categories") or []
@@ -471,7 +566,14 @@ class Collector:
             if target.eth_contract:
                 eth_holders = self._try("ethplorer", tok, lambda a=target.eth_contract: self.eth.top_token_holders(a, 100))
                 top10 = holder_concentration(eth_holders)
-                contract_verified = self._try("sourcify", tok, lambda a=target.eth_contract: self.sf.is_verified(a))
+            # Sourcify covers many EVM chains; verify the first supported deployment
+            # (Ethereum if there is one, else Arbitrum/Base/OP/Polygon/BSC/Avalanche).
+            v_chain, v_addr = target.verify_chain_id, target.verify_address
+            if not v_addr and target.eth_contract:
+                v_chain, v_addr = 1, target.eth_contract
+            if v_addr:
+                contract_verified = self._try("sourcify", tok,
+                                              lambda a=v_addr, c=v_chain: self.sf.is_verified(a, c))
 
             record = build_record(
                 tok, market,
@@ -485,18 +587,20 @@ class Collector:
                 contract_verified=contract_verified,
                 social_sentiment=social_sentiment,
                 vc=vc,
+                watchlist_users=meta.get("watchlist_users"),
+                audited=audited_from_defillama(target.audits, target.has_audit_links),
             )
             record["_group"] = target.category  # peer group for category-relative scoring
             record["_class"] = asset_class       # asset-class-aware scoring profile
             record["_categories"] = categories[:6]
             record["_feeds"] = {
                 "coingecko": "ok",
-                "defillama": _feed_status(bool(target.defillama_slug), fees or tvl, self._errored(tok, "defillama")),
+                "defillama": _feed_status(bool(target.defillama_slug or target.chain_name), fees or tvl, self._errored(tok, "defillama")),
                 "cryptorank": _feed_status(cr_on, overhang, self._errored(tok, "cryptorank")),
                 "ethplorer": _feed_status(bool(target.eth_contract), eth_holders, self._errored(tok, "ethplorer")),
-                "sourcify": _feed_status(bool(target.eth_contract), contract_verified, self._errored(tok, "sourcify")),
-                "santiment": _feed_status(bool(target.santiment_slug), santiment.get("address_growth"), self._errored(tok, "santiment")),
-                "github": _feed_status(bool(target.github_org), last_push, self._errored(tok, "github")),
+                "sourcify": _feed_status(bool(v_addr), contract_verified, self._errored(tok, "sourcify")),
+                "santiment": _feed_status(bool(san_slug), santiment.get("address_growth"), self._errored(tok, "santiment")),
+                "github": _feed_status(gh_on, last_push, self._errored(tok, "github")),
             }
             records.append(record)
         return records

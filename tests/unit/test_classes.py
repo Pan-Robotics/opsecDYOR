@@ -69,15 +69,17 @@ def test_monetary_profile_excludes_fundamental():
 def test_monetary_token_not_penalized_for_missing_revenue():
     # A monetary asset with NO P/F should not have a 'fundamental' domain at all,
     # so missing revenue can't drag it down — it's scored on scarcity/onchain.
+    # (inflation_rate / reserve_trend have no data source and are no longer in
+    # the spec; watchlist_users is.)
     btc = {"token": "btc", "_class": "monetary",
-           "inflation_rate": 0.018, "float_ratio": 0.95, "fdv_mcap_ratio": 1.05,
+           "float_ratio": 0.95, "fdv_mcap_ratio": 1.05,
            "unlock_overhang": 0.0, "top10_concentration": 0.10, "address_growth": 0.2,
-           "reserve_trend": -0.5, "social_trend": 0.3, "social_sentiment": 0.9,
+           "social_trend": 0.3, "social_sentiment": 0.9, "watchlist_users": 2_000_000,
            "dev_commit_trend": 0.4}
     peer = {"token": "ltc", "_class": "monetary",
-            "inflation_rate": 0.08, "float_ratio": 0.80, "fdv_mcap_ratio": 1.2,
+            "float_ratio": 0.80, "fdv_mcap_ratio": 1.2,
             "unlock_overhang": 0.1, "top10_concentration": 0.30, "address_growth": -0.1,
-            "reserve_trend": 0.2, "social_trend": -0.2, "social_sentiment": 0.5,
+            "social_trend": -0.2, "social_sentiment": 0.5, "watchlist_users": 300_000,
             "dev_commit_trend": 0.1}
     res = {r.token: r for r in score_universe([btc, peer])}
     assert "fundamental" not in res["btc"].domain_scores
@@ -147,3 +149,13 @@ def test_defillama_chain_entry_is_an_l1_signal_not_defi():
     assert classify_asset(gecko_id="some-new-l1", defillama_category="Chain", has_fees=True) == "l1"
     assert classify_asset(gecko_id="some-cex-token", defillama_category="CEX") == "general"
     assert classify_asset(gecko_id="a-lending-app", defillama_category="Lending") == "defi"
+
+
+def test_specs_only_list_features_some_source_can_produce():
+    """106 permanently-empty slots came from spec'd features nothing computes."""
+    from dyor.classes import FEATURE_SPECS
+
+    for cls, spec in FEATURE_SPECS.items():
+        feats = {f for fs in spec.values() for f, _ in fs}
+        assert "inflation_rate" not in feats and "reserve_trend" not in feats, cls
+        assert "watchlist_users" in feats, cls

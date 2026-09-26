@@ -28,6 +28,12 @@ export default function TokenReport({ a }: { a: Analysis }) {
               {rec.contract_verified && (
                 <span className="pill border border-emerald-500/30 bg-emerald-500/10 text-emerald-300">✓ verified</span>
               )}
+              {rec.audited === true && (
+                <span className="pill border border-emerald-500/30 bg-emerald-500/10 text-emerald-300">✓ audited</span>
+              )}
+              {rec.audited === false && (
+                <span className="pill border border-rose-500/30 bg-rose-500/10 text-rose-300" title="DefiLlama has no audit on record for this protocol">no audit on record</span>
+              )}
             </div>
             <div className="mt-1 text-sm text-muted">
               matched by {r.matched_by}

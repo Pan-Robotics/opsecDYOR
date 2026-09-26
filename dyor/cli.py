@@ -188,9 +188,8 @@ def _cmd_refresh(args: argparse.Namespace) -> int:
 
 def _note_disabled_feeds(collector) -> None:
     """A feed that is configured-but-off is worth one line, not silence."""
-    reason = getattr(getattr(collector, "cr", None), "disabled_reason", None)
-    if reason:
-        print(f"note: {reason}", file=sys.stderr)
+    for note in getattr(collector, "notes", []) or []:
+        print(f"note: {note}", file=sys.stderr)
 
 
 def _print_feed_summary(records: list[dict], errors: list[dict]) -> None:

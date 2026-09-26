@@ -59,6 +59,7 @@ export type RecordData = {
   categories: string[] | null;
   feeds: Record<string, string> | null;
   contract_verified: boolean | null;
+  audited: boolean | null;
   vc: { num_backers: number | null; had_public_sale: boolean | null };
   class: ClassInfo;
 };

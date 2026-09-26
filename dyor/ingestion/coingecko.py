@@ -31,6 +31,10 @@ _MINIMAL_DETAIL = {
     "localization": "false", "tickers": "false", "market_data": "false",
     "community_data": "false", "developer_data": "false", "sparkline": "false",
 }
+# The collector's variant: market_data carries `total_value_locked` (a free TVL
+# for tokens DefiLlama has no protocol for) and supply flags. developer_data /
+# community_data are NOT requested — the free tier returns them as null (2026).
+_META_DETAIL = {**_MINIMAL_DETAIL, "market_data": "true"}
 
 
 def _tier() -> str:
@@ -119,15 +123,24 @@ class CoinGeckoClient(BaseClient):
         return self.coin_detail(coin_id).get("sentiment_votes_up_percentage")
 
     def coin_meta(self, coin_id: str) -> dict[str, Any]:
-        """Sentiment + CoinGecko categories in one minimal coin-detail call.
+        """Everything the collector wants from one coin-detail call:
 
-        Same endpoint/params as `coin_detail`, so it reuses that cassette.
-        Categories drive asset-class classification (DeFi vs L1 vs meme vs …).
+          sentiment        — up-vote %, coarse social signal
+          categories       — drive asset-class classification
+          tvl_usd          — CoinGecko's TVL; fallback when DefiLlama has no slug
+          watchlist_users  — watchlist count; free, near-universal attention signal
+          max_supply_infinite, github_repos — supply semantics / dev-org discovery
         """
-        data = self.coin_detail(coin_id)
+        data = self.get_json(f"{self.base_url}/coins/{coin_id}", params=dict(_META_DETAIL))
+        md = data.get("market_data") or {}
+        repos = ((data.get("links") or {}).get("repos_url") or {}).get("github") or []
         return {
             "sentiment": data.get("sentiment_votes_up_percentage"),
             "categories": [c for c in (data.get("categories") or []) if c],
+            "tvl_usd": (md.get("total_value_locked") or {}).get("usd"),
+            "watchlist_users": data.get("watchlist_portfolio_users"),
+            "max_supply_infinite": md.get("max_supply_infinite"),
+            "github_repos": [r for r in repos if r],
         }
 
     def market_chart(self, coin_id: str, days: int = 30, vs_currency: str = "usd") -> dict[str, Any]:

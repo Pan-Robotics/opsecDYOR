@@ -25,30 +25,23 @@ def build_references(
 ) -> dict[str, int]:
     """Collect each class's reference basket and cache it. Returns {class: count}."""
     cfg = config if config is not None else load_config()
-    from dyor.analyze import _defillama_index
     from dyor.collect import Collector, Target
     from dyor.store import db
 
     wanted = classes or list(REFERENCE_BASKETS)
-    dl_index = _defillama_index(cfg, use_cache)  # gecko_id -> {slug, category}
 
-    # One coins_list call resolves Ethereum contracts for the whole basket, so
-    # the anchor carries holder-concentration (Ethplorer) + verification
-    # (Sourcify) distributions — without these the anchored classes silently
-    # fall back to relative normalization for those features.
-    from dyor.ingestion.coingecko import CoinGeckoClient
-    from dyor.universe import eth_contracts_from_coins_list
-    with CoinGeckoClient(cfg, use_cache=use_cache) as cg:
-        eth_contracts = eth_contracts_from_coins_list(cg.coins_list())
+    # The anchor must carry the same feeds live tokens get (holder concentration,
+    # chain-level fundamentals, verification …) or anchored classes silently
+    # fall back to relative normalization for those features. `make_target` is
+    # the single source of that enrichment; Targets are built DIRECTLY from the
+    # known gecko_ids (no per-token CoinGecko /search — the rate-limit bottleneck).
+    from dyor.universe import basket_targets, fetch_identity_maps
 
-    # Reference baskets are known gecko_ids — build Targets DIRECTLY (no per-token
-    # CoinGecko /search, which is the rate-limit bottleneck). slug/category come
-    # from the DefiLlama index; santiment/cryptorank keys are best-effort = gecko_id.
+    protocols, platforms, chains = fetch_identity_maps(cfg, use_cache=use_cache)
+    by_gid = {t.gecko_id: t for t in basket_targets(protocols, platforms=platforms, chains=chains)}
+
     def _target(gid: str) -> Target:
-        info = dl_index.get(gid, {})
-        return Target(gecko_id=gid, defillama_slug=info.get("slug"),
-                      santiment_slug=gid, cryptorank_key=gid,
-                      eth_contract=eth_contracts.get(gid), category=info.get("category"))
+        return by_gid.get(gid) or Target(gecko_id=gid, santiment_slug=gid, cryptorank_key=gid)
 
     # Collect into memory first — do NOT hold the DuckDB write-lock during the
     # (minutes-long) collection, or it blocks the API/analyze from reading.

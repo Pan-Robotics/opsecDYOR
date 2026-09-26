@@ -51,7 +51,8 @@ class AnalyzeResult:
 
 
 def _defillama_index(cfg: dict, use_cache: bool) -> dict[str, dict[str, Any]]:
-    """gecko_id -> {slug, category} from DefiLlama protocols (highest-TVL wins)."""
+    """gecko_id -> DefiLlama protocol row (slug, category, github, audits …),
+    highest-TVL wins. Chain/CEX/Bridge rows are kept — the classifier handles them."""
     from dyor.ingestion.defillama import DefiLlamaClient
 
     with DefiLlamaClient(cfg, use_cache=use_cache) as dl:
@@ -62,22 +63,36 @@ def _defillama_index(cfg: dict, use_cache: bool) -> dict[str, dict[str, Any]]:
         if not gid:
             continue
         tvl = p.get("tvl") or 0
-        if gid not in best or tvl > best[gid]["tvl"]:
-            best[gid] = {"slug": p.get("slug"), "category": p.get("category"), "tvl": tvl}
+        if gid not in best or tvl > (best[gid].get("tvl") or 0):
+            best[gid] = p
     return best
 
 
-def target_from_resolved(resolved: ResolvedToken, dl_index: dict[str, dict[str, Any]]) -> Target:
-    """Build a Target from a resolved token, auto-resolving optional ids."""
-    info = dl_index.get(resolved.gecko_id, {})
-    return Target(
-        gecko_id=resolved.gecko_id,
-        defillama_slug=info.get("slug"),
-        github_org=None,
-        santiment_slug=resolved.gecko_id,      # best-effort
-        cryptorank_key=resolved.gecko_id,      # best-effort
-        eth_contract=resolved.platforms.get("ethereum"),
-        category=info.get("category"),
+def _chain_index(cfg: dict, use_cache: bool) -> dict[str, dict[str, Any]]:
+    from dyor.ingestion.defillama import DefiLlamaClient
+    from dyor.universe import chain_index
+
+    try:
+        with DefiLlamaClient(cfg, use_cache=use_cache) as dl:
+            return chain_index(dl.chains())
+    except Exception:
+        return {}
+
+
+def target_from_resolved(
+    resolved: ResolvedToken,
+    dl_index: dict[str, dict[str, Any]],
+    chains: dict[str, dict[str, Any]] | None = None,
+) -> Target:
+    """Build a fully-enriched Target from a resolved token (same enrichment as
+    the universe builder and the reference baskets — see universe.make_target)."""
+    from dyor.universe import make_target
+
+    return make_target(
+        resolved.gecko_id,
+        dl_info=dl_index.get(resolved.gecko_id),
+        platforms={k: v.lower() for k, v in resolved.platforms.items() if v},
+        chain=(chains or {}).get(resolved.gecko_id),
     )
 
 
@@ -129,7 +144,8 @@ def _analyze_locked(query, cfg, *, peers, peer_mode, penalize_missing_core, use_
         if resolved is None:
             return AnalyzeResult(query=query, resolved=None)
 
-        target = target_from_resolved(resolved, _defillama_index(cfg, use_cache))
+        target = target_from_resolved(resolved, _defillama_index(cfg, use_cache),
+                                      _chain_index(cfg, use_cache))
 
         peer_targets: list[Target] = []
         if peer_mode == "category" and target.category:

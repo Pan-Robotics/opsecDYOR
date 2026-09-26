@@ -28,6 +28,7 @@ FEATURE_META: dict[str, tuple[str, str, str]] = {
     # social
     "social_trend": ("Social trend", "Trend in social volume / mentions (Santiment).", "higher"),
     "social_sentiment": ("Sentiment", "CoinGecko community up-vote share (keyless, coarse).", "higher"),
+    "watchlist_users": ("Watchlists", "How many CoinGecko users track the token — a broad, free attention/adoption signal.", "higher"),
     # dev
     "dev_commit_trend": ("Dev-activity trend", "Trend in developer activity over the last ~month.", "higher"),
     "days_since_last_commit": ("Days since last push", "How recently the team shipped code (gate input).", "lower"),

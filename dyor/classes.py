@@ -25,6 +25,7 @@ FEATURE_DIRECTION: dict[str, bool] = {
     "float_ratio": True, "inflation_rate": False, "value_accrual": True,
     "top10_concentration": False, "address_growth": True, "reserve_trend": False,
     "social_trend": True, "social_sentiment": True, "dev_commit_trend": True,
+    "watchlist_users": True,   # CoinGecko watchlist count — free, near-universal attention signal
 }
 
 
@@ -36,42 +37,46 @@ def _spec(**domains: list[str]) -> dict[str, list[tuple[str, bool]]]:
 # Per-class feature specs (which features are even *considered* for the class).
 FEATURE_SPECS: dict[str, dict[str, list[tuple[str, bool]]]] = {
     # Cash-flow protocols — the original model.
+    # NOTE: a spec lists only features SOME source can produce. `inflation_rate`
+    # and `reserve_trend` were listed with no source at all — 106 permanently
+    # empty slots in a 117-token run, deflating every coverage figure — so they
+    # are out until a source exists (they stay in FEATURE_DIRECTION for that day).
     "defi": _spec(
         fundamental=["price_to_fees", "price_to_sales", "mc_tvl", "real_yield"],
         tokenomics=["fdv_mcap_ratio", "unlock_overhang", "unlock_pct_of_volume",
-                    "float_ratio", "inflation_rate", "value_accrual"],
+                    "float_ratio", "value_accrual"],
         onchain=["top10_concentration", "address_growth"],
-        social=["social_trend", "social_sentiment"],
+        social=["social_trend", "social_sentiment", "watchlist_users"],
         dev=["dev_commit_trend"],
     ),
     # Smart-contract platforms — ecosystem TVL + adoption + dev heavy; fees apply
-    # but matter less than for a single app.
+    # but matter less than for a single app. Fundamentals come from DefiLlama's
+    # CHAIN-level fees/revenue/TVL when the token has no protocol slug.
     "l1": _spec(
         fundamental=["mc_tvl", "price_to_fees", "price_to_sales", "real_yield"],
-        tokenomics=["fdv_mcap_ratio", "unlock_overhang", "float_ratio",
-                    "inflation_rate", "value_accrual"],
+        tokenomics=["fdv_mcap_ratio", "unlock_overhang", "float_ratio", "value_accrual"],
         onchain=["top10_concentration", "address_growth"],
-        social=["social_trend", "social_sentiment"],
+        social=["social_trend", "social_sentiment", "watchlist_users"],
         dev=["dev_commit_trend"],
     ),
     # Monetary / store-of-value — NO protocol cash flow. Scarcity + decentralized
     # accumulation + adoption.
     "monetary": _spec(
-        tokenomics=["inflation_rate", "float_ratio", "fdv_mcap_ratio", "unlock_overhang"],
-        onchain=["top10_concentration", "address_growth", "reserve_trend"],
-        social=["social_trend", "social_sentiment"],
+        tokenomics=["float_ratio", "fdv_mcap_ratio", "unlock_overhang"],
+        onchain=["top10_concentration", "address_growth"],
+        social=["social_trend", "social_sentiment", "watchlist_users"],
         dev=["dev_commit_trend"],
     ),
     # Memecoins — distribution + liquidity + attention; no fundamentals, no dev.
     "meme": _spec(
         tokenomics=["float_ratio", "unlock_overhang"],
         onchain=["top10_concentration", "address_growth"],
-        social=["social_trend", "social_sentiment"],
+        social=["social_trend", "social_sentiment", "watchlist_users"],
     ),
     # Stablecoins — not an appreciation play; scored for adoption + distribution.
     "stablecoin": _spec(
         onchain=["top10_concentration", "address_growth"],
-        social=["social_sentiment"],
+        social=["social_sentiment", "watchlist_users"],
     ),
 }
 FEATURE_SPECS["general"] = FEATURE_SPECS["defi"]  # default == defi

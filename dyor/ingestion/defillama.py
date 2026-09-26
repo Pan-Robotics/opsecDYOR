@@ -67,6 +67,22 @@ class DefiLlamaClient(BaseClient):
         """Current TVL for a protocol (bare number). Used for MC/TVL."""
         return self.get_json(f"{self.urls['api']}/tvl/{slug}")
 
+    # -- chain level (L1 tokens have no protocol slug; the CHAIN is the product) --
+    def chains(self) -> list[dict[str, Any]]:
+        """All chains with TVL and `gecko_id` — the join key to an L1 token."""
+        return self.get_json(f"{self.urls['api']}/v2/chains")
+
+    def chain_fees_summary(self, chain_name: str, data_type: str | None = None) -> dict[str, Any]:
+        """Chain-wide fees (or `dailyRevenue`) with total24h/7d/30d/1y, like
+        `fees_summary` but for a whole chain. `chain_name` is DefiLlama's own
+        display name from `/v2/chains` (e.g. 'Ethereum', 'BSC', 'TON')."""
+        from urllib.parse import quote
+
+        params = {"excludeTotalDataChart": "true", "excludeTotalDataChartBreakdown": "true"}
+        if data_type:
+            params["dataType"] = data_type
+        return self.get_json(f"{self.urls['api']}/overview/fees/{quote(chain_name)}", params=params)
+
     # -- prices keyed on chain:address (identity host) -----------------------
     def prices_current(self, chain_addresses: list[str]) -> dict[str, Any]:
         """Current prices for `chain:address` keys, e.g. 'ethereum:0xA0b8...'.

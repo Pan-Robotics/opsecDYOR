@@ -70,6 +70,7 @@ def record_to_dict(rec: dict | None) -> dict[str, Any]:
         "categories": rec.get("_categories"),
         "feeds": rec.get("_feeds"),
         "contract_verified": rec.get("contract_verified"),
+        "audited": rec.get("audited"),
         "vc": {"num_backers": rec.get("num_vc_backers"),
                "had_public_sale": rec.get("had_public_sale")},
         "class": class_to_dict(rec.get("_class")),
