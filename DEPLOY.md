@@ -207,3 +207,45 @@ DYOR_SSH_HOST=myhost deploy/deployment-sweep.sh
 outbound IP, and CoinGecko's keyless limit is per IP with separate token buckets
 per process — so during a refresh, on-demand `analyze` backs off against 429s and
 can exceed a 90s client timeout. This is also why the cron slot is 03:07 UTC.
+
+## Rate limiting, admin token, lock, logs (added 2026-09-26)
+
+**Per-IP rate limits at nginx.** The live-collection endpoints (`/api/analyze`,
+`/api/memo`, `/api/portfolio`, `/api/screener/build`, `/mcp`) each trigger ~10
+upstream calls against shared per-IP limits and a 1,000/month Santiment quota.
+Zones live at http scope in `deploy/nginx-dyor-ratelimit.conf`; the live vhost
+is certbot-managed so it is patched in place, idempotently:
+
+```bash
+scp deploy/nginx-dyor-ratelimit.conf deploy/apply-nginx-ratelimit.sh <VPS>:/tmp/
+ssh <VPS> 'cp /tmp/nginx-dyor-ratelimit.conf /etc/nginx/conf.d/dyor-ratelimit.conf && bash /tmp/apply-nginx-ratelimit.sh'
+```
+
+`dyor_live` = 6 req/min (burst 3) on the collection endpoints, `dyor_api` = 60
+req/min (burst 20) on everything else under `/api/`. Excess requests get 429.
+
+**Screener rebuilds are admin-only.** `POST /api/screener/build` requires
+`X-Admin-Token` equal to `DYOR_ADMIN_TOKEN` in `/root/DYOR/.env`; with no token
+set the endpoint is disabled (403). The weekly cron is the normal path. A rebuild
+unions the reference baskets in and goes through the shrink guard.
+
+**One collect lock.** The cron wrapper and the API build job flock the same file,
+`/root/DYOR/data/.collect.lock` (`DYOR_COLLECT_LOCK` overrides), so two
+collectors can never run at once.
+
+**Shrink guard.** `db.persist_run` refuses a run smaller than
+`store.min_run_fraction` (50%) of the previous one unless forced — the reason a
+`--top-n 30` rebuild or a bare `dyor refresh` can no longer blank the board.
+`refresh` then prunes runs older than the newest `store.keep_runs` (156).
+
+**Secrets on the server.** `/root/DYOR/.env` (mode 600) holds
+`DYOR_CRYPTORANK_API_KEY` (the feed activates on a plan with vesting endpoints)
+and, when set, `DYOR_ADMIN_TOKEN` / `DYOR_ALERT_WEBHOOK`. It is read from the
+project dir regardless of CWD.
+
+**Logs.** `pm2 install pm2-logrotate` — uvicorn writes INFO to the pm2 error
+stream, and unrotated they grow without bound.
+
+**Web changes need a rebuild.** An rsync alone leaves the old `.next` serving 200s;
+`deploy/deployment-sweep.sh` now fails if the server's build is older than its
+sources.

@@ -101,6 +101,22 @@ ok "persisted runs" "$1"
 chk "reference basket rows" "$3" "61"
 chk "reference basket classes" "$4" "5"
 
+sec "E2 · FEED HEALTH (latest run)"
+FEEDS=$(ssh $H 'cd /root/DYOR && .venv/bin/python -c "
+from dyor.store import db
+from dyor.collect import feed_summary
+con=db.connect(read_only=True); recs=db.latest_records(con); con.close()
+bad=[]
+for feed,c in sorted(feed_summary(recs).items()):
+    n=sum(v for k,v in c.items() if k!=\"off\"); e=c.get(\"error\",0)
+    if n and e/n>=0.5: bad.append(f\"{feed} {e}/{n}\")
+print(\"OUTAGE:\"+\",\".join(bad) if bad else \"ok\")"' 2>/dev/null)
+case "$FEEDS" in
+  ok) ok "no feed erroring on >=50% of tokens" ;;
+  OUTAGE:*) no "feed outage in latest run" "${FEEDS#OUTAGE:}" ;;
+  *) wr "feed health" "could not evaluate: ${FEEDS:0:60}" ;;
+esac
+
 sec "F · SCHEDULING"
 ssh $H 'crontab -l 2>/dev/null | grep -q "dyor-refresh"' && ok "crontab entry" "$(ssh $H 'crontab -l | grep dyor-refresh')" || no "crontab entry"
 chk "cron service" "$(ssh $H 'systemctl is-active cron')" "active"
@@ -113,16 +129,33 @@ ssh $H '[ -w /var/log/dyor-refresh.log ]' && ok "log writable" || no "log writab
 # would start a real ~25-minute collect (and burn ~120 Santiment calls) whenever
 # the lock happened to be free. Hold the lock in a throwaway process instead and
 # check that a second acquisition is refused with the wrapper's -E code.
-R=$(ssh $H 'flock /run/dyor-refresh.lock sleep 4 >/dev/null 2>&1 &
+R=$(ssh $H 'flock /root/DYOR/data/.collect.lock sleep 4 >/dev/null 2>&1 &
             sleep 1
-            flock -n -E 75 /run/dyor-refresh.lock true; echo $?
+            flock -n -E 75 /root/DYOR/data/.collect.lock true; echo $?
             wait' 2>/dev/null | head -1)
 [ "$R" = "75" ] && ok "flock overlap guard" "second acquisition refused (rc=75)" || no "flock overlap guard" "rc=$R"
+
+sec "F2 · DEPLOY HYGIENE"
+# a forgotten `npm run build` leaves the old .next serving 200s — compare mtimes
+STALE=$(ssh $H 'b=/root/DYOR/web/.next/BUILD_ID; [ -f "$b" ] || { echo missing; exit; }
+  newest=$(find /root/DYOR/web/app /root/DYOR/web/components /root/DYOR/web/lib -type f -printf "%T@\n" | sort -n | tail -1)
+  built=$(stat -c %Y "$b"); awk -v n="$newest" -v b="$built" "BEGIN{print (n>b)?\"stale\":\"fresh\"}"')
+case "$STALE" in
+  fresh) ok "web build newer than web sources" ;;
+  stale) no "web build is STALE" "sources changed after last npm run build" ;;
+  *) no "web build present" "$STALE" ;;
+esac
+ssh $H 'grep -q "zone=dyor_live" /etc/nginx/sites-enabled/dyor.cryptoopsec.com && [ -f /etc/nginx/conf.d/dyor-ratelimit.conf ]' \
+  && ok "nginx per-IP rate limits installed" || no "nginx per-IP rate limits installed"
+ssh $H 'grep -q "collect.lock" /usr/local/bin/dyor-refresh' && ok "cron wrapper uses the shared collect lock" || no "cron wrapper uses the shared collect lock"
+C=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 -X POST "$BASE/api/screener/build?top_n=5")
+chk "screener rebuild is admin-gated (anon POST)" "$C" "403"
+ssh $H 'pm2 ls 2>/dev/null | grep -q pm2-logrotate' && ok "pm2-logrotate installed" || wr "pm2-logrotate installed" "not found"
 
 sec "G · BEHAVIOURAL REGRESSION (production)"
 # Detect an in-flight run via the lock, not pgrep: an ssh'd `pgrep -f "dyor
 # refresh"` matches its own `bash -c` command line and always reports a hit.
-ssh $H 'flock -n /run/dyor-refresh.lock true' >/dev/null 2>&1 && INFLIGHT=no || INFLIGHT=yes
+ssh $H 'flock -n /root/DYOR/data/.collect.lock true' >/dev/null 2>&1 && INFLIGHT=no || INFLIGHT=yes
 if [ "$INFLIGHT" = yes ]; then
   C=$(curl -s -o /dev/null -w '%{http_code}' --max-time 40 "$BASE/api/screener?source=stored")
   chk "screener up DURING live collect" "$C" "200"

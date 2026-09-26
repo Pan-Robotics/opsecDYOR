@@ -71,5 +71,6 @@ Run `dyor-mcp --transport sse --port 8848` and give the agent the SSE endpoint
 - The server calls live free APIs (DefiLlama, CoinGecko, CryptoRank, Ethplorer,
   Santiment, GitHub, Sourcify); `analyze_token` takes a few seconds. Optional keys
   (`DYOR_*`) raise rate limits / unlock social.
-- For a richer `stored` peer baseline, run `dyor collect --top-n 50 --persist` (or
-  the web app's "Build" button) first.
+- The `stored` peer baseline is the weekly `dyor refresh` universe (top protocols
+  by TVL ∪ every class reference basket). Rebuilding it is an operator action
+  (`dyor refresh --top-n 60`, or the admin-gated `POST /api/screener/build`).

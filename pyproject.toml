@@ -17,7 +17,6 @@ dependencies = [
     "pydantic>=2.6",
     "pydantic-settings>=2.2",
     "pyyaml>=6.0",
-    "streamlit>=1.33",
     "fastapi>=0.110",
     "uvicorn>=0.27",
     "mcp>=1.2",
@@ -30,7 +29,12 @@ dev = [
     "vcrpy>=6.0",
     "respx>=0.21",             # httpx mocking for error-path tests
     "jsonschema>=4.21",
+    "pytest-cov>=5.0",
+    "ruff>=0.6",
 ]
+# The original Streamlit analyst dashboard (dyor/app/dashboard.py) — superseded
+# by the FastAPI + Next.js app; not installed on the server.
+legacy-ui = ["streamlit>=1.33"]
 
 [project.scripts]
 dyor = "dyor.cli:main"
@@ -49,3 +53,14 @@ markers = [
     "integration: hits external APIs via vcrpy cassettes (opt-in)",
     "vcr: uses a recorded cassette",
 ]
+
+[tool.ruff]
+line-length = 110
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E9", "F", "B", "UP", "SIM", "RUF100"]
+ignore = ["UP035", "UP006", "UP007", "B905", "SIM103"]
+
+[tool.ruff.lint.per-file-ignores]
+"dyor/app/dashboard.py" = ["ALL"]   # legacy, optional extra

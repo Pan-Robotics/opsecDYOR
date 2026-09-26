@@ -4,7 +4,8 @@
 //
 // Assumes:
 //   • repo at /root/DYOR
-//   • Python venv at /root/DYOR/.venv with deps installed (pip install .)
+//   • Python venv at /root/DYOR/.venv, package installed EDITABLE:
+//       pip install -e . --no-build-isolation --no-deps   (see DEPLOY.md)
 //   • web app built:  cd /root/DYOR/web && npm ci && npm run build
 //
 // DuckDB is single-writer: keep ONE dyor-api instance (no clustering).
@@ -16,8 +17,7 @@ module.exports = {
       script: "/root/DYOR/.venv/bin/uvicorn",
       args: "dyor.api.app:app --host 127.0.0.1 --port 8077",
       interpreter: "none",              // it's a venv binary, not a node script
-      // DYOR_HOME pins config.yaml / data/ / .cache to the project dir even though
-      // the package is pip-installed into site-packages (non-editable).
+      // DYOR_HOME pins config.yaml / data/ / .cache / .env to the project dir.
       env: { PYTHONUNBUFFERED: "1", DYOR_HOME: "/root/DYOR" },
     },
     {

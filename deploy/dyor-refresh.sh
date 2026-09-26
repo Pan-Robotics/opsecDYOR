@@ -22,9 +22,12 @@ set -uo pipefail
 DYOR_DIR=/root/DYOR
 TOP_N="${TOP_N:-60}"
 LOG=/var/log/dyor-refresh.log
-LOCK=/run/dyor-refresh.lock
+# The SAME file the API's build job flocks (dyor.config.collect_lock_path), so a
+# cron refresh and an admin-triggered build can never collect concurrently.
+LOCK="${DYOR_COLLECT_LOCK:-$DYOR_DIR/data/.collect.lock}"
 
 cd "$DYOR_DIR" || { echo "$(date -Is) FATAL: $DYOR_DIR missing" >>"$LOG"; exit 1; }
+mkdir -p "$(dirname "$LOCK")"
 exec >>"$LOG" 2>&1
 
 echo "=== $(date -Is) refresh start (top-n=$TOP_N) ==="
