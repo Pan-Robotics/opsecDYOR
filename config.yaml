@@ -95,8 +95,13 @@ gating:
     extreme_fdv_mcap:      { action: "cap", cap: 0.40, threshold: 10.0 }   # FDV/MCAP > 10
     dead_token:            { action: "zero" }
   # dead-token criteria (any one trips it)
+  # `no_commits_days` is judged on GitHub's most recent push across EVERY account
+  # the collector can find for the token (DefiLlama's list, all CoinGecko repo
+  # URLs, verified overrides in dyor/collect.py; user accounts as well as orgs),
+  # and is overruled when Santiment's dev-activity window shows events — a
+  # migrated org (solana-labs → anza-xyz) is a stale pointer, not a dead project.
   # NOTE: price drawdown from ATH is intentionally NOT a criterion — a deep
   # drawdown alone is price action, not project death, and must not zero a token.
   dead_token:
-    no_commits_days: 180              # no GitHub commits 6+ months
+    no_commits_days: 180              # no GitHub push 6+ months (needs DYOR_GITHUB_TOKEN)
     min_daily_volume_usd: 1000.0      # near-zero volume

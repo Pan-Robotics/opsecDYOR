@@ -42,6 +42,19 @@ def test_dead_token_any_one_criterion(cfg):
     assert "dead_token" not in gate.evaluate({"drawdown_from_ath_pct": 99.7}, cfg).flags
 
 
+def test_dead_token_stale_github_org_overruled_by_santiment_dev_activity(cfg):
+    # GitHub: no push in 400 days on the org we found; Santiment: commits this
+    # month on the project's curated repos → the org is stale (solana-labs →
+    # anza-xyz), the project is not dead.
+    alive = {"days_since_last_commit": 400, "dev_activity_events": 6758.0}
+    assert "dead_token" not in gate.evaluate(alive, cfg).flags
+    # zero events, or no Santiment data at all: the GitHub signal stands
+    assert "dead_token" in gate.evaluate({"days_since_last_commit": 400, "dev_activity_events": 0.0}, cfg).flags
+    assert "dead_token" in gate.evaluate({"days_since_last_commit": 400, "dev_activity_events": None}, cfg).flags
+    # corroboration never rescues the no-volume criterion
+    assert "dead_token" in gate.evaluate({**alive, "daily_volume_usd": 10.0}, cfg).flags
+
+
 def test_strictest_cap_wins(cfg):
     # anonymous (cap 0.40) + unverified (zero) → strictest (0.0) wins
     rec = {"team_anonymous": True, "contract_verified": False}

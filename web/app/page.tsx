@@ -131,7 +131,7 @@ export default function Home() {
       <section className="grid gap-4 md:grid-cols-3">
         <div className="card">
           <div className="font-semibold text-white">🚫 The gate</div>
-          <p className="mt-1 text-sm text-muted">Hard disqualifiers <b className="text-white">cap or zero</b> a score so a flaw can&apos;t be averaged away — extreme FDV/MCAP, no audit on record (DefiLlama), or a dead token (no commits 6mo+, near-zero volume). Contract-verification and team gates need keyed sources and are marked inactive on open data.</p>
+          <p className="mt-1 text-sm text-muted">Hard disqualifiers <b className="text-white">cap or zero</b> a score so a flaw can&apos;t be averaged away — extreme FDV/MCAP, no audit on record (DefiLlama), or a dead token (no push in 6mo+ on any GitHub account we can find for it and no Santiment dev activity to contradict that, or near-zero volume). Contract-verification and team gates need keyed sources and are marked inactive on open data.</p>
         </div>
         <div className="card">
           <div className="font-semibold text-white">🎯 Confidence + robustness</div>

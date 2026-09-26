@@ -217,6 +217,7 @@ def build_record(
     unlock: dict[str, Any] | None = None,
     address_growth: float | None = None,
     dev_commit_trend: float | None = None,
+    dev_activity_events: float | None = None,
     social_trend: float | None = None,
     unlock_overhang: float | None = None,
     top10_concentration: float | None = None,
@@ -278,6 +279,7 @@ def build_record(
         # --- dev ---
         "dev_commit_trend": dev_commit_trend,          # Santiment dev-activity trend
         "days_since_last_commit": days_since(last_push_iso),  # GitHub last push (gate)
+        "dev_activity_events": dev_activity_events,    # Santiment events in-window (gate corroboration)
         # --- gate inputs derivable from free market data ---
         "daily_volume_usd": volume,
         "drawdown_from_ath_pct": _drawdown_from_ath(market.get("ath_change_percentage")),
@@ -339,6 +341,49 @@ def github_org_from_repos(repos: list[str] | None) -> str | None:
             if org:
                 return org
     return None
+
+
+# gecko_id → canonical GitHub account(s), checked FIRST. CoinGecko's repo URLs
+# are whatever was submitted at listing time and DefiLlama's `github` list is
+# sparse, so for several majors they point at an org development has since
+# left — solana-labs (→ anza-xyz, 2025), centrehq (→ circlefin), binance-exchange
+# (→ bnb-chain), balancer-labs (→ balancer), makerdao (→ sky-ecosystem, now an
+# empty org), iearn-finance (→ yearn, empty), xvi10 (a founder's user account →
+# gmx-io), bloxapp (→ ssvlabs, empty). The first production run with the GitHub
+# feed on would have zeroed Solana, USDC and BNB as `dead_token` on that basis.
+# Every entry verified live 2026-09-26 (pushed within the prior week;
+# bitcoin-cash-node is the GitHub mirror of a GitLab primary, ~2 months).
+GITHUB_ACCOUNT_OVERRIDES: dict[str, list[str]] = {
+    "solana": ["anza-xyz", "solana-foundation"],
+    "usd-coin": ["circlefin"],
+    "binancecoin": ["bnb-chain"],
+    "balancer": ["balancer"],
+    "maker": ["sky-ecosystem"],
+    "yearn-finance": ["yearn"],
+    "bitcoin-cash": ["bitcoin-cash-node"],
+    "gmx": ["gmx-io"],
+    "ssv-network": ["ssvlabs"],
+}
+MAX_GITHUB_ACCOUNTS = 4  # per token per run — bounds the call budget
+
+
+def github_accounts(gecko_id: str, configured_org: str | None,
+                    repos: list[str] | None) -> list[str]:
+    """Ordered, de-duplicated GitHub accounts whose most recent push stands for
+    the token's dev activity: verified overrides, the configured/DefiLlama org,
+    then the account of EVERY CoinGecko repo URL — NEAR lists the dead
+    `nearprotocol` first and the live `near` second, so the first URL alone is
+    not enough. Case-insensitive de-dupe, capped at `MAX_GITHUB_ACCOUNTS`."""
+    cands: list[str | None] = list(GITHUB_ACCOUNT_OVERRIDES.get(gecko_id, [])) + [configured_org]
+    for url in repos or []:
+        cands.append(github_org_from_repos([url]))
+    out: list[str] = []
+    seen: set[str] = set()
+    for c in cands:
+        if c and c.lower() not in seen:
+            seen.add(c.lower())
+            out.append(c)
+    return out[:MAX_GITHUB_ACCOUNTS]
 
 
 def _safe(call: Callable[[], Any]) -> Any | None:
@@ -430,6 +475,17 @@ class Collector:
     def _errored(self, token: str, source: str) -> bool:
         return any(e["token"] == token and e["source"] == source for e in self.errors)
 
+    def _latest_push(self, token: str, accounts: list[str]) -> tuple[str | None, str | None]:
+        """(most recent push ISO, account it came from) across the candidate
+        accounts. A stale org that still exists (solana-labs, balancer-labs)
+        would otherwise report a live project as dead."""
+        best: tuple[str, str] | None = None
+        for name in accounts:
+            iso = self._try("github", token, lambda n=name: self.gh.account_latest_push(n))
+            if iso and (best is None or iso > best[0]):  # GitHub ISO-8601 Z: lexicographic == chronological
+                best = (iso, name)
+        return best if best else (None, None)
+
     def _santiment_slugs(self, targets: list[Target]) -> dict[str, str]:
         """gecko_id → best Santiment slug for this run (one cached allProjects
         call + the cached coins_list). Best-effort: any failure → identity map."""
@@ -476,6 +532,11 @@ class Collector:
                 return None
             return onchain.series_growth([p.get("value") for p in series])
 
+        def total(series):
+            if not series:
+                return None
+            return float(sum((p.get("value") or 0) for p in series))
+
         daa = self._try("santiment", token, lambda: self.san.daily_active_addresses(slug, fi, ti))
         dev = self._try("santiment", token, lambda: self.san.dev_activity(slug, fi, ti))
         social = (
@@ -485,6 +546,10 @@ class Collector:
         return {
             "address_growth": growth(daa),
             "dev_commit_trend": growth(dev),
+            # Raw event count over the window: Santiment tracks a curated repo set
+            # per project, so events here prove the project is alive even when the
+            # GitHub org we discovered has gone quiet (dead_token corroboration).
+            "dev_activity_events": total(dev),
             "social_trend": growth(social),
         }
 
@@ -538,10 +603,11 @@ class Collector:
             if tvl is None and meta.get("tvl_usd"):
                 tvl = meta["tvl_usd"]
 
-            gh_org = target.github_org or github_org_from_repos(meta.get("github_repos"))
-            gh_on = bool(gh_org) and self._github_enabled
+            gh_accounts = github_accounts(tok, target.github_org, meta.get("github_repos"))
+            gh_on = bool(gh_accounts) and self._github_enabled
+            gh_account = None
             if gh_on:
-                last_push = self._try("github", tok, lambda o=gh_org: self.gh.org_latest_push(o))
+                last_push, gh_account = self._latest_push(tok, gh_accounts)
 
             san_slug = san_slugs.get(tok) or (SLUG_OVERRIDES.get(target.santiment_slug, target.santiment_slug)
                                               if target.santiment_slug else None)
@@ -595,6 +661,7 @@ class Collector:
                 last_push_iso=last_push, unlock=unlock,
                 address_growth=santiment.get("address_growth"),
                 dev_commit_trend=santiment.get("dev_commit_trend"),
+                dev_activity_events=santiment.get("dev_activity_events"),
                 social_trend=santiment.get("social_trend"),
                 unlock_overhang=overhang,
                 top10_concentration=top10,
@@ -607,6 +674,7 @@ class Collector:
             record["_group"] = target.category  # peer group for category-relative scoring
             record["_class"] = asset_class       # asset-class-aware scoring profile
             record["_categories"] = categories[:6]
+            record["_github_account"] = gh_account  # which account the last push came from
             record["_feeds"] = {
                 "coingecko": "ok",
                 "defillama": _feed_status(bool(target.defillama_slug or target.chain_name), fees or tvl, self._errored(tok, "defillama")),

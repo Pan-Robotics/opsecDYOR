@@ -70,9 +70,13 @@ correctly flags high-FDV/low-float unlock overhangs and dead tokens.
 - [x] **Auto identity-resolution** — `defillama_slug` from the protocol, `eth_contract` from CoinGecko `/coins/list` platforms (one call), `santiment_slug`/`cryptorank_key` best-effort = gecko_id (misses → honest diagnostics), `category` attached as the peer group.
 - [x] **Category-relative normalization** — `score_universe(..., peer_groups=True)` ranks each metric within its `_group` (the doc's "compare within category"); CLI `--peer-groups`, dashboard "Score within category" toggle.
 - [x] **CLI**: `dyor collect --top-n N [--category Lending] [--peer-groups]`. Live-verified end-to-end; the `dead_token` gate fires on real small-cap lending tokens.
-- NOTE: for auto-built universes (no `github_org`), `dead_token` can only fall back
-  on the low-volume criterion (drawdown was deliberately removed as a dead-token
-  criterion — price action alone must not zero a token; see `config.yaml`).
+- NOTE (superseded 2026-09-26): GitHub accounts are now auto-discovered (DefiLlama
+  `github` list, every CoinGecko repo URL, verified overrides for migrated orgs) and
+  the feed is live once `DYOR_GITHUB_TOKEN` is set, so the no-commits criterion of
+  `dead_token` fires on real data — judged on the most recent push across all of a
+  token's accounts and overruled by Santiment dev activity, because the first run
+  with the feed on would otherwise have zeroed Solana/USDC/BNB on stale org
+  pointers. Drawdown remains deliberately NOT a criterion (see `config.yaml`).
 - KNOWN LIMIT (2026-08-24 integration test): three of the five gate rules are
   inert on live data — `anonymous_team`/`no_audit` read fields only the sample
   data carries, and `unverified_contract` needs an explicit `False` that open

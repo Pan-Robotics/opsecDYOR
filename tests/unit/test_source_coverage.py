@@ -47,6 +47,31 @@ def test_github_org_from_repos():
     assert github_org_from_repos(["https://gitlab.com/x/y"]) is None
 
 
+def test_github_accounts_checks_every_source_with_overrides_first():
+    from dyor.collect import GITHUB_ACCOUNT_OVERRIDES, MAX_GITHUB_ACCOUNTS, github_accounts
+
+    # NEAR: CoinGecko lists the dead `nearprotocol` before the live `near` —
+    # every repo's account is a candidate, in order, de-duplicated
+    near = ["https://github.com/nearprotocol/nearcore", "https://github.com/near",
+            "https://github.com/nearprotocol/near-wallet"]
+    assert github_accounts("near", None, near) == ["nearprotocol", "near"]
+    # configured / DefiLlama org first; case-insensitive de-dupe against repo URLs
+    assert github_accounts("x", "Aave", ["https://github.com/aave/aave-v3-core"]) == ["Aave"]
+    # a verified canonical account is checked before whatever CoinGecko still lists
+    assert github_accounts("solana", None, ["https://github.com/solana-labs/solana"]) \
+        == GITHUB_ACCOUNT_OVERRIDES["solana"] + ["solana-labs"]
+    assert github_accounts("nobody", None, None) == []
+    assert len(github_accounts("x", None, [f"https://github.com/org{i}/r" for i in range(10)])) == MAX_GITHUB_ACCOUNTS
+
+
+def test_build_record_carries_dev_activity_events_for_the_gate():
+    from dyor.classes import FEATURE_DIRECTION
+
+    assert build_record("aave", MARKET, dev_activity_events=622.0)["dev_activity_events"] == 622.0
+    assert build_record("aave", MARKET)["dev_activity_events"] is None
+    assert "dev_activity_events" not in FEATURE_DIRECTION  # gate input, never scored
+
+
 # --- DefiLlama: chain index + audits ------------------------------------------
 
 def test_chain_index_by_gecko_id_highest_tvl_wins():

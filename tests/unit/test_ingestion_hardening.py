@@ -140,6 +140,40 @@ def test_github_paces_at_60_per_hour_without_a_token(monkeypatch, sample_config)
     cl.close()
 
 
+def test_github_account_latest_push_falls_back_to_user_on_404(monkeypatch, sample_config):
+    """CoinGecko/DefiLlama list user accounts (convex-eth, resupplyfi, xvi10) as
+    if they were orgs; /orgs/{name} 404s for a user and used to read as 'no repos'."""
+    import httpx
+
+    from dyor.ingestion import github
+    monkeypatch.setattr(github, "get_settings", lambda: Settings(github_token="ghp_x", _env_file=None))
+    cl = github.GitHubClient(sample_config)
+    calls: list[str] = []
+
+    def fake(url, params=None):
+        calls.append(url)
+        if "/orgs/" in url:
+            req = httpx.Request("GET", url)
+            raise httpx.HTTPStatusError("404", request=req, response=httpx.Response(404, request=req))
+        return [{"pushed_at": "2026-09-25T00:32:01Z", "full_name": "convex-eth/curve_pegkeepers"}]
+    monkeypatch.setattr(cl, "get_json", fake)
+    assert cl.account_latest_push("convex-eth") == "2026-09-25T00:32:01Z"
+    assert [u.rsplit("/", 3)[-3:] for u in calls] == [["orgs", "convex-eth", "repos"], ["users", "convex-eth", "repos"]]
+
+    # an org that exists but holds no repos (makerdao after the Sky move) is None, not an error
+    monkeypatch.setattr(cl, "get_json", lambda url, params=None: [])
+    assert cl.account_latest_push("makerdao") is None
+
+    # anything but a 404 on /orgs is a real failure and propagates
+    def boom(url, params=None):
+        req = httpx.Request("GET", url)
+        raise httpx.HTTPStatusError("401", request=req, response=httpx.Response(401, request=req))
+    monkeypatch.setattr(cl, "get_json", boom)
+    with pytest.raises(httpx.HTTPStatusError):
+        cl.account_latest_push("aave")
+    cl.close()
+
+
 # --- ethplorer -------------------------------------------------------------------
 
 def test_ethplorer_http200_error_body_raises(monkeypatch, sample_config):

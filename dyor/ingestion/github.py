@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from typing import Any
 
+import httpx
+
 from dyor.config import get_settings
 from dyor.ingestion.base import BaseClient
 
@@ -64,6 +66,23 @@ class GitHubClient(BaseClient):
         """
         repos = self.get_json(
             f"{self.base_url}/orgs/{org}/repos",
+            params={"sort": "pushed", "direction": "desc", "per_page": 1},
+        )
+        return repos[0]["pushed_at"] if repos else None
+
+    def account_latest_push(self, name: str) -> str | None:
+        """`org_latest_push` for an account that may be a *user* rather than an
+        org. CoinGecko and DefiLlama list both without distinction (convex-eth,
+        resupplyfi, xvi10/GMX …) and `/orgs/{name}` answers 404 for a user, which
+        used to read as "no repos". Returns None only when neither has repos
+        (e.g. `makerdao` after the move to `sky-ecosystem`)."""
+        try:
+            return self.org_latest_push(name)
+        except httpx.HTTPStatusError as exc:
+            if exc.response.status_code != 404:
+                raise
+        repos = self.get_json(
+            f"{self.base_url}/users/{name}/repos",
             params={"sort": "pushed", "direction": "desc", "per_page": 1},
         )
         return repos[0]["pushed_at"] if repos else None

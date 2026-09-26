@@ -109,7 +109,7 @@ Current sources, and what each contributes:
 | Santiment (free) | address growth, dev-activity trend — slug resolved by id / contract / name / ticker | ~80% of tokens |
 | Ethplorer `freekey` | top-10 holder concentration | Ethereum ERC-20s |
 | Sourcify | contract verification (True-or-unknown) on Ethereum, Arbitrum, Base, OP, Polygon, BSC, Avalanche | any EVM deployment |
-| GitHub | last push (dead-token gate) — **needs `DYOR_GITHUB_TOKEN`**, anonymous is 60/hour | tokens with a known org |
+| GitHub | most recent push across every account found for the token — DefiLlama's list, all CoinGecko repo URLs, verified overrides; user accounts too (dead-token gate, corroborated against Santiment dev activity) — **needs `DYOR_GITHUB_TOKEN`**, anonymous is 60/hour | tokens with a known account |
 | CryptoRank | unlock overhang, next-unlock $ — **Pro plan only** (v0 died Sep 2026; v3 free plan has no vesting endpoints) | off until upgraded |
 
 Every record carries a per-source `_feeds` status. A spec only lists features

@@ -371,9 +371,25 @@ Changes (commit `e68acd2`, `docs/DATA-COVERAGE-2026-09-26.md` has the numbers):
   protocols are capped at 0.5 by design. Disable by removing the rule from
   `config.yaml gating.rules` if that is not wanted.
 - Santiment slug map by id / main contract / name / unique ticker (68 → 94/116).
-- Sourcify on six EVM chains; GitHub org auto-discovered but the feed is gated
-  on `DYOR_GITHUB_TOKEN` (anonymous is 60/hour) — **a free token turns the
-  dead-token gate on for nearly every token**.
+- Sourcify on six EVM chains; GitHub org auto-discovered; the feed is gated
+  on `DYOR_GITHUB_TOKEN` (anonymous is 60/hour). **Configured 2026-09-26**: a
+  fine-grained token (public repositories, read-only, no extra permissions) in
+  the local `.env` and `/root/DYOR/.env`; API/MCP restarted; `_feeds.github`
+  is `ok` on live analyses. The `dead_token` gate's no-commits-in-180-days
+  criterion is therefore active from the next refresh (Sun 2026-09-28).
+  **A no-persist preview collect of the full universe showed it would have
+  zeroed Solana, NEAR, BNB, USDC, TUSD, BCH and Balancer**: CoinGecko's repo
+  URLs still point at `solana-labs`, `nearprotocol`, `binance-exchange`,
+  `centrehq`, `balancer-labs` — orgs development left years ago — and
+  `/orgs/{name}` 404s for user accounts (convex-eth, resupplyfi, GMX's xvi10),
+  which read as "no repos". Fixed the same day: the collector checks EVERY
+  discovered account (DefiLlama list + all CoinGecko repo URLs + verified
+  `GITHUB_ACCOUNT_OVERRIDES` for the migrated majors, user accounts via
+  `/users/` fallback, max 4) and keeps the most recent push (`_github_account`
+  on the record says which); the gate's no-commits criterion is overruled when
+  Santiment's dev-activity window shows events (`dev_activity_events`, a new
+  gate input). Santiment alone was not enough — its repo lists for USDC,
+  Balancer, Maker and BCH are stale too — hence the overrides.
 - `universe.make_target` is the one enrichment path for universe, baskets and
   analyze, so the anchor and live records share feature sets. Baskets rebuilt.
 

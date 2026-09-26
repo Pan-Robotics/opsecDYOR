@@ -116,6 +116,28 @@ case "$FEEDS" in
   OUTAGE:*) no "feed outage in latest run" "${FEEDS#OUTAGE:}" ;;
   *) wr "feed health" "could not evaluate: ${FEEDS:0:60}" ;;
 esac
+GH=$(ssh $H 'cd /root/DYOR && .venv/bin/python -c "
+from dyor.config import get_settings
+from dyor.store import db
+from dyor.collect import feed_summary
+con=db.connect(read_only=True); recs=db.latest_records(con); con.close()
+g=feed_summary(recs).get(\"github\",{})
+print(int(bool(get_settings().github_token)), g.get(\"ok\",0), g.get(\"off\",0), g.get(\"error\",0))"' 2>/dev/null)
+set -- $GH
+if [ "$1" = "1" ]; then
+  ok "GitHub token configured (server .env)"
+  # The feed only reaches the stored run at the next refresh; until then it is
+  # a WARN, not a FAIL. Errors mean the token expired/was revoked (401).
+  if [ "${4:-0}" -gt 0 ] && [ "${4:-0}" -ge "${2:-0}" ]; then
+    no "github feed in latest run" "error=$4 ok=$2 — token expired or revoked?"
+  elif [ "${3:-0}" = "0" ] && [ "${2:-0}" -gt 0 ]; then
+    ok "github feed in latest run" "ok=$2"
+  else
+    wr "github feed in latest run" "ok=${2:-?} off=${3:-?} — turns on at the next refresh"
+  fi
+else
+  wr "GitHub token configured (server .env)" "DYOR_GITHUB_TOKEN unset — dead_token commit criterion inert"
+fi
 
 sec "F · SCHEDULING"
 ssh $H 'crontab -l 2>/dev/null | grep -q "dyor-refresh"' && ok "crontab entry" "$(ssh $H 'crontab -l | grep dyor-refresh')" || no "crontab entry"

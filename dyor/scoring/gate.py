@@ -60,13 +60,23 @@ def _extreme_fdv_mcap(rec: dict, rule: dict, _cfg: dict) -> bool:
 def _dead_token(rec: dict, _rule: dict, cfg: dict) -> bool:
     """Any one criterion trips it: stale repo or no volume.
 
+    The stale-repo criterion is GitHub's most recent push across the accounts
+    the collector could discover for the token — a proxy only as good as that
+    discovery. CoinGecko's repo URLs outlive org migrations (solana-labs →
+    anza-xyz), so when Santiment's curated per-project repo set recorded dev
+    events in its window the project is demonstrably alive and the GitHub
+    signal is treated as a stale org, not as death. No Santiment data means no
+    corroboration either way, and the GitHub signal stands.
+
     Price drawdown from ATH is deliberately NOT a criterion — a deep drawdown
     alone reflects price action, not project death, and must not zero a token.
     """
     crit = cfg.get("dead_token", {})
     days = rec.get("days_since_last_commit")
     if days is not None and days >= crit.get("no_commits_days", 180):
-        return True
+        events = rec.get("dev_activity_events")
+        if not (events is not None and events > 0):
+            return True
     vol = rec.get("daily_volume_usd")
     return vol is not None and vol < crit.get("min_daily_volume_usd", 1000.0)
 

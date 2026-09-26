@@ -25,8 +25,12 @@ def test_collect_builds_scorable_records(sample_config, monkeypatch):
     # The Santiment identity list is ~400 KB and only feeds the slug map (unit-
     # tested on fixtures); keep it out of the cassette.
     monkeypatch.setattr("dyor.ingestion.santiment.SantimentClient.all_projects", lambda self: [])
+    # GitHub is pinned OFF regardless of the developer's .env: the cassette was
+    # recorded keyless, and the multi-account lookup is unit-tested with fakes.
     from dyor.config import get_settings
-    has_gh_token = bool(get_settings().github_token)
+    keyless_gh = get_settings().model_copy(update={"github_token": None})
+    monkeypatch.setattr("dyor.collect.get_settings", lambda: keyless_gh)
+    monkeypatch.setattr("dyor.ingestion.github.get_settings", lambda: keyless_gh)
 
     with Collector(sample_config, use_cache=False) as collector:
         records = collector.collect(TARGETS)
@@ -39,11 +43,10 @@ def test_collect_builds_scorable_records(sample_config, monkeypatch):
     # token-sink + dev signals come from the new feeds. value_accrual depends on
     # DefiLlama holders-revenue coverage (varies by snapshot) — assert presence.
     assert "value_accrual" in aave
-    # GitHub is token-gated (60 req/HOUR anonymous): off without DYOR_GITHUB_TOKEN.
-    if has_gh_token:
-        assert aave["days_since_last_commit"] is not None and aave["days_since_last_commit"] >= 0
-    else:
-        assert aave["_feeds"]["github"] == "off" and aave["days_since_last_commit"] is None
+    # GitHub is token-gated (60 req/HOUR anonymous) and pinned off above.
+    assert aave["_feeds"]["github"] == "off" and aave["days_since_last_commit"] is None
+    # Santiment's raw dev-event count rides along for the dead_token corroboration
+    assert aave["dev_activity_events"] is not None and aave["dev_activity_events"] > 0
     # CoinGecko meta now carries the watchlist count + audit status from DefiLlama
     assert aave["watchlist_users"] is not None and aave["watchlist_users"] > 0
     assert "audited" in aave
