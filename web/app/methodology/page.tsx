@@ -66,10 +66,24 @@ export default function MethodologyPage() {
 
       <section>
         <h3 className="mb-3 font-semibold text-white">Gate — hard disqualifiers</h3>
-        <div className="card text-sm text-muted">
-          {Object.keys(m.gating).map((g) => (
-            <span key={g} className="mr-2 inline-block">• {g.replace(/_/g, " ")}</span>
+        <div className="card space-y-2 text-sm">
+          {Object.entries(m.gating).map(([g, rule]) => (
+            <div key={g} className="flex flex-wrap items-center gap-2">
+              <span className={rule.active_on_open_data ? "text-white" : "text-muted line-through decoration-edge"}>
+                • {g.replace(/_/g, " ")}
+              </span>
+              <span className="pill border border-edge bg-panel2 text-muted">
+                {rule.action === "zero" ? "zeroes" : `caps at ${rule.cap}`}
+                {rule.threshold ? ` · > ${rule.threshold}×` : ""}
+              </span>
+              {!rule.active_on_open_data && (
+                <span className="pill border border-amber-500/30 bg-amber-500/10 text-amber-300">inactive on open data — needs a keyed source</span>
+              )}
+            </div>
           ))}
+          <p className="pt-1 text-xs text-muted">
+            Gates marked inactive are wired but cannot fire on free data: contract verification is True-or-unknown (Sourcify can&apos;t prove a negative), and audit / team-anonymity facts have no keyless source.
+          </p>
         </div>
       </section>
 

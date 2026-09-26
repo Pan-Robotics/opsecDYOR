@@ -5,6 +5,10 @@ import PriceChart from "./PriceChart";
 
 const FEED_ICON: Record<string, string> = { ok: "🟢", empty: "⚪", error: "🔴", off: "⚫" };
 
+// Link fields come from CoinGecko's project metadata (third-party data); only
+// ever render them as http(s) — never a javascript: or data: URL.
+const safeHref = (u: string | null | undefined) => (u && /^https?:\/\//i.test(u) ? u : null);
+
 export default function TokenReport({ a }: { a: Analysis }) {
   const r = a.resolved!;
   const s = a.score;
@@ -96,7 +100,7 @@ export default function TokenReport({ a }: { a: Analysis }) {
             Present on <span className="text-white">{r.chains.length}</span> chain(s).
           </div>
           <div className="mt-2 flex flex-wrap gap-2">
-            {Object.entries(r.explorers).map(([chain, url]) => (
+            {Object.entries(r.explorers).filter(([, url]) => safeHref(url)).map(([chain, url]) => (
               <a key={chain} href={url} target="_blank" rel="noreferrer"
                  className="pill border border-edge bg-panel2 text-sky-300 hover:text-sky-200">
                 {chain} ↗
@@ -116,6 +120,7 @@ export default function TokenReport({ a }: { a: Analysis }) {
                 ["📄 Whitepaper", r.links.whitepaper],
                 ["🦎 CoinGecko", r.coingecko_url],
               ] as [string, string | null | undefined][])
+                .map(([label, url]) => [label, safeHref(url)] as [string, string | null])
                 .filter(([, url]) => url)
                 .map(([label, url]) => (
                   <a key={label} href={url as string} target="_blank" rel="noreferrer"

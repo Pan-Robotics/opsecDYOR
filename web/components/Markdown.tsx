@@ -1,11 +1,13 @@
 import React from "react";
 
+// **bold** and _italic_ (a whole `_…_` span with no inner underscores). Other
+// underscores are content — feature names like `price_to_fees` must survive.
 function inline(s: string): React.ReactNode[] {
-  return s.split(/(\*\*[^*]+\*\*)/g).map((p, i) =>
-    p.startsWith("**") && p.endsWith("**")
-      ? <strong key={i} className="text-white">{p.slice(2, -2)}</strong>
-      : <span key={i}>{p.replace(/_/g, "")}</span>,
-  );
+  return s.split(/(\*\*[^*]+\*\*|(?<![\w])_[^_\n]+_(?![\w]))/g).filter(Boolean).map((p, i) => {
+    if (p.startsWith("**") && p.endsWith("**")) return <strong key={i} className="text-white">{p.slice(2, -2)}</strong>;
+    if (p.length > 2 && p.startsWith("_") && p.endsWith("_")) return <em key={i}>{p.slice(1, -1)}</em>;
+    return <span key={i}>{p}</span>;
+  });
 }
 
 /** Minimal markdown for the analyst memo (headers, bullets, bold). */

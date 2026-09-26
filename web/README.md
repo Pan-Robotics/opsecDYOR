@@ -26,12 +26,12 @@ at the API host. CORS on the API is open for local dev.
 |---|---|
 | `/` | Home — hero, how-it-works, asset classes |
 | `/analyze` | Search any token → full report: class, score, **tier + confidence + tier-stability**, market snapshot, domain bars, metrics, cross-chain explorers, peers, and an on-demand **🧠 analyst memo**. Peer modes incl. **"Same asset class" (default, fairest)**. |
-| `/screener` | Tier-tabbed universe (A/B/C/D), background **build top-N**, and a **filter bar** (class / min-tier / min real-yield / no-flags) |
+| `/screener` | Tier-tabbed universe (A/B/C/D) refreshed weekly by the `dyor refresh` cron, plus a **filter bar** (class / min-tier / min real-yield / no-flags). Rebuilds are admin-only via `POST /api/screener/build` |
 | `/tools` | **Portfolio scorer**, **Barbell builder**, **tier backtest** |
 | `/narratives` | Sector rotation from CoinGecko categories |
 | `/methodology` | Weights, tiers, asset classes, gate, metric glossary |
 
-API: `analyze`, `screener` (+ `screener/build`), `screen`, `memo`, `portfolio`,
+API: `analyze`, `screener` (+ admin-only `screener/build`), `screen`, `memo`, `portfolio`,
 `barbell`, `backtest`, `narratives`, `classes`, `methodology`.
 
 ## Stack

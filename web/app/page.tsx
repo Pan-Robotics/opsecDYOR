@@ -131,7 +131,7 @@ export default function Home() {
       <section className="grid gap-4 md:grid-cols-3">
         <div className="card">
           <div className="font-semibold text-white">🚫 The gate</div>
-          <p className="mt-1 text-sm text-muted">Hard disqualifiers <b className="text-white">cap or zero</b> a score so a flaw can&apos;t be averaged away — unverified contract, extreme FDV/MCAP, or a dead token (no commits 6mo+, ~99% off ATH, near-zero volume).</p>
+          <p className="mt-1 text-sm text-muted">Hard disqualifiers <b className="text-white">cap or zero</b> a score so a flaw can&apos;t be averaged away — extreme FDV/MCAP, or a dead token (no commits 6mo+, near-zero volume). Contract-verification, audit and team gates need keyed sources and are marked inactive on open data.</p>
         </div>
         <div className="card">
           <div className="font-semibold text-white">🎯 Confidence + robustness</div>
@@ -150,16 +150,17 @@ export default function Home() {
           <blockquote className="text-lg leading-relaxed text-white">
             <span aria-hidden="true" className="mr-1 font-orbitron text-2xl text-brand">“</span>
             Nice work — and thanks for including{" "}
-            <a href="https://x.com/ethplorer" target="_blank" rel="noopener noreferrer"
+            <a href="https://x.com/ethplorer/status/2080368802261254331" target="_blank" rel="noopener noreferrer"
               className="text-brand hover:text-brand2">@ethplorer</a>{" "}
             in the data stack. We tested four projects in DYOR and found its risk signals broadly
             aligned with our own framework based on stablecoin reserves and the Printing-Press
             Index (PPI).
           </blockquote>
           <figcaption className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
-            <a href="https://x.com/ethplorer" target="_blank" rel="noopener noreferrer"
+            <a href="https://x.com/ethplorer/status/2080368802261254331" target="_blank" rel="noopener noreferrer"
               className="font-semibold text-white hover:text-brand">Ethplorer</a>
-            <span className="text-muted">Ethereum token explorer &amp; analytics · on X</span>
+            <a href="https://x.com/ethplorer/status/2080368802261254331" target="_blank" rel="noopener noreferrer"
+              className="text-muted hover:text-white">Ethereum token explorer &amp; analytics · view the post on X ↗</a>
             <span className="pill border border-edge bg-panel2 text-muted">holder-concentration source</span>
           </figcaption>
         </figure>

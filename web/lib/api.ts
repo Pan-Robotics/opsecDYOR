@@ -75,10 +75,12 @@ export type Analysis = {
   ok: boolean;
 };
 
+export type GateRule = { action: string; cap?: number; threshold?: number; active_on_open_data: boolean };
+
 export type Methodology = {
   weights: Record<string, number>;
   tiers: { label: string; min: number; color: string }[];
-  gating: Record<string, any>;
+  gating: Record<string, GateRule>;
   reference: { treasury_10y_yield_pct: number; reference_date: string };
   domains: Record<string, { label: string; description: string }>;
   glossary: { key: string; label: string; meaning: string; direction: string }[];
@@ -97,16 +99,6 @@ async function req<T>(path: string, method = "GET"): Promise<T> {
 }
 const get = <T>(p: string) => req<T>(p, "GET");
 
-export type BuildJob = {
-  status: "running" | "done" | "error" | "unknown";
-  top_n?: number;
-  target_count?: number;
-  count?: number;
-  feed_errors?: number;
-  elapsed?: number | null;
-  error?: string | null;
-};
-
 function penaltyParam(p?: boolean) {
   return p === undefined ? "" : `&penalize_missing_core=${p}`;
 }
@@ -118,10 +110,6 @@ export const api = {
   screener: (source = "sample", peerGroups = false, penalizeMissingCore?: boolean) =>
     get<{ source: string; count: number; results: Score[] }>(
       `/api/screener?source=${source}&peer_groups=${peerGroups}${penaltyParam(penalizeMissingCore)}`),
-  screenerBuild: (topN = 30) =>
-    req<{ job_id: string }>(`/api/screener/build?top_n=${topN}`, "POST"),
-  screenerBuildStatus: (jobId: string) =>
-    get<BuildJob>(`/api/screener/build/${jobId}`),
   narratives: (by = "market_cap_change_24h") =>
     get<{ by: string; rows: any[] }>(`/api/narratives?by=${by}`),
   methodology: () => get<Methodology>(`/api/methodology`),

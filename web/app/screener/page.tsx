@@ -1,6 +1,6 @@
 "use client";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { api, type BuildJob, type Score, type ScreenRow } from "@/lib/api";
+import { useCallback, useEffect, useState } from "react";
+import { api, type Score, type ScreenRow } from "@/lib/api";
 import { fmt, ScoreBar, Spinner, TierBadge } from "@/components/ui";
 import TokenLink from "@/components/TokenLink";
 import { useStickyState } from "@/components/AppState";
@@ -21,17 +21,13 @@ export default function ScreenerPage() {
   const [error, setError] = useState<string | null>(null);
   const [activeTier, setActiveTier] = useStickyState("screener:tier", "A");
 
-  // build job
-  const [topN, setTopN] = useStickyState("screener:topN", 30);
-  const [job, setJob] = useState<BuildJob | null>(null);
-  const polling = useRef<ReturnType<typeof setTimeout> | null>(null);
-
   // filter (screen_for)
   const [fClass, setFClass] = useStickyState("screener:fClass", "");
   const [fTier, setFTier] = useStickyState("screener:fTier", "");
   const [fYield, setFYield] = useStickyState("screener:fYield", "");
   const [fNoFlags, setFNoFlags] = useStickyState("screener:fNoFlags", false);
   const [filtered, setFiltered] = useStickyState<{ rows: ScreenRow[]; universe: number } | null>("screener:filtered", null);
+  const [filterError, setFilterError] = useState<string | null>(null);
 
   async function applyFilter() {
     const params: Record<string, string> = { source };
@@ -39,8 +35,13 @@ export default function ScreenerPage() {
     if (fTier) params.min_tier = fTier;
     if (fYield) params.min_real_yield = String(Number(fYield) / 100);
     if (fNoFlags) params.no_flags = "true";
-    const d = await api.screenFilter(params);
-    setFiltered({ rows: d.results, universe: d.universe });
+    setFilterError(null);
+    try {
+      const d = await api.screenFilter(params);
+      setFiltered({ rows: d.results, universe: d.universe });
+    } catch (e: any) {
+      setFilterError(e.message);
+    }
   }
 
   const load = useCallback(async () => {
@@ -58,32 +59,14 @@ export default function ScreenerPage() {
     load();
   }, [load]);
 
-  useEffect(() => () => { if (polling.current) clearTimeout(polling.current); }, []);
-
-  async function startBuild() {
-    setJob({ status: "running", elapsed: 0 });
-    try {
-      const { job_id } = await api.screenerBuild(topN);
-      const poll = async () => {
-        const s = await api.screenerBuildStatus(job_id);
-        setJob(s);
-        if (s.status === "running") {
-          polling.current = setTimeout(poll, 3000);
-        } else if (s.status === "done") {
-          setSource("stored");
-          await load();
-        }
-      };
-      poll();
-    } catch (e: any) {
-      setJob({ status: "error", error: e.message });
-    }
-  }
-
+  // Group by tier letter. Tokens with insufficient data ("N/A — …") have no
+  // letter; they are listed separately rather than silently dropped.
   const byTier: Record<string, Score[]> = { A: [], B: [], C: [], D: [] };
+  const unscored: Score[] = [];
   (rows ?? []).forEach((r) => {
     const k = r.tier?.trim()?.[0];
-    if (byTier[k]) byTier[k].push(r);
+    if (k && byTier[k]) byTier[k].push(r);
+    else unscored.push(r);
   });
   const active = (byTier[activeTier] ?? []).slice(0, PER_TIER);
 
@@ -93,11 +76,11 @@ export default function ScreenerPage() {
         <div>
           <h1 className="text-2xl font-bold text-white">📊 Screener</h1>
           <p className="mt-1 text-muted">
-            A scored universe, grouped by tier. Build a fresh top-N by TVL, or read your last saved run.
+            A scored universe grouped by tier — the top protocols by TVL plus every asset class&apos;s reference basket, refreshed weekly.
           </p>
         </div>
         <button onClick={load} className="rounded-lg border border-edge px-3 py-1.5 text-sm text-white hover:bg-panel2">
-          ↻ Refresh
+          ↻ Reload
         </button>
       </div>
 
@@ -116,25 +99,6 @@ export default function ScreenerPage() {
           <label className="flex cursor-pointer items-center gap-2 text-xs text-muted">
             <input type="checkbox" checked={penalize} onChange={(e) => setPenalize(e.target.checked)} /> penalize missing core
           </label>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2 border-t border-edge pt-3">
-          <span className="text-xs text-muted">Build fresh universe — top</span>
-          <input type="number" min={5} max={80} value={topN}
-            onChange={(e) => setTopN(Math.max(5, Math.min(80, Number(e.target.value) || 30)))}
-            className="w-20 rounded-lg border border-edge bg-panel2 px-2 py-1 text-sm text-white" />
-          <span className="text-xs text-muted">by TVL</span>
-          <button onClick={startBuild} disabled={job?.status === "running"} className="btn">
-            {job?.status === "running" ? "Building…" : "Build / refresh search"}
-          </button>
-          {job?.status === "running" && (
-            <span className="flex items-center gap-2 text-xs text-muted">
-              <span className="h-3 w-3 animate-spin rounded-full border-2 border-edge border-t-brand" />
-              collecting {job.target_count ?? topN} tokens… {job.elapsed ? `${job.elapsed}s` : ""} (a few minutes)
-            </span>
-          )}
-          {job?.status === "done" && <span className="text-xs text-emerald-300">✓ built {job.count} tokens</span>}
-          {job?.status === "error" && <span className="text-xs text-rose-300">build failed: {job.error}</span>}
         </div>
       </div>
 
@@ -164,6 +128,7 @@ export default function ScreenerPage() {
           <button onClick={applyFilter} className="btn">Filter</button>
           {filtered && <button onClick={() => setFiltered(null)} className="text-xs text-muted hover:text-white">clear</button>}
         </div>
+        {filterError && <div className="text-sm text-rose-300">{filterError}</div>}
         {filtered && (
           <div>
             <div className="mb-2 text-xs text-muted">{filtered.rows.length} of {filtered.universe} tokens match</div>
@@ -194,8 +159,8 @@ export default function ScreenerPage() {
       {error && <div className="card border-rose-500/30 text-rose-200">{error}</div>}
       {rows && rows.length === 0 && (
         <div className="card text-muted">
-          No saved universe yet. Click <b>Build / refresh search</b> above, or run{" "}
-          <code>dyor collect --top-n 50 --persist</code>.
+          No saved universe yet — the weekly refresh hasn&apos;t run on this instance. An operator can trigger one with{" "}
+          <code>dyor refresh --top-n 60</code>.
         </div>
       )}
 
@@ -216,6 +181,15 @@ export default function ScreenerPage() {
           </div>
 
           <TierTable rows={active} total={byTier[activeTier].length} />
+
+          {unscored.length > 0 && (
+            <div className="card text-sm text-muted">
+              <span className="text-white">{unscored.length}</span> token{unscored.length === 1 ? "" : "s"} could not be scored (insufficient data for their class):{" "}
+              {unscored.map((r, i) => (
+                <span key={r.token}>{i > 0 ? ", " : ""}<TokenLink token={r.token} /></span>
+              ))}
+            </div>
+          )}
         </>
       )}
     </div>

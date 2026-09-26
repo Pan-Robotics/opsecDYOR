@@ -118,10 +118,13 @@ function BarbellTool() {
 function BacktestTool() {
   const [res, setRes] = useStickyState<BacktestResult | null>("tools:bt:res", null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function run() {
-    setLoading(true); setRes(null);
-    try { setRes(await api.backtest()); } finally { setLoading(false); }
+    setLoading(true); setRes(null); setError(null);
+    try { setRes(await api.backtest()); }
+    catch (e: any) { setError(e.message); }
+    finally { setLoading(false); }
   }
 
   return (
@@ -130,6 +133,7 @@ function BacktestTool() {
       <p className="text-sm text-muted">Per-tier forward return from your persisted runs. Small/noisy until <code>dyor refresh</code> runs accumulate.</p>
       <button onClick={run} disabled={loading} className="btn">{loading ? "Running…" : "Run backtest"}</button>
       {loading && <Spinner />}
+      {error && <div className="text-rose-300">{error}</div>}
       {res && (
         <div className="space-y-2">
           <div className="text-xs text-muted">{res.samples} samples · {res.tokens ?? 0} tokens</div>
