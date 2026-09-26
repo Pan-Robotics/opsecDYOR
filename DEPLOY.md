@@ -243,8 +243,11 @@ collectors can never run at once.
 and, when set, `DYOR_ADMIN_TOKEN` / `DYOR_ALERT_WEBHOOK`. It is read from the
 project dir regardless of CWD.
 
-**Logs.** `pm2 install pm2-logrotate` — uvicorn writes INFO to the pm2 error
-stream, and unrotated they grow without bound.
+**Logs.** `pm2 install pm2-logrotate` (set to 20 MB / 14 files / compress) — uvicorn
+writes INFO to the pm2 error stream, and unrotated they grow without bound. The
+refresh log rotates via `deploy/logrotate-dyor-refresh.conf` →
+`/etc/logrotate.d/dyor-refresh`; it needs `su root root` because `/var/log` is
+group-writable on Ubuntu and logrotate silently skips such parents otherwise.
 
 **Web changes need a rebuild.** An rsync alone leaves the old `.next` serving 200s;
 `deploy/deployment-sweep.sh` now fails if the server's build is older than its

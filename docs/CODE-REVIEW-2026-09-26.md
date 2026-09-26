@@ -285,3 +285,52 @@ unknown tokens.
 5. M1, M2, M10 — input validation, honest methodology copy, Next patch.
 6. M11 — `DYOR_HOME` test isolation, then tests for H2/H3.
 7. Everything else as hygiene passes.
+
+---
+
+## Resolution — all findings addressed (same day)
+
+Commits `2106b0a` (ingestion), `c753888` (store/API), `7a57029` (web),
+`3eeed16` (deploy/docs), `61b37f8`, and the Santiment eviction follow-up; deployed
+to the VPS and verified live. Tests 190 → 220, all passing; ruff clean.
+
+| ID | Resolution |
+|---|---|
+| **H1** | `refresh` prints per-source feed counts + one example error; `alerts.feed_outage_alerts` fires **critical** at ≥50% error rate. CryptoRank v0 disabled in config (feed reports `off`). With the user's key the client uses the documented **v3** API (verified live: `/currencies/map`, `/currencies/{id}`, `/status`); the plan is **Sandbox**, whose 20 endpoints exclude vesting, so `enabled` is False and no credits are spent. On a Pro plan the overhang feature — and `unlock_pct_of_volume` via next-unlock USD — activates with no code change. `unlock_overhang(has_vesting=None)` now returns `None`. |
+| **H2** | `jobs._run_build` unions the baskets; **`db.persist_run` shrink guard** (refuses < 50% of previous unless forced) on every persist path; builds flock the same `data/.collect.lock` as the cron; `POST /api/screener/build` requires `X-Admin-Token` (disabled when unset); the public Build button is removed from the screener. |
+| **H3** | `db.refresh_in_latest_run` — `/api/analyze` refreshes a token in place only if already on the board; never inserts. |
+| **H4** | nginx `limit_req`: `dyor_live` 6 r/m (burst 3) on analyze/memo/portfolio/build and `/mcp`; `dyor_api` 60 r/m (burst 20) on the rest — burst-tested live (11/30 rapid hits → 429). App-side: live analyses bounded by a semaphore (503 + Retry-After); portfolio capped at 10 (API + MCP). |
+| M1 | `is_gecko_id` guards every user-string → URL path (`resolve`, `/api/chart`). |
+| M2 | Landing gate copy corrected; `/api/methodology` and MCP `methodology` return `active_on_open_data` per rule; the methodology page marks the three inert rules. |
+| M3 | DefiLlama `Chain` → `l1`; `CEX`/`Bridge` no longer imply `defi`. |
+| M4 | Ethplorer HTTP-200 error bodies raise → feed `error`. |
+| M5 | `redact_secrets` on every error string (base client + collector). |
+| M6 | GitHub paces at 1 r/m (60/hour) without a token. |
+| M7 | `markets()` pages in 250s. |
+| M8 | `DYOR_COINGECKO_API_TIER=demo\|pro` selects host + header. |
+| M9 | Covered by the shrink guard. |
+| M10 | Next 14.2.15 → **16.3.6**, React 18 → 19; `npm audit --omit=dev`: 3 → **0**. `eslint-config-next` removed from production deps. |
+| M11 | Autouse fixture isolates DuckDB + cache per test; tests added for every HIGH (build-with-baskets, shrink guard, refresh-in-place, admin gate). |
+| L1 | Dead `raw_responses`/`crosswalk` store code removed; docstring corrected. |
+| L2 | Streamlit → optional `[legacy-ui]` extra. |
+| L3 | `.env` resolved from `PROJECT_ROOT`. |
+| L4 | Atomic cache writes; expired-entry eviction (incl. Santiment); empty bodies cached; **one thread-safe limiter per source per process**. |
+| L5 | `read_only` opens for readers; `run_id` index; `prune_runs` (keep 156). |
+| L6 | Bounded job registry; screener filter errors surfaced. |
+| L7 | Tiers sorted in code. |
+| L8 | Markdown keeps in-word underscores; hrefs limited to http(s); N/A tokens listed; backtest errors shown. |
+| L9 | MCP `peer_mode` defaults to `class`; docstrings honest. |
+| L10 | README rewritten; DEPLOY/STAGES/mcp.md/ecosystem/app docstring/Ethplorer docstring corrected. |
+| L11 | ruff configured in `pyproject`; all hits fixed. |
+| L12 | `pm2-logrotate` installed (20 MB, 14 files, compressed). Alert webhook remains a one-line `.env` decision. |
+| L13 | Covered by H1 diagnostics. |
+
+Also shipped from the earlier backlog: the Ethplorer testimonial links to the
+actual post, and the deployment sweep now fails on a stale `.next`, a feed
+outage in the latest run, missing rate limits, a wrong lock path, an ungated
+build endpoint, or missing log rotation.
+
+**Residual, by design:** three gate rules stay inert on open data (documented in
+the UI); `social_trend` / `inflation_rate` stay relative (no free source);
+`unlock_overhang` returns on a CryptoRank Pro plan. `DYOR_ADMIN_TOKEN` and
+`DYOR_ALERT_WEBHOOK` are unset on the server — both one line in `/root/DYOR/.env`.

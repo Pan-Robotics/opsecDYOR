@@ -327,6 +327,31 @@ shareable URLs are the thing the whole channel strategy depends on.
 
 ---
 
+## 8b. September 2026 — review and hardening
+
+A full code review on 2026-09-26 (`docs/CODE-REVIEW-2026-09-26.md`) found four
+live production defects and 24 further issues; all were resolved and deployed
+the same day. The important state changes:
+
+- **CryptoRank's open v0 endpoint is dead** (Cloudflare, ~Sep 6–11). The client
+  now uses the keyed v3 API; the deployed key is on the **Sandbox** plan, which
+  has no vesting endpoints, so the feed reports `off` and `unlock_overhang` is
+  `n/a` for live tokens. Upgrading to Pro re-enables it (and adds next-unlock
+  USD for `unlock_pct_of_volume`) with no code change.
+- **`refresh` now prints per-source feed counts**, and a `feed_outage` critical
+  alert fires when any source errors on ≥50% of tokens.
+- **The universe can no longer shrink by accident**: every persist goes through
+  `db.persist_run` (refuses < 50% of the previous run unless `--force`), the API
+  build unions the baskets, is admin-gated (`DYOR_ADMIN_TOKEN`, unset → disabled)
+  and flocks the same `data/.collect.lock` as the cron. The public Build button
+  is gone.
+- `/api/analyze` refreshes tokens in place only; it never adds to the board.
+- **nginx per-IP rate limits** on the live-collection endpoints and `/mcp`;
+  app-side semaphore on live analyses; portfolio capped at 10.
+- Web on **Next 16.3.6 / React 19**, 0 production advisories.
+- Server: `.env` (mode 600) holds the CryptoRank key; pm2-logrotate installed;
+  cron wrapper uses the shared lock path.
+
 ## 9. Gaps in this reconstruction
 
 Honest about what couldn't be recovered:
