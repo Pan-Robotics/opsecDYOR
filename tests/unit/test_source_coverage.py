@@ -136,3 +136,26 @@ def test_resolve_slug_map_precedence_and_ambiguity():
     assert m["giggle-fund"] == "gigglecoin"       # exact name
     assert "pepe" not in m                        # ambiguous ticker → unresolved, not guessed
     assert "unknown-x" not in m
+
+
+def test_audits_are_ignored_for_chain_cex_bridge_rows():
+    """DefiLlama's chain rows carry audits "0"; that must not flag ETH/BTC/SOL as
+    unaudited (it did, in the first production run of this feature)."""
+    eth = make_target("ethereum", dl_info={"slug": "ethereum", "category": "Chain", "audits": "0"},
+                      chain={"name": "Ethereum", "tvl": 5e10})
+    assert eth.audits is None and eth.has_audit_links is False
+    app = make_target("babylon", dl_info={"slug": "babylon", "category": "Restaking", "audits": "0"})
+    assert app.audits == "0"
+
+
+def test_audited_only_set_for_defi_classes():
+    """The gate is an application-protocol expectation: the same DefiLlama "0"
+    yields False for a DeFi record and None for every other class."""
+    from dyor.collect import audited_for_class
+
+    assert audited_for_class("defi", "0", False) is False
+    assert audited_for_class("general", "0", False) is False
+    assert audited_for_class("defi", "2", False) is True
+    for cls in ("l1", "monetary", "meme", "stablecoin", None):
+        assert audited_for_class(cls, "0", False) is None, cls
+        assert audited_for_class(cls, "2", True) is None, cls

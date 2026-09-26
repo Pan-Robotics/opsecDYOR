@@ -320,6 +320,16 @@ def audited_from_defillama(audits: str | None, has_audit_links: bool) -> bool | 
         return None
 
 
+def audited_for_class(asset_class: str | None, audits: str | None, has_audit_links: bool) -> bool | None:
+    """The `no_audit` gate input, scoped to classes where an audit is an
+    expectation. An L1, a monetary asset, a memecoin or a stablecoin is not an
+    application protocol; for those the input stays unknown (None) whatever
+    DefiLlama's row says."""
+    if asset_class not in ("defi", "general"):
+        return None
+    return audited_from_defillama(audits, has_audit_links)
+
+
 def github_org_from_repos(repos: list[str] | None) -> str | None:
     """'https://github.com/aave/aave-protocol' → 'aave' (the org)."""
     for url in repos or []:
@@ -508,14 +518,18 @@ class Collector:
                     unlock = self._try("defillama", tok,
                                        lambda s=slug, m=market: parse_unlock(self.dl.emissions(s), m))
 
-            # Chain-level fallback: an L1's product IS the chain. When there is no
-            # protocol slug (or it yielded nothing), DefiLlama's chain-wide fees,
-            # revenue and TVL are the right fundamentals.
-            if target.chain_name and fees is None and revenue is None and tvl is None:
+            # Chain-level fallback, PER FIELD: an L1's product IS the chain. A chain
+            # may also appear as a "protocol" row that returns fees but no TVL, so
+            # each of fees / revenue / TVL falls back to the chain-wide figure on
+            # its own (all-or-nothing left L1 mc_tvl at 5/16).
+            if target.chain_name:
                 cn = target.chain_name
-                fees = self._try("defillama", tok, lambda c=cn: self.dl.chain_fees_summary(c))
-                revenue = self._try("defillama", tok, lambda c=cn: self.dl.chain_fees_summary(c, "dailyRevenue"))
-                tvl = self._try("defillama", tok, lambda c=cn: self._chain_tvl(c))
+                if fees is None:
+                    fees = self._try("defillama", tok, lambda c=cn: self.dl.chain_fees_summary(c))
+                if revenue is None:
+                    revenue = self._try("defillama", tok, lambda c=cn: self.dl.chain_fees_summary(c, "dailyRevenue"))
+                if tvl is None:
+                    tvl = self._try("defillama", tok, lambda c=cn: self._chain_tvl(c))
 
             # CoinGecko coin meta: sentiment, categories, TVL fallback, watchlist,
             # GitHub repos — one call. Fetched before GitHub so the repo list can
@@ -588,7 +602,7 @@ class Collector:
                 social_sentiment=social_sentiment,
                 vc=vc,
                 watchlist_users=meta.get("watchlist_users"),
-                audited=audited_from_defillama(target.audits, target.has_audit_links),
+                audited=audited_for_class(asset_class, target.audits, target.has_audit_links),
             )
             record["_group"] = target.category  # peer group for category-relative scoring
             record["_class"] = asset_class       # asset-class-aware scoring profile

@@ -99,6 +99,10 @@ def make_target(
     plats = platforms or {}
     verify = pick_verify_contract(plats)
     dl_github = info.get("github") or []
+    # DefiLlama lists chains/CEXs/bridges as "protocols" with audits "0". An
+    # audit is only a meaningful expectation of an application protocol — an
+    # L1's chain row carrying "0" must not become a no_audit flag on ETH or BTC.
+    audit_row = info.get("category") not in DEFAULT_EXCLUDE
     return Target(
         gecko_id=gecko_id,
         defillama_slug=info.get("slug"),
@@ -110,8 +114,8 @@ def make_target(
         chain_name=(chain or {}).get("name"),
         verify_chain_id=verify[0] if verify else None,
         verify_address=verify[1] if verify else None,
-        audits=None if info.get("audits") is None else str(info.get("audits")),
-        has_audit_links=bool(info.get("audit_links")),
+        audits=(str(info["audits"]) if audit_row and info.get("audits") is not None else None),
+        has_audit_links=bool(info.get("audit_links")) if audit_row else False,
     )
 
 
