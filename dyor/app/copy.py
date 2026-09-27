@@ -23,15 +23,15 @@ FEATURE_META: dict[str, tuple[str, str, str]] = {
     "value_accrual": ("Token sink", "Share of revenue routed back to holders (buyback / burn / staking).", "higher"),
     # on-chain
     "top10_concentration": ("Top-10 holders", "Supply held by the 10 largest wallets. High = whale / dump risk.", "lower"),
-    "address_growth": ("Active-address growth", "Trend in daily active addresses over the last ~month.", "higher"),
+    "address_growth": ("Active-address growth", "Daily active addresses: last-30-day mean vs first-30-day mean of a 90-day window.", "higher"),
     "reserve_trend": ("Exchange reserves", "Trend in exchange-held supply. Declining = accumulation.", "lower"),
     # social
     "social_trend": ("Social trend", "Trend in social volume / mentions (Santiment).", "higher"),
     "social_sentiment": ("Sentiment", "CoinGecko community up-vote share (keyless, coarse).", "higher"),
     "watchlist_users": ("Watchlists", "How many CoinGecko users track the token — a broad, free attention/adoption signal.", "higher"),
     # dev
-    "dev_activity": ("Dev activity", "Average developer-activity events per day over the Santiment window, ranked against class peers — a sustained level. A busy or quiet month on its own is not a signal.", "higher"),
-    "dev_commit_trend": ("Dev-activity trend", "Month-over-month change in developer activity (informational — no longer scored).", "higher"),
+    "dev_activity": ("Dev activity", "Average developer-activity events per day over a 90-day window, ranked against class peers — a sustained level. A busy or quiet month on its own is not a signal.", "higher"),
+    "dev_commit_trend": ("Dev-activity trend", "Change in developer activity across the window (informational — no longer scored).", "higher"),
     "days_since_last_commit": ("Days since last push", "How recently the team shipped code (gate input).", "lower"),
 }
 

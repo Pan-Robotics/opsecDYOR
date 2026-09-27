@@ -52,20 +52,15 @@ class AnalyzeResult:
 
 def _defillama_index(cfg: dict, use_cache: bool) -> dict[str, dict[str, Any]]:
     """gecko_id -> DefiLlama protocol row (slug, category, github, audits …),
-    highest-TVL wins. Chain/CEX/Bridge rows are kept — the classifier handles them."""
+    highest-TVL wins, with parent protocols folded in so a multi-version
+    protocol resolves to its aggregate (see universe.fold_parent_protocols).
+    Chain/CEX/Bridge rows are kept — the classifier handles them."""
     from dyor.ingestion.defillama import DefiLlamaClient
+    from dyor.universe import _parents_or_empty, best_by_gecko, fold_parent_protocols
 
     with DefiLlamaClient(cfg, use_cache=use_cache) as dl:
-        protocols = dl.protocols()
-    best: dict[str, dict[str, Any]] = {}
-    for p in protocols:
-        gid = p.get("gecko_id")
-        if not gid:
-            continue
-        tvl = p.get("tvl") or 0
-        if gid not in best or tvl > (best[gid].get("tvl") or 0):
-            best[gid] = p
-    return best
+        protocols = fold_parent_protocols(dl.protocols(), _parents_or_empty(dl))
+    return best_by_gecko(protocols)
 
 
 def _chain_index(cfg: dict, use_cache: bool) -> dict[str, dict[str, Any]]:

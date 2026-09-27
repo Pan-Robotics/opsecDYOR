@@ -442,6 +442,36 @@ Changes (commit `e68acd2`, `docs/DATA-COVERAGE-2026-09-26.md` has the numbers):
   answer on a different scale. `refresh_in_latest_run` now refuses a record
   whose feeds errored where the stored one's did not; `SantimentClient`
   short-circuits once the monthly budget 429 appears. See DEPLOY.md.
+- **2026-09-27 — DefiLlama dropout (user: Uniswap "off" despite a full
+  DefiLlama page).** Root cause: DefiLlama's `/protocols` lists protocol
+  *versions* (Uniswap V2/V3/V4, Aave V2/V3 …) whose `gecko_id` is empty; the
+  token's id sits on the *parent* protocol, which only `/lite/protocols2`
+  exposes and we never read. Uniswap therefore had no slug at all, and Aave
+  matched the one version still carrying an id — `aave-v2`, $113M of a $19B
+  protocol, whose fees made its P/F 1300× instead of 3×. Audit over the 135
+  universe + basket tokens: parent-aware matching 80 → 99; 19 tokens gained
+  their page (Uniswap, Curve, Compound, GMX, Morpho, PancakeSwap, Pendle,
+  Raydium, Jito, Ethena, Aerodrome, Velodrome, Balancer, Yearn, Stargate …),
+  8 moved from one version to the aggregate (Aave, Jupiter, Sushi, 1inch,
+  Frax, Benqi …); the 36 still without a page are monetary coins, memecoins
+  and stablecoins that genuinely have none. Fix: `universe.fold_parent_protocols`
+  adds one synthetic row per parent (slug = parent slug, whose `/summary/fees`
+  and `/tvl` serve the aggregate; tvl = Σ versions so it wins the
+  highest-TVL pick; audits / github merged; `children` for a fallback when a
+  parent serves nothing, e.g. bonkfun); `best_by_gecko` used by the universe,
+  the baskets and analyze alike; `Target.defillama_fallback_slug`; a chain
+  token that matches a Bridge/CEX/Chain row keeps chain-level fundamentals
+  (starknet-bridge, mantle-bridge …). Two basket ids were wrong: SNX is
+  `havven`, MKR migrated to `sky`. The stored run's DefiLlama-derived fields
+  were recomputed in place (100 of 114 now `ok`, was 84) and the baskets
+  rebuilt; the Santiment-dependent fields were left alone (budget spent).
+- **2026-09-27 — Santiment window 28 → 90 days** (`ingestion.sources.
+  santiment.window_days`; anonymous access serves ≥ 400 days): the growth
+  reduction compares first and last thirds, so `address_growth` is now a
+  30-day-mean vs 30-day-mean trend and `dev_activity` a 90-day level. First
+  used by the 2026-10-02 timer (`dyor reference`, then the weekly refresh so
+  the board matches the anchor); until then live analyses hit the exhausted
+  budget and the persist guard keeps the board intact.
 - `universe.make_target` is the one enrichment path for universe, baskets and
   analyze, so the anchor and live records share feature sets. Baskets rebuilt.
 

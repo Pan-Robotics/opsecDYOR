@@ -103,7 +103,7 @@ Current sources, and what each contributes:
 
 | Source | Features | Reach |
 |---|---|---|
-| DefiLlama protocols | P/F, P/S, MC/TVL, real yield, value accrual; `github` org; `audits` → the `no_audit` gate | protocols with a `gecko_id` |
+| DefiLlama protocols | P/F, P/S, MC/TVL, real yield, value accrual; `github` org; `audits` → the `no_audit` gate. **Parent-aware**: a multi-version protocol (Uniswap V2/V3/V4, Aave V2/V3 …) resolves to its parent slug, whose fees/TVL are the aggregate — the version rows carry no `gecko_id` | protocols (or parents) with a `gecko_id` |
 | DefiLlama chains | the same fundamentals **chain-wide** for L1 tokens with no protocol slug | every chain in `/v2/chains` |
 | CoinGecko | market/supply, categories (classification), sentiment, **watchlist count** (attention), **TVL fallback**, repo URLs | every token |
 | Santiment (free) | address growth (trend), dev activity (sustained level, events/day) — slug resolved by id / contract / name / ticker | ~80% of tokens |

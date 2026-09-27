@@ -83,6 +83,96 @@ def chain_index(chains: Iterable[dict[str, Any]]) -> dict[str, dict[str, Any]]:
     return out
 
 
+def _merge_audits(children: list[dict[str, Any]]) -> tuple[str | None, list[str]]:
+    """Audit record for a parent from its versions: any link counts; the count is
+    the highest any version reports, so "0" survives only when every version
+    says "0" (explicit none on record), and None when none reports a count."""
+    links: list[str] = []
+    counts: list[int] = []
+    for k in children:
+        for link in k.get("audit_links") or []:
+            if link not in links:
+                links.append(link)
+        a = k.get("audits")
+        if a is not None and str(a).strip().isdigit():
+            counts.append(int(str(a).strip()))
+    return (str(max(counts)) if counts else None), links
+
+
+def fold_parent_protocols(
+    protocols: Iterable[dict[str, Any]], parents: Iterable[dict[str, Any]] | None
+) -> list[dict[str, Any]]:
+    """`protocols` plus one synthetic row per DefiLlama *parent* protocol.
+
+    DefiLlama lists protocol VERSIONS as separate rows (Uniswap V2 / V3 / V4,
+    Aave V2 / V3, Curve DEX / LlamaLend …) and their `gecko_id` is usually
+    empty — the token's id sits on the parent (`/lite/protocols2` →
+    `parentProtocols`). Matching child rows only left Uniswap with no protocol
+    at all and gave Aave `aave-v2`, a $113M sliver of a $19B protocol whose
+    fees made its P/F 1300× (2026-09-27 audit: 80 → 99 of 135 tokens matched
+    once parents count; 19 gained a page, 8 moved from one version to the
+    aggregate). The synthetic row: slug = parent slug (its `/summary/fees` and
+    `/tvl` serve the aggregate), gecko_id = the parent's or its top version's,
+    tvl = Σ versions (so it wins the highest-TVL-per-gecko_id pick), category
+    and chains from the top version, audits and github merged, `children` =
+    version slugs (the collector's fallback when the parent serves nothing —
+    e.g. bonkfun). A parent whose top version is a Chain / CEX / Bridge is
+    skipped: that umbrella is not the token's product (NEAR's is a bridge; L1s
+    get chain-level fundamentals instead).
+    """
+    protocols = list(protocols)
+    kids: dict[str, list[dict[str, Any]]] = {}
+    for p in protocols:
+        if p.get("parentProtocol"):
+            kids.setdefault(p["parentProtocol"], []).append(p)
+    out = list(protocols)
+    for par in parents or []:
+        pid = par.get("id") or ""
+        children = sorted(kids.get(pid, []), key=lambda k: k.get("tvl") or 0, reverse=True)
+        if not children or "#" not in pid:
+            continue
+        gecko = par.get("gecko_id") or next((k["gecko_id"] for k in children if k.get("gecko_id")), None)
+        if not gecko:
+            continue
+        category = children[0].get("category")
+        if category in DEFAULT_EXCLUDE:
+            continue
+        audits, links = _merge_audits(children)
+        github: list[str] = []
+        for k in children:
+            for org in k.get("github") or []:
+                if org not in github:
+                    github.append(org)
+        out.append({
+            "slug": pid.split("#", 1)[1],
+            "name": par.get("name"),
+            "gecko_id": gecko,
+            "cmcId": par.get("cmcId"),
+            "category": category,
+            "chains": par.get("chains") or children[0].get("chains"),
+            "tvl": sum((k.get("tvl") or 0) for k in children),
+            "audits": audits,
+            "audit_links": links,
+            "github": github,
+            "parentProtocol": None,
+            "children": [k["slug"] for k in children],
+        })
+    return out
+
+
+def best_by_gecko(protocols: Iterable[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    """gecko_id → the protocol row with the highest TVL (a folded parent's TVL
+    is the sum of its versions, so the aggregate beats any single version)."""
+    best: dict[str, dict[str, Any]] = {}
+    for p in protocols:
+        gid = p.get("gecko_id")
+        if not gid:
+            continue
+        if gid not in best or (p.get("tvl") or 0) > (best[gid].get("tvl") or 0):
+            best[gid] = p
+    return best
+
+
 def make_target(
     gecko_id: str,
     *,
@@ -96,6 +186,12 @@ def make_target(
     protocol row (slug/category/github/audits/audit_links); `chain` is the
     `chain_index` entry; `platforms` is CoinGecko's platform→contract map."""
     info = dl_info or {}
+    # A token that IS a chain can also match a Bridge / CEX / Chain "protocol"
+    # row by gecko_id (starknet → starknet-bridge, mantle → mantle-bridge). The
+    # bridge's TVL and fees are not the token's product; when DefiLlama knows the
+    # chain, the chain-level fundamentals are, so the row's slug is dropped.
+    if chain and info.get("category") in DEFAULT_EXCLUDE:
+        info = {k: v for k, v in info.items() if k != "slug"}
     plats = platforms or {}
     verify = pick_verify_contract(plats)
     dl_github = info.get("github") or []
@@ -103,9 +199,11 @@ def make_target(
     # audit is only a meaningful expectation of an application protocol — an
     # L1's chain row carrying "0" must not become a no_audit flag on ETH or BTC.
     audit_row = info.get("category") not in DEFAULT_EXCLUDE
+    children = info.get("children") or []
     return Target(
         gecko_id=gecko_id,
         defillama_slug=info.get("slug"),
+        defillama_fallback_slug=children[0] if children else None,
         github_org=github_org or (dl_github[0] if dl_github else None),
         santiment_slug=gecko_id,
         cryptorank_key=gecko_id,
@@ -183,7 +281,7 @@ def basket_targets(
     for gid, addr in (eth_contracts or {}).items():
         plat_map.setdefault(gid, {}).setdefault("ethereum", addr)
     chains = chains or {}
-    by_gecko = {p["gecko_id"]: p for p in protocols if p.get("gecko_id")}
+    by_gecko = best_by_gecko(protocols)  # the aggregate parent beats any single version
     wanted = list(classes) if classes is not None else list(REFERENCE_BASKETS)
 
     seen: dict[str, Target] = {}
@@ -204,11 +302,20 @@ def fetch_identity_maps(config: dict | None = None, *, use_cache: bool = True):
     from dyor.ingestion.defillama import DefiLlamaClient
 
     with DefiLlamaClient(cfg, use_cache=use_cache) as dl:
-        protocols = dl.protocols()
+        protocols = fold_parent_protocols(dl.protocols(), _parents_or_empty(dl))
         chains = chain_index(dl.chains())
     with CoinGeckoClient(cfg, use_cache=use_cache) as cg:
         platforms = platforms_from_coins_list(cg.coins_list())
     return protocols, platforms, chains
+
+
+def _parents_or_empty(dl) -> list[dict[str, Any]]:
+    """The parent list is an enrichment: if the lite endpoint is down, build
+    from version rows alone rather than fail the whole universe."""
+    try:
+        return dl.parent_protocols()
+    except Exception:
+        return []
 
 
 def fetch_universe(

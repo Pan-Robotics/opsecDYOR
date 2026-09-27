@@ -45,7 +45,12 @@ ingestion:
       rate_limit_per_min: 80          # 5000/hr authed
     santiment:
       base_url: "https://api.santiment.net/graphql"
-      rate_limit_per_min: 10          # free: 1000/mo
+      rate_limit_per_min: 10          # free: 1000/mo (anonymous, per IP)
+      # Days of daily data behind address_growth / dev_activity. The growth
+      # reduction compares the first and last thirds, so 90 → 30-day means; the
+      # 28-day window it replaced (9-day means) moved scores on month-scale
+      # noise (2026-09-27). Anonymous access serves ≥ 400 days; same call count.
+      window_days: 90
 
 # ---------------------------------------------------------------------------
 # Store — persisted collection runs

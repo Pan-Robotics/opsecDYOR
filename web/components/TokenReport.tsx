@@ -13,7 +13,7 @@ const FEED_STATUS: Record<string, { dot: string; label: string; meaning: string 
 const FEED_ROLE: Record<string, string> = {
   coingecko: "price, market cap, supply, volume, community up-votes, watchlists, repo links",
   defillama: "fees, revenue, holders revenue, TVL, audit record (protocol, or chain for an L1)",
-  santiment: "daily active addresses (trend) and dev-activity level over a 28-day window",
+  santiment: "daily active addresses (90-day trend, 30-day means) and dev-activity level (events/day over 90 days)",
   github: "most recent push across the project's accounts (dead-token gate)",
   ethplorer: "top-10 holder shares (Ethereum ERC-20s only)",
   sourcify: "contract source verification",

@@ -139,6 +139,8 @@ MEME_IDS = {"dogecoin", "shiba-inu", "pepe", "dogwifcoin", "bonk", "floki",
 # 1/6 of the scale, so one peer changing sides moved a score by ~17 points for
 # nothing (Bitcoin, 2026-09-27); monetary/meme/stablecoin were widened to 13–14
 # that day (every addition verified on CoinGecko; most tracked by Santiment).
+# DeFi ids that were wrong: SNX's CoinGecko id is `havven` (the old entry never
+# collected — 25 of 26), and MKR migrated to SKY (`sky`; DefiLlama's parent too).
 # Changing a basket changes every same-class score: rebuild with `dyor reference`.
 REFERENCE_BASKETS: dict[str, list[str]] = {
     "l1": ["ethereum", "solana", "avalanche-2", "cardano", "polkadot", "near",
@@ -149,10 +151,10 @@ REFERENCE_BASKETS: dict[str, list[str]] = {
     "meme": ["dogecoin", "shiba-inu", "pepe", "dogwifcoin", "bonk", "floki", "popcat",
              "pudgy-penguins", "official-trump", "spx6900", "fartcoin", "turbo", "mog-coin",
              "book-of-meme"],
-    "defi": ["aave", "uniswap", "lido-dao", "gmx", "curve-dao-token", "maker",
+    "defi": ["aave", "uniswap", "lido-dao", "gmx", "curve-dao-token", "sky",
              "compound-governance-token", "pendle", "convex-finance", "rocket-pool",
              "pancakeswap-token", "sushi", "1inch", "balancer", "yearn-finance",
-             "synthetix-network-token", "morpho", "aerodrome-finance", "velodrome-finance",
+             "havven", "morpho", "aerodrome-finance", "velodrome-finance",
              "raydium", "jupiter-exchange-solana", "ethena", "frax-share",
              "stargate-finance", "jito-governance-token", "dydx-chain"],
     "stablecoin": ["tether", "usd-coin", "dai", "ethena-usde", "first-digital-usd",

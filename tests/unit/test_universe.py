@@ -20,6 +20,76 @@ COINS = [
 ]
 
 
+def test_fold_parent_protocols_gives_versions_their_parent_slug():
+    """DefiLlama's version rows carry no gecko_id; the parent does. Uniswap had
+    no protocol and Aave had `aave-v2` (2026-09-27 audit)."""
+    import pytest
+
+    from dyor.universe import best_by_gecko, fold_parent_protocols, make_target
+
+    protos = [
+        {"slug": "uniswap-v3", "gecko_id": None, "parentProtocol": "parent#uniswap", "category": "Dexs",
+         "tvl": 1.6e9, "audits": "2", "audit_links": ["a"], "github": ["Uniswap"], "chains": ["Ethereum"]},
+        {"slug": "uniswap-v2", "gecko_id": None, "parentProtocol": "parent#uniswap", "category": "Dexs",
+         "tvl": 1.0e9, "audits": "0"},
+        {"slug": "aave-v3", "gecko_id": None, "parentProtocol": "parent#aave", "category": "Lending",
+         "tvl": 18e9, "audits": "3"},
+        {"slug": "aave-v2", "gecko_id": "aave", "parentProtocol": "parent#aave", "category": "Lending",
+         "tvl": 0.1e9, "audits": "2"},
+        {"slug": "rainbow-bridge", "gecko_id": None, "parentProtocol": "parent#near-protocol",
+         "category": "Bridge", "tvl": 4e8},
+        {"slug": "lido", "gecko_id": "lido-dao", "category": "Liquid Staking", "tvl": 26e9},
+    ]
+    parents = [
+        {"id": "parent#uniswap", "name": "Uniswap", "gecko_id": "uniswap", "chains": ["Ethereum", "Base"]},
+        {"id": "parent#aave", "name": "Aave", "gecko_id": None},
+        {"id": "parent#near-protocol", "name": "Near Protocol", "gecko_id": "near"},
+        {"id": "parent#orphan", "name": "Orphan", "gecko_id": "orphan"},
+    ]
+    folded = fold_parent_protocols(protos, parents)
+    by = {p["slug"]: p for p in folded}
+    uni = by["uniswap"]
+    assert uni["gecko_id"] == "uniswap" and uni["tvl"] == pytest.approx(2.6e9) and uni["category"] == "Dexs"
+    assert uni["children"] == ["uniswap-v3", "uniswap-v2"]
+    assert uni["audits"] == "2" and uni["audit_links"] == ["a"] and uni["github"] == ["Uniswap"]
+    assert uni["chains"] == ["Ethereum", "Base"]
+    aave = by["aave"]                        # parent has no gecko_id: the version's carries over
+    assert aave["gecko_id"] == "aave" and aave["tvl"] == pytest.approx(18.1e9) and aave["audits"] == "3"
+    assert "near-protocol" not in by         # a Bridge umbrella is not the token's product
+    assert "orphan" not in by                # no versions → nothing to aggregate
+    assert len(folded) == len(protos) + 2 and by["uniswap-v3"] is protos[0]   # originals untouched
+    # every consumer prefers the aggregate over a single version
+    idx = best_by_gecko(folded)
+    assert idx["aave"]["slug"] == "aave" and idx["uniswap"]["slug"] == "uniswap" and idx["lido-dao"]["slug"] == "lido"
+    tv = {t.gecko_id: t for t in targets_from_protocols(folded, {}, top_n=10)}
+    assert tv["aave"].defillama_slug == "aave" and tv["aave"].defillama_fallback_slug == "aave-v3"
+    assert tv["uniswap"].defillama_slug == "uniswap" and tv["uniswap"].github_org == "Uniswap"
+    assert make_target("lido-dao", dl_info=by["lido"]).defillama_fallback_slug is None
+    # all versions saying "0" is an explicit none-on-record; a missing count is unknown
+    z = fold_parent_protocols([{"slug": "x-v1", "gecko_id": "x", "parentProtocol": "parent#x", "tvl": 1, "audits": "0"},
+                               {"slug": "x-v2", "gecko_id": None, "parentProtocol": "parent#x", "tvl": 2, "audits": "0"}],
+                              [{"id": "parent#x", "name": "X"}])
+    assert {p["slug"]: p.get("audits") for p in z}["x"] == "0"
+    n = fold_parent_protocols([{"slug": "y-v1", "gecko_id": "y", "parentProtocol": "parent#y", "tvl": 1}],
+                              [{"id": "parent#y", "name": "Y"}])
+    assert {p["slug"]: p.get("audits") for p in n}["y"] is None
+
+
+def test_chain_beats_a_bridge_row_for_a_chain_token():
+    from dyor.universe import make_target
+
+    bridge = {"slug": "starknet-bridge", "gecko_id": "starknet", "category": "Bridge", "tvl": 1e9,
+              "github": ["starkware-libs"], "audits": "0"}
+    t = make_target("starknet", dl_info=bridge, chain={"name": "Starknet", "tvl": 5e8})
+    assert t.defillama_slug is None and t.chain_name == "Starknet"      # chain-level fundamentals
+    assert t.github_org == "starkware-libs" and t.audits is None        # other enrichment kept
+    # without a chain entry the row still serves (better than nothing)
+    assert make_target("starknet", dl_info=bridge).defillama_slug == "starknet-bridge"
+    # an application protocol is never overridden by a chain of the same id
+    app = {"slug": "aave", "gecko_id": "aave", "category": "Lending", "tvl": 1e9}
+    assert make_target("aave", dl_info=app, chain={"name": "Aave Chain", "tvl": 1}).defillama_slug == "aave"
+
+
 def test_eth_contracts_map_only_ethereum_lowercased():
     m = eth_contracts_from_coins_list(COINS)
     assert m["aave"] == "0x7fc66500c84a76ad7e9c93437bfc5ac33e2ddae9"

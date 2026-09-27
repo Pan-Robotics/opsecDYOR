@@ -33,7 +33,19 @@ from dyor.classes import classify_asset
 from dyor.metrics import onchain, tokenomics, valuation
 
 # Santiment free/anonymous history is limited to ~30 days; stay inside it.
-_SANTIMENT_WINDOW_DAYS = 28
+# Default span of the Santiment series (config `ingestion.sources.santiment.
+# window_days` overrides). The growth reduction compares first and last thirds,
+# so 90 days → 30-day means; the 28-day window (9-day means) it replaced turned
+# month-scale noise into score moves (2026-09-27).
+_SANTIMENT_WINDOW_DAYS = 90
+
+
+def santiment_window_days(config: dict | None = None) -> int:
+    cfg = config if config is not None else load_config()
+    try:
+        return int(cfg["ingestion"]["sources"]["santiment"].get("window_days", _SANTIMENT_WINDOW_DAYS))
+    except (KeyError, TypeError, ValueError):
+        return _SANTIMENT_WINDOW_DAYS
 
 
 @dataclass(frozen=True)
@@ -60,6 +72,10 @@ class Target:
     verify_address: str | None = None
     audits: str | None = None            # DefiLlama audit count ("0" = explicitly none on record)
     has_audit_links: bool = False
+    # top version of a folded parent protocol — tried when the parent slug
+    # serves neither fees nor TVL (a few umbrellas, e.g. bonkfun, answer 400).
+    # Last on purpose: callers build Targets positionally.
+    defillama_fallback_slug: str | None = None
 
 
 # A small default DeFi universe: fee-generating protocols with known CoinGecko
@@ -618,7 +634,8 @@ class Collector:
         """
         slug = SLUG_OVERRIDES.get(slug, slug)
         to = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
-        frm = to - timedelta(days=_SANTIMENT_WINDOW_DAYS)
+        window = santiment_window_days(self.config)
+        frm = to - timedelta(days=window)
         fi, ti = frm.isoformat(), to.isoformat()
 
         def detail(series):
@@ -655,7 +672,7 @@ class Collector:
             "dev_activity_events": dev_events,
             "social_trend": (social_d or {}).get("growth"),
             # The working (window means) for the report's math ledger.
-            "_detail": {"window_days": _SANTIMENT_WINDOW_DAYS, "slug": slug,
+            "_detail": {"window_days": window, "slug": slug,
                         "daily_active_addresses": daa_d, "dev_activity": dev_d,
                         "social_volume": social_d},
         }
@@ -689,6 +706,15 @@ class Collector:
                 if self.dl.has_pro:  # Pro-only emissions endpoint
                     unlock = self._try("defillama", tok,
                                        lambda s=slug, m=market: parse_unlock(self.dl.emissions(s), m))
+            # A parent slug that serves nothing at all → its top version instead
+            # (never mixed: parent fees with a version's TVL would be two products).
+            if (target.defillama_fallback_slug and fees is None and revenue is None
+                    and holders_rev is None and tvl is None):
+                fb = target.defillama_fallback_slug
+                fees = self._try("defillama", tok, lambda s=fb: self.dl.fees_summary(s))
+                revenue = self._try("defillama", tok, lambda s=fb: self.dl.fees_summary(s, "dailyRevenue"))
+                holders_rev = self._try("defillama", tok, lambda s=fb: self.dl.fees_summary(s, "dailyHoldersRevenue"))
+                tvl = self._try("defillama", tok, lambda s=fb: self.dl.tvl(s))
 
             # Chain-level fallback, PER FIELD: an L1's product IS the chain. A chain
             # may also appear as a "protocol" row that returns fees but no TVL, so

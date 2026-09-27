@@ -41,6 +41,14 @@ class DefiLlamaClient(BaseClient):
         """Full detail for one protocol (historical TVL by chain, token info)."""
         return self.get_json(f"{self.urls['api']}/protocol/{slug}")
 
+    def parent_protocols(self) -> list[dict[str, Any]]:
+        """Parent (umbrella) protocols — Uniswap over Uniswap V2/V3/V4 — with the
+        `gecko_id` the version rows in `/protocols` usually lack. Only the
+        `/lite/protocols2` payload carries them; `/summary/fees/{parent-slug}`
+        and `/tvl/{parent-slug}` serve the aggregate across versions."""
+        data = self.get_json(f"{self.urls['api']}/lite/protocols2", params={"b": "2"})
+        return (data or {}).get("parentProtocols") or []
+
     # -- fees / revenue (the fundamentals layer) -----------------------------
     def fees_overview(self) -> dict[str, Any]:
         """All-protocol fees + revenue summary."""
