@@ -461,7 +461,11 @@ Changes (commit `e68acd2`, `docs/DATA-COVERAGE-2026-09-26.md` has the numbers):
   parent serves nothing, e.g. bonkfun); `best_by_gecko` used by the universe,
   the baskets and analyze alike; `Target.defillama_fallback_slug`; a chain
   token that matches a Bridge/CEX/Chain row keeps chain-level fundamentals
-  (starknet-bridge, mantle-bridge …). Two basket ids were wrong: SNX is
+  (DefiLlama files those as "Canonical Bridge" — its "solana" row is one — and
+  the Ethereum Foundation treasury as "Foundation"; `UMBRELLA_CATEGORIES`
+  covers them, and a zero TVL from such a row no longer blocks the chain
+  fallback). That alone corrected Solana's P/F 298× → 19×, Sui 3938× → 58×,
+  Aptos 649× → 32× and gave Ethereum an MC/TVL. Two basket ids were wrong: SNX is
   `havven`, MKR migrated to `sky`. The stored run's DefiLlama-derived fields
   were recomputed in place (100 of 114 now `ok`, was 84) and the baskets
   rebuilt; the Santiment-dependent fields were left alone (budget spent).
