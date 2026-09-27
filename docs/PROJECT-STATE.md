@@ -409,6 +409,39 @@ Changes (commit `e68acd2`, `docs/DATA-COVERAGE-2026-09-26.md` has the numbers):
   (`scale: 100`), web, CLI, memo, alerts; tier thresholds and gate caps in the
   methodology are 0–100 too. The engine still computes in [0, 1]; only
   `scoring.composite.display()` converts, so no weight, threshold or cap moved.
+- **2026-09-27 — score stability (user: "extreme jumps for non-core reasons
+  must not occur; a busy or quiet month of commits is not a signal").** The
+  Sunday run had moved Bitcoin 76.9 → 54.8 (B → C). Attribution found three
+  non-core causes, all fixed: (1) `percentile_of_score` was a step function —
+  Bitcoin's float ratio flickering between 0.99998 and 1.0 (provider rounding)
+  crossed three basket coins sitting at exactly 1.0 and moved two percentiles
+  by 50 points each; it is now a linearly interpolated CDF (ties share their
+  mean position, 0 = worst peer, 1 = best), continuous and monotone. (2) The
+  monetary basket had 7 coins (one rank ≈ 17 points); monetary / meme /
+  stablecoin were widened to 13 / 14 / 14 with verified coins (`dyor
+  reference` rebuilt; the new coins' Santiment features fill in via the
+  `dyor-reference-refill` timer on 2026-10-02 because the monthly budget is
+  spent). (3) The scored dev signal is now `dev_activity` — mean events/day
+  over the window, a sustained level ranked against class peers — instead of
+  the month-over-month `dev_commit_trend` (kept, informational). Measured on
+  the same two weekly runs, dev excluded from both for like-for-like: median
+  |Δ| 1.2 → 0.5 points, p90 8.0 → 5.5, >5-point moves 26 → 12, tier flips
+  18 → 10 of 113; Bitcoin 76.2 → 71.2 (B → B). Remaining large moves are gate
+  events. One-time re-anchoring came with it (e.g. Aave 47 → 38: its +158 %
+  dev-trend month no longer buys a perfect dev score; Uniswap 33 → 46; the
+  stablecoins rose). Still open: `address_growth` is a 28-day trend on a 7-value
+  stablecoin/monetary distribution — a 90-day window (30-day means) is the next
+  smoothing step once Santiment's budget resets (untestable while exhausted).
+- **2026-09-27 — the anchor could silently vanish under load.** The reference
+  loader opened DuckDB read-write while request threads held read-only
+  connections; DuckDB refused ("different configuration than existing
+  connections"), `_load_reference_dist` swallowed it and the request scored
+  UNANCHORED — the same token 54.8 on one call, 58.5 on the next. Fixed: the
+  loader is read-only, retries briefly, keeps the last good anchor per process,
+  and raises `ReferenceUnavailable` (API → 503, Retry-After 5) rather than
+  answer on a different scale. `refresh_in_latest_run` now refuses a record
+  whose feeds errored where the stored one's did not; `SantimentClient`
+  short-circuits once the monthly budget 429 appears. See DEPLOY.md.
 - `universe.make_target` is the one enrichment path for universe, baskets and
   analyze, so the anchor and live records share feature sets. Baskets rebuilt.
 

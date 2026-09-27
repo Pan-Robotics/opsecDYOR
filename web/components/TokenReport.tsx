@@ -13,7 +13,7 @@ const FEED_STATUS: Record<string, { dot: string; label: string; meaning: string 
 const FEED_ROLE: Record<string, string> = {
   coingecko: "price, market cap, supply, volume, community up-votes, watchlists, repo links",
   defillama: "fees, revenue, holders revenue, TVL, audit record (protocol, or chain for an L1)",
-  santiment: "daily active addresses and dev-activity events over a 28-day window",
+  santiment: "daily active addresses (trend) and dev-activity level over a 28-day window",
   github: "most recent push across the project's accounts (dead-token gate)",
   ethplorer: "top-10 holder shares (Ethereum ERC-20s only)",
   sourcify: "contract source verification",
@@ -39,6 +39,7 @@ function fmtVal(v: unknown, unit: string | null | undefined): string {
     case "ratio": return `${(n * 100).toFixed(1)}%`;
     case "x": return `${Math.abs(n) >= 100 ? n.toFixed(0) : n.toFixed(2)}×`;
     case "days": return `${Math.round(n)}`;
+    case "per_day": return `${n.toFixed(1)}/day`;
     default: return n.toLocaleString(undefined, { maximumFractionDigits: 4 });
   }
 }

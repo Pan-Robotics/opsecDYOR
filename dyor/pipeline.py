@@ -181,13 +181,29 @@ def _advisories(rec: dict, cfg: dict) -> list[str]:
     return out
 
 
-def _load_reference_dist(classes) -> dict[str, dict[str, np.ndarray]]:
-    """{class: {feature: reference array}} for the given classes (best-effort)."""
-    try:
-        from dyor.reference import reference_distributions
-        return {c: reference_distributions(c) for c in classes if c}
-    except Exception:
-        return {}
+def _load_reference_dist(classes, *, attempts: int = 4) -> dict[str, dict[str, np.ndarray]]:
+    """{class: {feature: reference array}} for the given classes.
+
+    A class with no stored basket comes back empty (→ relative normalization,
+    documented). A basket that exists but can't be READ is different: this used
+    to swallow the error and return {}, so under DB lock contention a request
+    silently scored every token unanchored — the same token 54.8 on one call,
+    58.5 on the next (2026-09-27). Now: retry briefly (contention is
+    milliseconds), then raise `ReferenceUnavailable` rather than answer with a
+    number on a different scale.
+    """
+    import time
+
+    from dyor.reference import ReferenceUnavailable, reference_distributions
+
+    last: Exception | None = None
+    for attempt in range(attempts):
+        try:
+            return {c: reference_distributions(c) for c in classes if c}
+        except ReferenceUnavailable as exc:
+            last = exc
+            time.sleep(0.05 * (3 ** attempt))  # 50ms, 150ms, 450ms
+    raise last if last is not None else ReferenceUnavailable("reference baskets unreadable")
 
 
 def score_universe(

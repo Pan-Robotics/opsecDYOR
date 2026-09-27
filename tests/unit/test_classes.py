@@ -75,12 +75,12 @@ def test_monetary_token_not_penalized_for_missing_revenue():
            "float_ratio": 0.95, "fdv_mcap_ratio": 1.05,
            "unlock_overhang": 0.0, "top10_concentration": 0.10, "address_growth": 0.2,
            "social_trend": 0.3, "social_sentiment": 0.9, "watchlist_users": 2_000_000,
-           "dev_commit_trend": 0.4}
+           "dev_activity": 0.4}
     peer = {"token": "ltc", "_class": "monetary",
             "float_ratio": 0.80, "fdv_mcap_ratio": 1.2,
             "unlock_overhang": 0.1, "top10_concentration": 0.30, "address_growth": -0.1,
             "social_trend": -0.2, "social_sentiment": 0.5, "watchlist_users": 300_000,
-            "dev_commit_trend": 0.1}
+            "dev_activity": 0.1}
     res = {r.token: r for r in score_universe([btc, peer])}
     assert "fundamental" not in res["btc"].domain_scores
     # btc dominates its monetary peer on scarcity + adoption
@@ -100,12 +100,12 @@ def test_defi_missing_core_fundamental_is_penalized():
     no_fund = {"token": "ghostdex", "_class": "defi",
                "fdv_mcap_ratio": 1.1, "float_ratio": 0.9, "value_accrual": 0.5,
                "top10_concentration": 0.2, "address_growth": 0.3,
-               "social_sentiment": 0.8, "dev_commit_trend": 0.5}
+               "social_sentiment": 0.8, "dev_activity": 0.5}
     peer = {"token": "realdex", "_class": "defi",
             "price_to_fees": 8, "price_to_sales": 10, "mc_tvl": 1.5, "real_yield": 0.06,
             "fdv_mcap_ratio": 1.1, "float_ratio": 0.9, "value_accrual": 0.5,
             "top10_concentration": 0.2, "address_growth": 0.3,
-            "social_sentiment": 0.8, "dev_commit_trend": 0.5}
+            "social_sentiment": 0.8, "dev_activity": 0.5}
     res = {r.token: r for r in score_universe([no_fund, peer])}
     ghost = res["ghostdex"]
     assert ghost.domain_scores["fundamental"] == 0.0          # floored, not NaN
@@ -117,7 +117,7 @@ def test_monetary_missing_fundamental_not_penalized():
     # Monetary has no 'fundamental' in its spec, so it's never penalized for it.
     btc = {"token": "btc", "_class": "monetary",
            "inflation_rate": 0.018, "float_ratio": 0.95, "top10_concentration": 0.1,
-           "address_growth": 0.2, "social_sentiment": 0.9, "dev_commit_trend": 0.4}
+           "address_growth": 0.2, "social_sentiment": 0.9, "dev_activity": 0.4}
     res = score_universe([btc, {"token": "x", "_class": "monetary", "float_ratio": 0.5}])[0]
     assert "fundamental" not in res.domain_scores
     assert not any("penalized" in a for a in res.advisories)

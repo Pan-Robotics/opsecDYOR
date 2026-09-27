@@ -43,16 +43,32 @@ def percentile_of_score(
     scored in the same batch. That's what makes a token's tier reproducible
     across the analyze subject, a peer table, and the screener.
 
-    Uses the "mean" convention: (#below + ½·#equal) / N. Out-of-range values
-    saturate at 0 or 1. Empty reference or NaN value → NaN (caller falls back).
+    Linear interpolation of the empirical CDF: the sorted reference values sit
+    at positions 0, 1/(N−1), …, 1 (tied values share their mean position) and
+    the token's value is interpolated between its two neighbours; below the
+    minimum → 0, above the maximum → 1. Equal to the worst peer scores 0, equal
+    to the best scores 1, and — the point — a small move in the value is a
+    small move in the percentile. The step convention used before
+    ((#below + ½·#equal) / N) turned a 7-token basket into a staircase:
+    Bitcoin's float ratio flickering between 0.99998 and 1.0 (CoinGecko
+    rounding) crossed three peers sitting at exactly 1.0 and moved the
+    percentile by 50 points with no real change (2026-09-27). Empty reference
+    or NaN value → NaN (caller falls back).
     """
-    ref = np.asarray(reference, dtype="float64")
+    ref = np.sort(np.asarray(reference, dtype="float64"))
     ref = ref[~np.isnan(ref)]
     if value is None or (isinstance(value, float) and np.isnan(value)) or ref.size == 0:
         return float("nan")
-    less = float(np.count_nonzero(ref < value))
-    equal = float(np.count_nonzero(ref == value))
-    pct = (less + 0.5 * equal) / ref.size
+    v = float(value)
+    if ref.size == 1:
+        pct = 0.5 if v == ref[0] else (1.0 if v > ref[0] else 0.0)
+    else:
+        positions = np.arange(ref.size, dtype="float64") / (ref.size - 1)
+        xs, inverse = np.unique(ref, return_inverse=True)      # one knot per distinct value …
+        knots = np.zeros(xs.size)
+        np.add.at(knots, inverse, positions)
+        knots /= np.bincount(inverse)                          # … at the mean position of its ties
+        pct = float(np.interp(v, xs, knots))                   # clamps to 0 / 1 outside the range
     return pct if higher_is_better else 1.0 - pct
 
 

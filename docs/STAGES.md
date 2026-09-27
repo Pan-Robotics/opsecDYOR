@@ -11,14 +11,14 @@ Capital** DuckDB taxonomy + **Santiment** free GraphQL.
 
 Deliverables:
 - [x] Identity resolution on `chain:address` (CoinGecko `/coins/list` ↔ DefiLlama `gecko_id`)
-- [x] Core metrics: P/F, P/S, MC/TVL, FDV/MCAP, unlock-%-of-volume, holder concentration, dev-activity trend
+- [x] Core metrics: P/F, P/S, MC/TVL, FDV/MCAP, unlock-%-of-volume, holder concentration, dev-activity level (trend was scored until 2026-09-27)
 - [x] Composite score (percentile-normalized, weighted, with hard disqualifier gating)
 - [x] Ingest-to-score path: `dyor.collect.Collector` (live CoinGecko + DefiLlama + GitHub → metric records) + `dyor collect` CLI
 - [x] Streamlit dashboard wired to live data (sidebar Sample / Live / Stored toggle)
 - [x] Token-sink / value-accrual feature (holders-rev ÷ revenue, same-window) — free, in scoring
 - [x] Dev-activity feature: GitHub org last-push → `days_since_last_commit` (feeds dead-token gate)
 - [x] Persist collected records to `store.db` (`token_records`, `dyor collect --persist`, read-back in dashboard)
-- [x] On-chain **address-growth** + **dev-activity trend** via Santiment (free/anonymous, `daily_active_addresses` + `dev_activity`, 30-day window) — in scoring
+- [x] On-chain **address-growth** (trend) + **dev activity** (sustained level — the month-over-month trend stopped being scored 2026-09-27) via Santiment (free/anonymous, `daily_active_addresses` + `dev_activity`, 28-day window) — in scoring
 - [~] **Unlock overhang** — was CryptoRank v0 (open, no key; captured HYPE's ~78% overhang). **v0 went behind a Cloudflare challenge in Sep 2026** and is disabled. With `DYOR_CRYPTORANK_API_KEY` the client uses v3; the feature activates only on a plan exposing `/vesting/allocations` (Pro), which also supplies the precise next-unlock $ for `unlock_pct_of_volume`. On the free/Sandbox plan the feed is `off`.
 - [x] **Holder concentration** (top-10) via **Ethplorer `freekey`** (free) — Ethereum ERC-20s; L2/own-chain surface as n/a
 - [x] **Narrative rotation** via CoinGecko categories (`dyor/narratives.py`) — momentum-ranked sectors, in the dashboard

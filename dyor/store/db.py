@@ -160,11 +160,36 @@ def upsert_into_latest_run(con: duckdb.DuckDBPyConnection, record: dict[str, Any
     return run_id
 
 
+def _feeds_regressed(old: dict[str, Any], new: dict[str, Any]) -> bool:
+    """True when the fresh record's feeds ERRORED where the stored one's did not."""
+    old_err = {k for k, v in (old.get("_feeds") or {}).items() if v == "error"}
+    new_err = {k for k, v in (new.get("_feeds") or {}).items() if v == "error"}
+    return bool(new_err - old_err)
+
+
 def refresh_in_latest_run(con: duckdb.DuckDBPyConnection, record: dict[str, Any]) -> bool:
     """Live self-heal: replace a token's row in the latest run IF it is already
-    there. Returns False (and writes nothing) for a token not on the board."""
+    there. Returns False (and writes nothing) for a token not on the board.
+
+    Also refuses to replace a row with a WORSE one: a fresh record whose feeds
+    errored where the stored one's did not (Santiment's monthly budget spent,
+    a GitHub outage) would erase good features from the board and move the
+    token's score for a reason that has nothing to do with the token. The
+    transient failure is simply retried by the next analysis or refresh."""
     token = record.get("token")
-    if not token or not token_in_latest_run(con, token):
+    if not token:
+        return False
+    run = con.execute(
+        "SELECT run_id FROM token_records ORDER BY collected_at DESC LIMIT 1"
+    ).fetchone()
+    if not run:
+        return False
+    row = con.execute(
+        "SELECT record FROM token_records WHERE run_id = ? AND token = ? LIMIT 1", [run[0], token]
+    ).fetchone()
+    if row is None:
+        return False
+    if _feeds_regressed(json.loads(row[0]), record):
         return False
     upsert_into_latest_run(con, record)
     return True

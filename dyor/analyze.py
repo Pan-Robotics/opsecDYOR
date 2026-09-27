@@ -193,16 +193,23 @@ def _persist_live(record: dict) -> bool:
     are touched — the API is public, and an unconditional upsert let any visitor
     insert any CoinGecko token into the public screener. Never breaks the
     analysis; returns whether a row was refreshed."""
-    try:
-        from dyor.store import db
+    import time
 
-        con = db.connect()
+    from dyor.store import db
+
+    # The write open fails while another thread holds a read-only connection
+    # (DuckDB: one configuration per file per process); those reads last
+    # milliseconds, so retry a few times before giving the refresh up.
+    for attempt in range(4):
         try:
-            return db.refresh_in_latest_run(con, record)
-        finally:
-            con.close()
-    except Exception:
-        return False
+            con = db.connect()
+            try:
+                return db.refresh_in_latest_run(con, record)
+            finally:
+                con.close()
+        except Exception:
+            time.sleep(0.05 * (3 ** attempt))
+    return False
 
 
 def _stored_peers() -> list[dict]:

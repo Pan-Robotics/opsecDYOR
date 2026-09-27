@@ -36,7 +36,8 @@ FEATURE_SOURCE: dict[str, str] = {
     "fdv_mcap_ratio": "coingecko", "float_ratio": "coingecko",
     "unlock_overhang": "cryptorank", "unlock_pct_of_volume": "cryptorank",
     "top10_concentration": "ethplorer",
-    "address_growth": "santiment", "dev_commit_trend": "santiment", "social_trend": "santiment",
+    "address_growth": "santiment", "dev_commit_trend": "santiment", "dev_activity": "santiment",
+    "social_trend": "santiment",
     "social_sentiment": "coingecko", "watchlist_users": "coingecko",
 }
 
@@ -54,7 +55,7 @@ FEATURE_UNIT: dict[str, str] = {
     "real_yield": "ratio", "float_ratio": "ratio", "value_accrual": "ratio",
     "unlock_overhang": "ratio", "top10_concentration": "ratio", "social_sentiment": "ratio",
     "address_growth": "ratio", "dev_commit_trend": "ratio", "social_trend": "ratio",
-    "watchlist_users": "count",
+    "watchlist_users": "count", "dev_activity": "per_day",
 }
 
 
@@ -160,6 +161,13 @@ def feature_working(feature: str, inputs: dict[str, Any] | None) -> tuple[list[d
         return _growth_inputs("daa", "Daily active addresses", san.get("daily_active_addresses"), san.get("window_days"))
     if feature == "dev_commit_trend":
         return _growth_inputs("dev", "Dev-activity events", san.get("dev_activity"), san.get("window_days"))
+    if feature == "dev_activity":
+        d = san.get("dev_activity") or {}
+        if d.get("events") is None or not d.get("n"):
+            return [], None
+        return ([_inp("dev_events", "Dev-activity events in window", d["events"], "count", "santiment"),
+                 _inp("dev_days", "days with data", d["n"], "days", "santiment")],
+                "{dev_events} ÷ {dev_days}")
     if feature == "social_trend":
         return _growth_inputs("social", "Social volume", san.get("social_volume"), san.get("window_days"))
     if feature == "social_sentiment":

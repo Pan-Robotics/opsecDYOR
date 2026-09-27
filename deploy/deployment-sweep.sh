@@ -30,13 +30,14 @@ chk "console scripts import editable tree" "$IMP" "/root/DYOR/dyor/__init__.py"
 ssh $H 'ls -d /root/DYOR/.venv/lib/python3.12/site-packages/dyor >/dev/null 2>&1' \
   && no "no stale site-packages copy" "copy still present" || ok "no stale site-packages copy"
 F=$(ssh $H 'cd /tmp && /root/DYOR/.venv/bin/python -c "
-import inspect, dyor.cli, dyor.reference as r, dyor.ingestion.santiment as s
+import inspect, dyor.cli, dyor.reference as r, dyor.ingestion.santiment as s, dyor.scoring.normalize as n
 from dyor.classes import REFERENCE_BASKETS as B
 from dyor.metrics.tokenomics import float_ratio
 print(int(\"single-writer ACROSS PROCESSES\" in inspect.getsource(dyor.cli._cmd_refresh)),
       int(not hasattr(r,\"_same_class_stored\")), int(hasattr(r,\"_basket_version\")),
       int(hasattr(s.SantimentClient(),\"cache\")), int(\"polkadot\" in s.SLUG_OVERRIDES),
-      len(B[\"defi\"]), int(float_ratio(1000.4,1000)==1.0))"')
+      len(B[\"defi\"]), int(float_ratio(1000.4,1000)==1.0), len(B[\"monetary\"]),
+      int(abs(n.percentile_of_score(0.99998,[.68,.78,.9,.95,1,1,1])-n.percentile_of_score(1.0,[.68,.78,.9,.95,1,1,1]))<1e-3))"')
 set -- $F
 chk "  fix: refresh releases DB lock" "$1" "1"
 chk "  fix: anchor frozen (basket only)" "$2" "1"
@@ -45,6 +46,8 @@ chk "  fix: santiment cached" "$4" "1"
 chk "  fix: santiment slug overrides" "$5" "1"
 chk "  fix: defi basket widened" "$6" "26"
 chk "  fix: float_ratio clamped" "$7" "1"
+chk "  fix: monetary basket widened" "$8" "13"
+chk "  fix: percentile continuous at ties" "$9" "1"
 
 sec "C · SERVICES"
 for s in OpsecSite dyor-api dyor-web dyor-mcp; do

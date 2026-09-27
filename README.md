@@ -106,7 +106,7 @@ Current sources, and what each contributes:
 | DefiLlama protocols | P/F, P/S, MC/TVL, real yield, value accrual; `github` org; `audits` → the `no_audit` gate | protocols with a `gecko_id` |
 | DefiLlama chains | the same fundamentals **chain-wide** for L1 tokens with no protocol slug | every chain in `/v2/chains` |
 | CoinGecko | market/supply, categories (classification), sentiment, **watchlist count** (attention), **TVL fallback**, repo URLs | every token |
-| Santiment (free) | address growth, dev-activity trend — slug resolved by id / contract / name / ticker | ~80% of tokens |
+| Santiment (free) | address growth (trend), dev activity (sustained level, events/day) — slug resolved by id / contract / name / ticker | ~80% of tokens |
 | Ethplorer `freekey` | top-10 holder concentration | Ethereum ERC-20s |
 | Sourcify | contract verification (True-or-unknown) on Ethereum, Arbitrum, Base, OP, Polygon, BSC, Avalanche | any EVM deployment |
 | GitHub | most recent push across every account found for the token — DefiLlama's list, all CoinGecko repo URLs, verified overrides; user accounts too (dead-token gate, corroborated against Santiment dev activity) — **needs `DYOR_GITHUB_TOKEN`**, anonymous is 60/hour | tokens with a known account |

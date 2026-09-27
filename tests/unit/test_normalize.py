@@ -74,7 +74,31 @@ def test_percentile_of_score_is_independent_of_other_values():
     # what else is being scored. This is the property that fixes the flutter.
     ref = [1.0, 2.0, 3.0, 4.0, 5.0]
     assert norm.percentile_of_score(3.5, ref) == norm.percentile_of_score(3.5, ref)
-    assert norm.percentile_of_score(3.5, ref) == pytest.approx(0.6)
+    # interpolated CDF: 3 sits at 0.5, 4 at 0.75, so 3.5 is exactly between
+    assert norm.percentile_of_score(3.5, ref) == pytest.approx(0.625)
+    assert norm.percentile_of_score(1.0, ref) == 0.0 and norm.percentile_of_score(5.0, ref) == 1.0
+
+
+def test_percentile_of_score_is_continuous_across_a_tie_cluster():
+    """A 7-coin basket with three coins at exactly 1.0: a value flickering
+    between 0.99998 and 1.0 (provider rounding) must not move the percentile —
+    the step convention moved it by 0.5 (Bitcoin, 2026-09-27)."""
+    ref = [0.68, 0.78, 0.90, 0.95, 1.0, 1.0, 1.0]
+    at_one = norm.percentile_of_score(1.0, ref)
+    just_under = norm.percentile_of_score(0.99998, ref)
+    assert at_one == pytest.approx(5 / 6)                 # mean position of the tied top three
+    assert abs(at_one - just_under) < 1e-3
+    # and small moves are small moves: 0.92 → 0.93 shifts by a fraction of a step
+    assert abs(norm.percentile_of_score(0.93, ref) - norm.percentile_of_score(0.92, ref)) < 0.1
+    # monotone
+    vals = [norm.percentile_of_score(x, ref) for x in np.linspace(0.6, 1.05, 50)]
+    assert all(b >= a - 1e-12 for a, b in zip(vals, vals[1:]))
+
+
+def test_percentile_of_score_single_reference_value():
+    assert norm.percentile_of_score(2.0, [2.0]) == 0.5
+    assert norm.percentile_of_score(3.0, [2.0]) == 1.0
+    assert norm.percentile_of_score(1.0, [2.0]) == 0.0
 
 
 def test_percentile_of_score_lower_is_better_inverts():

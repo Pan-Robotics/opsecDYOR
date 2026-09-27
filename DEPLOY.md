@@ -253,6 +253,43 @@ group-writable on Ubuntu and logrotate silently skips such parents otherwise.
 `deploy/deployment-sweep.sh` now fails if the server's build is older than its
 sources.
 
+## Santiment budget, anchor reliability, one-off basket refill (added 2026-09-27)
+
+**Santiment's anonymous budget is per IP per month (~1000 calls).** On
+2026-09-27 the server hit it ("API Rate Limit Reached. Try again in 287179
+seconds") after the Sunday refresh plus a `dyor reference` rebuild, two preview
+collects and the live analyses. Consequences and guards:
+
+- `SantimentClient` now recognises a 429 whose wait is an hour or more as the
+  monthly budget and short-circuits every further call in the process to an
+  immediate `SantimentBudgetExhausted` (feed shows `error`, `feed_outage` alert
+  fires) instead of pacing 6 s per doomed request. Cached responses still serve.
+- `db.refresh_in_latest_run` refuses to replace a stored row with one whose
+  feeds errored where the stored row's did not, so live analyses during an
+  outage cannot strip `address_growth` / `dev_activity` off the board.
+- Budget arithmetic: the weekly refresh spends ~2 calls per Santiment-tracked
+  token (~180/week); each live analysis 2 more unless the day's window is
+  already cached. A registered free API key (`DYOR_SANTIMENT_API_KEY`) moves
+  the budget off the shared IP; a longer window (90 d) costs nothing extra but
+  could not be tested while exhausted — revisit after the reset.
+
+**The scoring anchor must be read read-only.** `reference_peers` /
+`_basket_version` opened read-write; DuckDB refuses that while any thread of
+the same process holds a read-only connection ("different configuration than
+existing connections"), the error was swallowed, and the request silently
+scored *unanchored* — the same token 54.8 on one call and 58.5 on the next.
+Now: read-only opens, brief retries, the last good anchor kept per process,
+and `ReferenceUnavailable` → HTTP 503 (`Retry-After: 5`) rather than a number
+on a different scale. Never write `except Exception: return {}` around it again.
+
+**One-off basket refill.** The 2026-09-27 rebuild widened the monetary / meme /
+stablecoin baskets while Santiment was exhausted, so the new coins' Santiment
+features are empty until a rebuild after the monthly reset. A transient systemd
+timer does it: `systemctl list-timers dyor-reference-refill.timer` (fires
+2026-10-02 04:00 UTC, logs to `/var/log/dyor-refresh.log`, takes the collect
+lock). If it has fired, it is gone; run `dyor reference` under `flock` by hand
+for any later basket change.
+
 ## Coverage matrix
 
 `deploy/coverage-matrix.py` prints, for the latest persisted run, how many

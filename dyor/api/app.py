@@ -28,6 +28,7 @@ from dyor.app.copy import BREAK_THESIS, DOMAIN_META, FEATURE_META, tier_color
 from dyor.classes import LABELS
 from dyor.config import load_config
 from dyor.pipeline import score_universe
+from dyor.reference import ReferenceUnavailable
 from dyor.sample_data import SAMPLE_UNIVERSE
 
 app = FastAPI(title="DYOR API", version="0.1.0",
@@ -51,6 +52,16 @@ def _records(source: str) -> list[dict[str, Any]]:
         finally:
             con.close()
     return SAMPLE_UNIVERSE
+
+
+@app.exception_handler(ReferenceUnavailable)
+async def _reference_unavailable(_request, exc: ReferenceUnavailable):
+    """The scoring anchor could not be read (DB contention). A 503 the client
+    can retry is the honest answer; a silently unanchored score is not."""
+    from fastapi.responses import JSONResponse
+
+    return JSONResponse(status_code=503, headers={"Retry-After": "5"},
+                        content={"detail": f"scoring anchor temporarily unreadable — retry: {exc}"})
 
 
 @app.get("/api/health")

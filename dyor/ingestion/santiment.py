@@ -19,6 +19,19 @@ import httpx
 from dyor.config import PROJECT_ROOT, get_settings, load_config
 from dyor.ingestion.base import FileCache, _evict_once, shared_limiter
 
+
+class SantimentBudgetExhausted(RuntimeError):
+    """The anonymous monthly call budget for this IP is spent; every call until
+    the reset would 429. Surfaces as a feed ERROR (never as 'not tracked')."""
+
+
+def _rate_limit_wait_seconds(body: str) -> int | None:
+    """Santiment's 429 body says how long: 'Try again in 287179 seconds (3 days …)'."""
+    import re
+
+    m = re.search(r"[Tt]ry again in (\d+) seconds", body or "")
+    return int(m.group(1)) if m else None
+
 # gecko_id → Santiment slug where they differ. The collector's best-effort
 # `santiment_slug = gecko_id` misses these (verified against Santiment's own
 # allProjects list, 2026-08-24); two are L1 reference-basket members, so the
@@ -121,16 +134,34 @@ class SantimentClient:
             headers["Authorization"] = f"Apikey {key}"
         self._client = httpx.Client(timeout=30.0, headers=headers)
 
+    # Set when Santiment answers 429 with a wait of an hour or more: the
+    # anonymous MONTHLY budget (~1000 calls per IP) is spent, not the per-minute
+    # one. Every further call this process would make is a guaranteed 429 that
+    # still burns the shared per-minute allowance and 6 s of pacing each, so the
+    # feed is short-circuited to an immediate, explicit error instead. Cached
+    # responses keep being served. (Seen 2026-09-27: "Try again in 287179 s".)
+    _exhausted_until: float = 0.0
+
     def query(self, graphql: str, variables: dict | None = None) -> dict[str, Any]:
         cache_key = {"q": graphql, "v": variables or {}}
         if self.use_cache:
             cached = self.cache.get(self.url, cache_key)
             if cached is not None:
                 return cached
+        if time.time() < SantimentClient._exhausted_until:
+            left = int(SantimentClient._exhausted_until - time.time())
+            raise SantimentBudgetExhausted(
+                f"santiment: monthly API budget exhausted for this IP — resets in ~{left // 3600}h")
         self.limiter.acquire()
         resp = self._client.post(
             self.url, json={"query": graphql, "variables": variables or {}}
         )
+        if resp.status_code == 429:
+            wait = _rate_limit_wait_seconds(resp.text)
+            if wait is not None and wait >= 3600:
+                SantimentClient._exhausted_until = time.time() + wait
+                raise SantimentBudgetExhausted(
+                    f"santiment: monthly API budget exhausted for this IP — resets in ~{wait // 3600}h")
         resp.raise_for_status()
         payload = resp.json()
         if "errors" in payload:

@@ -82,7 +82,7 @@ def _refresh_env(monkeypatch, tmp_path, records):
 
     state = {"open": 0, "peak": 0, "peak_during_collect": 0}
 
-    def fake_connect(path=None):
+    def fake_connect(path=None, *, read_only=False):  # same signature as db.connect
         con = duckdb.connect(str(tmp_path / "t.duckdb"))
         con.execute(_SCHEMA)
         return _CountingConn(con, state)

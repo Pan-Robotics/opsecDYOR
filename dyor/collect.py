@@ -242,6 +242,7 @@ def build_record(
     unlock: dict[str, Any] | None = None,
     address_growth: float | None = None,
     dev_commit_trend: float | None = None,
+    dev_activity: float | None = None,
     dev_activity_events: float | None = None,
     social_trend: float | None = None,
     unlock_overhang: float | None = None,
@@ -318,7 +319,8 @@ def build_record(
         "social_sentiment": social_sentiment,  # CoinGecko up-votes (keyless, coarse)
         "watchlist_users": watchlist_users,    # CoinGecko watchlist count (keyless, broad)
         # --- dev ---
-        "dev_commit_trend": dev_commit_trend,          # Santiment dev-activity trend
+        "dev_activity": dev_activity,                  # Santiment mean dev events/day (scored level)
+        "dev_commit_trend": dev_commit_trend,          # Santiment dev-activity trend (informational)
         "days_since_last_commit": days_since(last_push_iso),  # GitHub last push (gate)
         "dev_activity_events": dev_activity_events,    # Santiment events in-window (gate corroboration)
         # --- gate inputs derivable from free market data ---
@@ -636,13 +638,21 @@ class Collector:
             if self._has_santiment_key else None
         )
         daa_d, dev_d, social_d = detail(daa), detail(dev), detail(social)
+        dev_events = total(dev)
+        if dev_d is not None:
+            dev_d = {**dev_d, "events": dev_events}
         return {
             "address_growth": (daa_d or {}).get("growth"),
+            # Scored dev signal: the LEVEL of activity (events per day over the
+            # window), ranked against class peers. The month-over-month trend is
+            # kept for the record but no longer scored — a busy or quiet month is
+            # not a signal about a project (2026-09-27).
+            "dev_activity": (dev_events / dev_d["n"]) if dev_d and dev_d.get("n") else None,
             "dev_commit_trend": (dev_d or {}).get("growth"),
             # Raw event count over the window: Santiment tracks a curated repo set
             # per project, so events here prove the project is alive even when the
             # GitHub org we discovered has gone quiet (dead_token corroboration).
-            "dev_activity_events": total(dev),
+            "dev_activity_events": dev_events,
             "social_trend": (social_d or {}).get("growth"),
             # The working (window means) for the report's math ledger.
             "_detail": {"window_days": _SANTIMENT_WINDOW_DAYS, "slug": slug,
@@ -763,6 +773,7 @@ class Collector:
                 last_push_iso=last_push, unlock=unlock,
                 address_growth=santiment.get("address_growth"),
                 dev_commit_trend=santiment.get("dev_commit_trend"),
+                dev_activity=santiment.get("dev_activity"),
                 dev_activity_events=santiment.get("dev_activity_events"),
                 social_trend=santiment.get("social_trend"),
                 unlock_overhang=overhang,

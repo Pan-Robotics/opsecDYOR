@@ -17,7 +17,7 @@ SAMPLE_UNIVERSE: list[dict] = [
         "inflation_rate": 0.05, "value_accrual": 0.95,  # strong hard-coded buyback
         "unlock_overhang": 0.77,  # low float — large vesting overhang ahead
         "top10_concentration": 0.24, "address_growth": 0.18, "reserve_trend": -0.30,
-        "social_trend": 0.40, "social_sentiment": 0.92, "dev_commit_trend": 0.55,
+        "social_trend": 0.40, "social_sentiment": 0.92, "dev_commit_trend": 0.55, "dev_activity": 45.0,
         "contract_verified": True, "team_anonymous": False, "audited": True,
         "days_since_last_commit": 2, "drawdown_from_ath_pct": 12.0, "daily_volume_usd": 8.0e8,
     },
@@ -28,7 +28,7 @@ SAMPLE_UNIVERSE: list[dict] = [
         "inflation_rate": 0.018, "value_accrual": 0.0,  # no protocol token sink
         "unlock_overhang": 0.0,  # no vesting schedule
         "top10_concentration": 0.10, "address_growth": 0.06, "reserve_trend": -0.55,
-        "social_trend": 0.20, "social_sentiment": 0.95, "dev_commit_trend": 0.35,
+        "social_trend": 0.20, "social_sentiment": 0.95, "dev_commit_trend": 0.35, "dev_activity": 170.0,
         "contract_verified": True, "team_anonymous": False, "audited": True,
         "days_since_last_commit": 1, "drawdown_from_ath_pct": 38.0, "daily_volume_usd": 2.0e10,
     },
@@ -38,7 +38,7 @@ SAMPLE_UNIVERSE: list[dict] = [
         "fdv_mcap_ratio": 1.20, "unlock_pct_of_volume": 0.05, "float_ratio": 0.83,
         "inflation_rate": 0.02, "value_accrual": 0.0, "unlock_overhang": 0.06,
         "top10_concentration": 0.18, "address_growth": 0.22, "reserve_trend": -0.20,
-        "social_trend": 0.60, "social_sentiment": 0.80, "dev_commit_trend": 0.45,
+        "social_trend": 0.60, "social_sentiment": 0.80, "dev_commit_trend": 0.45, "dev_activity": 25.0,
         "contract_verified": True, "team_anonymous": False, "audited": True,
         "days_since_last_commit": 5, "drawdown_from_ath_pct": 19.0, "daily_volume_usd": 4.0e8,
     },
@@ -48,7 +48,7 @@ SAMPLE_UNIVERSE: list[dict] = [
         "fdv_mcap_ratio": 14.0, "unlock_pct_of_volume": 2.5, "float_ratio": 0.07,
         "inflation_rate": 0.40, "value_accrual": 0.10, "unlock_overhang": 0.90,
         "top10_concentration": 0.62, "address_growth": -0.05, "reserve_trend": 0.10,
-        "social_trend": 0.30, "social_sentiment": 0.55, "dev_commit_trend": 0.20,
+        "social_trend": 0.30, "social_sentiment": 0.55, "dev_commit_trend": 0.20, "dev_activity": 6.0,
         "contract_verified": True, "team_anonymous": False, "audited": True,
         "days_since_last_commit": 20, "drawdown_from_ath_pct": 55.0, "daily_volume_usd": 1.0e7,
     },
@@ -58,7 +58,7 @@ SAMPLE_UNIVERSE: list[dict] = [
         "fdv_mcap_ratio": 9.0, "unlock_pct_of_volume": 0.0, "float_ratio": 0.50,
         "inflation_rate": 0.0, "value_accrual": 0.0, "unlock_overhang": 0.45,
         "top10_concentration": 0.80, "address_growth": -0.40, "reserve_trend": 0.30,
-        "social_trend": -0.50, "social_sentiment": 0.30, "dev_commit_trend": -0.60,
+        "social_trend": -0.50, "social_sentiment": 0.30, "dev_commit_trend": -0.60, "dev_activity": 0.1,
         "contract_verified": False, "team_anonymous": True, "audited": False,
         "days_since_last_commit": 400, "drawdown_from_ath_pct": 99.6, "daily_volume_usd": 120.0,
     },

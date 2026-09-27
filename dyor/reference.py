@@ -60,13 +60,26 @@ def build_references(
     return counts
 
 
+class ReferenceUnavailable(RuntimeError):
+    """The reference baskets exist but could not be read (DB contention). Raised
+    instead of silently scoring without the anchor — an unanchored score is a
+    different number for the same token, not a degraded one."""
+
+
 def reference_peers(asset_class: str | None) -> list[dict[str, Any]]:
-    """Cached reference records for a class (empty if not built yet)."""
+    """Cached reference records for a class (empty if not built yet).
+
+    Opened READ-ONLY: DuckDB refuses a read-write open while another thread of
+    the same process holds a read-only one ("different configuration than
+    existing connections"), and the API always has such readers in flight.
+    Opening read-write here made the anchor vanish intermittently under load —
+    the same token scored 54.8 on one request and 58.5 on the next (2026-09-27).
+    """
     if not asset_class:
         return []
     from dyor.store import db
 
-    con = db.connect()
+    con = db.connect(read_only=True)
     try:
         return db.reference_records(con, asset_class)
     finally:
@@ -78,22 +91,27 @@ def _basket_version(asset_class: str) -> str:
 
     Read fresh on every lookup (a cheap local DuckDB query) so a long-lived API
     worker picks up a `dyor reference` rebuild done by another process instead
-    of serving a process-lifetime-pinned anchor forever.
+    of serving a process-lifetime-pinned anchor forever. Read-only, and a read
+    failure PROPAGATES (it used to become "", which quietly re-keyed the cache).
     """
-    try:
-        from dyor.store import db
+    from dyor.store import db
 
-        con = db.connect()
-        try:
-            row = con.execute(
-                "SELECT max(updated_at) FROM reference_records WHERE asset_class = ?",
-                [asset_class],
-            ).fetchone()
-            return str(row[0]) if row and row[0] else ""
-        finally:
-            con.close()
-    except Exception:
-        return ""
+    con = db.connect(read_only=True)
+    try:
+        row = con.execute(
+            "SELECT max(updated_at) FROM reference_records WHERE asset_class = ?",
+            [asset_class],
+        ).fetchone()
+        return str(row[0]) if row and row[0] else ""
+    finally:
+        con.close()
+
+
+# The last anchor each class loaded successfully in this process. A transient
+# read failure (lock contention with a writer) keeps serving it: the anchor only
+# ever changes on an explicit `dyor reference` rebuild, so "stale" here means
+# at most one rebuild behind, never a different scale.
+_LAST_GOOD: dict[str, dict[str, np.ndarray]] = {}
 
 
 def reference_distributions(asset_class: str | None) -> dict[str, np.ndarray]:
@@ -114,7 +132,15 @@ def reference_distributions(asset_class: str | None) -> dict[str, np.ndarray]:
     """
     if not asset_class:
         return {}
-    return _distributions_for(asset_class, _basket_version(asset_class))
+    try:
+        dist = _distributions_for(asset_class, _basket_version(asset_class))
+    except Exception as exc:
+        if asset_class in _LAST_GOOD:
+            return _LAST_GOOD[asset_class]
+        raise ReferenceUnavailable(f"reference basket for '{asset_class}' unreadable: "
+                                   f"{type(exc).__name__}: {exc}") from exc
+    _LAST_GOOD[asset_class] = dist
+    return dist
 
 
 @cache
@@ -136,3 +162,4 @@ def _distributions_for(asset_class: str, version: str) -> dict[str, np.ndarray]:
 def clear_distribution_cache() -> None:
     """Drop the cached reference distributions (call after `build_references`)."""
     _distributions_for.cache_clear()
+    _LAST_GOOD.clear()

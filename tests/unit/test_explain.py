@@ -15,7 +15,7 @@ MARKET = {"id": "x", "current_price": 2.0, "market_cap": 1e9, "fully_diluted_val
           "ath_change_percentage": -40.0}
 SAN = {"window_days": 28, "slug": "x",
        "daily_active_addresses": {"n": 28, "k": 9, "early_mean": 100.0, "late_mean": 110.0, "growth": 0.1},
-       "dev_activity": {"n": 28, "k": 9, "early_mean": 10.0, "late_mean": 12.0, "growth": 0.2},
+       "dev_activity": {"n": 28, "k": 9, "early_mean": 10.0, "late_mean": 12.0, "growth": 0.2, "events": 308.0},
        "social_volume": None}
 FEEDS = {"coingecko": "ok", "defillama": "ok", "cryptorank": "off", "ethplorer": "ok",
          "sourcify": "ok", "santiment": "ok", "github": "ok"}
@@ -26,7 +26,7 @@ def _rec(token, *, mc=1e9, fees30=2e6, rev30=1e6, hold30=5e5, tvl=4e8, market=No
     rec = build_record(
         token, m, fees={"total30d": fees30}, revenue={"total30d": rev30},
         holders_revenue={"total30d": hold30}, tvl=tvl,
-        address_growth=0.1, dev_commit_trend=0.2, dev_activity_events=50.0, santiment_detail=SAN,
+        address_growth=0.1, dev_commit_trend=0.2, dev_activity=11.0, dev_activity_events=308.0, santiment_detail=SAN,
         top10_concentration=0.3, top10_shares=[10.0, 8.0, 5.0, 3.0, 2.0, 1.0, 0.5, 0.3, 0.1, 0.1],
         social_sentiment=0.7, sentiment_votes_up_pct=70.0, watchlist_users=1000,
         contract_verified=True, audited=True, github_account="x-labs",
@@ -89,6 +89,11 @@ def test_feature_rows_carry_inputs_formula_value_percentile(scored, sample_confi
     assert {i["key"]: i["value"] for i in ag["inputs"]} == {"daa_early": 100.0, "daa_late": 110.0, "daa_window": 28}
     # the holder shares that were summed
     assert rows["top10_concentration"]["inputs"][0]["unit"] == "pct_list"
+    # dev is a LEVEL (events ÷ days), not the month-over-month trend
+    dev = rows["dev_activity"]
+    assert dev["formula"] == "{dev_events} ÷ {dev_days}" and dev["unit"] == "per_day" and dev["value"] == 11.0
+    assert {i["key"]: i["value"] for i in dev["inputs"]} == {"dev_events": 308.0, "dev_days": 28}
+    assert "dev_commit_trend" not in rows
     # every feature of the class spec has a row, scored or not
     assert len(ex["features"]) == sum(len(v) for v in __import__("dyor.classes").classes.FEATURE_SPECS["defi"].values())
 

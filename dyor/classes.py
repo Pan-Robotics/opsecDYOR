@@ -26,6 +26,13 @@ FEATURE_DIRECTION: dict[str, bool] = {
     "top10_concentration": False, "address_growth": True, "reserve_trend": False,
     "social_trend": True, "social_sentiment": True, "dev_commit_trend": True,
     "watchlist_users": True,   # CoinGecko watchlist count — free, near-universal attention signal
+    # Sustained developer activity (mean events/day over the Santiment window),
+    # ranked against class peers. Replaced `dev_commit_trend` in every spec on
+    # 2026-09-27: a busy or quiet month is not a signal about a project, and the
+    # month-over-month ratio swung Bitcoin's dev percentile on nothing. The
+    # trend is still collected (informational); the dead_token gate covers "no
+    # activity at all" on a 180-day horizon.
+    "dev_activity": True,
 }
 
 
@@ -47,7 +54,7 @@ FEATURE_SPECS: dict[str, dict[str, list[tuple[str, bool]]]] = {
                     "float_ratio", "value_accrual"],
         onchain=["top10_concentration", "address_growth"],
         social=["social_trend", "social_sentiment", "watchlist_users"],
-        dev=["dev_commit_trend"],
+        dev=["dev_activity"],
     ),
     # Smart-contract platforms — ecosystem TVL + adoption + dev heavy; fees apply
     # but matter less than for a single app. Fundamentals come from DefiLlama's
@@ -57,7 +64,7 @@ FEATURE_SPECS: dict[str, dict[str, list[tuple[str, bool]]]] = {
         tokenomics=["fdv_mcap_ratio", "unlock_overhang", "float_ratio", "value_accrual"],
         onchain=["top10_concentration", "address_growth"],
         social=["social_trend", "social_sentiment", "watchlist_users"],
-        dev=["dev_commit_trend"],
+        dev=["dev_activity"],
     ),
     # Monetary / store-of-value — NO protocol cash flow. Scarcity + decentralized
     # accumulation + adoption.
@@ -65,7 +72,7 @@ FEATURE_SPECS: dict[str, dict[str, list[tuple[str, bool]]]] = {
         tokenomics=["float_ratio", "fdv_mcap_ratio", "unlock_overhang"],
         onchain=["top10_concentration", "address_growth"],
         social=["social_trend", "social_sentiment", "watchlist_users"],
-        dev=["dev_commit_trend"],
+        dev=["dev_activity"],
     ),
     # Memecoins — distribution + liquidity + attention; no fundamentals, no dev.
     "meme": _spec(
@@ -109,30 +116,39 @@ LABELS: dict[str, tuple[str, str]] = {
 
 # Known-id safety nets (categories can be missing/sparse from CoinGecko).
 MONETARY_IDS = {"bitcoin", "litecoin", "bitcoin-cash", "monero", "zcash", "dash",
-                "bitcoin-cash-sv", "ecash", "digibyte", "dogecoin-2"}
+                "bitcoin-cash-sv", "ecash", "digibyte", "dogecoin-2",
+                "decred", "zencash", "ravencoin"}
 L1_IDS = {"ethereum", "solana", "avalanche-2", "cardano", "polkadot", "near", "aptos",
           "sui", "cosmos", "tron", "binancecoin", "the-open-network", "internet-computer",
           "hedera-hashgraph", "algorand", "tezos", "stellar", "ethereum-classic", "kaspa",
           "sei-network", "injective-protocol", "celestia", "mantle", "fantom", "arbitrum",
           "optimism", "matic-network", "polygon-ecosystem-token"}
 STABLE_IDS = {"tether", "usd-coin", "dai", "first-digital-usd", "true-usd", "frax",
-              "usdd", "paypal-usd", "ethena-usde", "binance-usd", "usds"}
+              "usdd", "paypal-usd", "ethena-usde", "binance-usd", "usds",
+              "usd1-wlfi", "ripple-usd", "gho", "ondo-us-dollar-yield"}
 MEME_IDS = {"dogecoin", "shiba-inu", "pepe", "dogwifcoin", "bonk", "floki",
-            "mog-coin", "popcat", "book-of-meme", "brett-based"}
+            "mog-coin", "popcat", "book-of-meme", "brett-based",
+            "pudgy-penguins", "official-trump", "spx6900", "fartcoin", "turbo"}
 
 
 # Curated reference baskets — representative tokens per class, so a token can be
 # scored against same-class peers (an L1 vs L1s, not vs DeFi apps). Collected and
 # cached by `dyor reference`; used by analyze peer_mode="class".
 # The anchor distributions are built from these ONLY (see dyor/reference.py) —
-# a wider basket gives smoother percentiles, so defi/l1 are deliberately broad.
+# a wider basket gives smoother percentiles: with 7 coins each peer is worth
+# 1/6 of the scale, so one peer changing sides moved a score by ~17 points for
+# nothing (Bitcoin, 2026-09-27); monetary/meme/stablecoin were widened to 13–14
+# that day (every addition verified on CoinGecko; most tracked by Santiment).
 # Changing a basket changes every same-class score: rebuild with `dyor reference`.
 REFERENCE_BASKETS: dict[str, list[str]] = {
     "l1": ["ethereum", "solana", "avalanche-2", "cardano", "polkadot", "near",
            "aptos", "sui", "tron", "the-open-network", "internet-computer", "sei-network",
            "binancecoin", "cosmos", "celestia"],
-    "monetary": ["bitcoin", "litecoin", "bitcoin-cash", "monero", "zcash", "dash", "dogecoin"],
-    "meme": ["dogecoin", "shiba-inu", "pepe", "dogwifcoin", "bonk", "floki", "popcat"],
+    "monetary": ["bitcoin", "litecoin", "bitcoin-cash", "monero", "zcash", "dash", "dogecoin",
+                 "decred", "zencash", "ecash", "digibyte", "bitcoin-cash-sv", "ravencoin"],
+    "meme": ["dogecoin", "shiba-inu", "pepe", "dogwifcoin", "bonk", "floki", "popcat",
+             "pudgy-penguins", "official-trump", "spx6900", "fartcoin", "turbo", "mog-coin",
+             "book-of-meme"],
     "defi": ["aave", "uniswap", "lido-dao", "gmx", "curve-dao-token", "maker",
              "compound-governance-token", "pendle", "convex-finance", "rocket-pool",
              "pancakeswap-token", "sushi", "1inch", "balancer", "yearn-finance",
@@ -140,7 +156,8 @@ REFERENCE_BASKETS: dict[str, list[str]] = {
              "raydium", "jupiter-exchange-solana", "ethena", "frax-share",
              "stargate-finance", "jito-governance-token", "dydx-chain"],
     "stablecoin": ["tether", "usd-coin", "dai", "ethena-usde", "first-digital-usd",
-                   "true-usd", "frax"],
+                   "true-usd", "frax", "usds", "usd1-wlfi", "ripple-usd", "paypal-usd",
+                   "usdd", "gho", "ondo-us-dollar-yield"],
 }
 
 

@@ -110,6 +110,26 @@ def test_refresh_in_latest_run_only_touches_tokens_on_the_board():
     con.close()
 
 
+def test_refresh_in_latest_run_refuses_a_record_with_new_feed_errors():
+    """Santiment's monthly budget ran out on 2026-09-27: every live analysis
+    until the reset would have overwritten a good stored row with one missing
+    address_growth / dev_activity, moving the score for a non-token reason."""
+    con = db.connect(":memory:")
+    good = {"token": "aave", "address_growth": 0.1,
+            "_feeds": {"coingecko": "ok", "santiment": "ok", "github": "ok"}}
+    db.persist_records(con, [good])
+    worse = {"token": "aave", "address_growth": None,
+             "_feeds": {"coingecko": "ok", "santiment": "error", "github": "ok"}}
+    assert db.refresh_in_latest_run(con, worse) is False
+    assert db.latest_records(con)[0]["address_growth"] == 0.1        # untouched
+    # an error the stored row ALSO had is not a regression; same-or-better replaces
+    same = {"token": "aave", "address_growth": 0.2,
+            "_feeds": {"coingecko": "ok", "santiment": "ok", "github": "empty"}}
+    assert db.refresh_in_latest_run(con, same) is True
+    assert db.latest_records(con)[0]["address_growth"] == 0.2
+    con.close()
+
+
 def test_prune_runs_keeps_newest():
     con = db.connect(":memory:")
     for i in range(5):
