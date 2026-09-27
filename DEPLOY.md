@@ -282,6 +282,19 @@ Now: read-only opens, brief retries, the last good anchor kept per process,
 and `ReferenceUnavailable` → HTTP 503 (`Retry-After: 5`) rather than a number
 on a different scale. Never write `except Exception: return {}` around it again.
 
+**Rebuilding baskets while a source is unavailable poisons the anchor.** A
+`dyor reference` re-collects every basket coin; a feed that errors for all of
+them (Santiment over budget) yields distributions with no address-growth or
+dev-activity values, and every token is then scored without those features —
+Tether jumped 17 points from that alone (2026-09-27, a rebuild run right after
+the Santiment window changed, which invalidated the same-day cache). Before a
+rebuild: confirm the feeds are live, or that the window / cache keys match
+what the cache holds (`ls -t .cache/santiment | head`), and afterwards check
+`reference_distributions(cls)` has the on-chain and dev features for every
+class. If not, rebuild again with the previous window forced in memory
+(`cfg["ingestion"]["sources"]["santiment"]["window_days"] = 28;
+build_references(cfg)`), as was done to recover.
+
 **One-off basket refill.** The 2026-09-27 rebuild widened the monetary / meme /
 stablecoin baskets while Santiment was exhausted, so the new coins' Santiment
 features are empty until a rebuild after the monthly reset. A transient systemd
