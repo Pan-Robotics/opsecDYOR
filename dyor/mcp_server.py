@@ -73,7 +73,7 @@ def analyze_token(query: str, peer_mode: str = "class",
     contract address (any chain — resolves the unified token cross-chain), then
     score it.
 
-    Returns: the resolved identity (+ all chains), asset class, a 0–1 score and
+    Returns: the resolved identity (+ all chains), asset class, a 0–100 score and
     tier (A high-conviction → D avoid), gate flags (e.g. dead_token, extreme
     FDV/MCAP), non-fatal advisories, per-domain scores, a market snapshot, data
     coverage, feed status, and the ranked peer set the score is relative to.
@@ -155,8 +155,9 @@ def screen_tokens(
     limit: int = 25,
 ) -> dict[str, Any]:
     """Screen the saved universe by criteria — e.g. asset_class="defi", min_tier="B",
-    min_real_yield=0.045 (4.5%), no_flags=true. Returns matching tokens ranked
-    high→low. The universe is rebuilt weekly by the scheduled `dyor refresh`."""
+    min_score=60 (scores are 0–100), min_real_yield=0.045 (4.5%), no_flags=true.
+    Returns matching tokens ranked high→low. The universe is rebuilt weekly by
+    the scheduled `dyor refresh`."""
     from dyor.screen import screen
     from dyor.store import db
 

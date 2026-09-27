@@ -16,7 +16,7 @@ Sources of truth this consolidates: `docs/STAGES.md` (build gates), `DEPLOY.md` 
 A **normalize-then-gate, asset-class-aware crypto token qualification scorer**, built
 from the research doc *"Crypto Token Qualification Framework"* (Part 4 build plan,
 in-repo). Resolve any token by name, symbol, or contract address (cross-chain) → a
-0–1 composite score, an A–D tier, hard-disqualifier gate flags, and a full report.
+0–100 composite score, an A–D tier, hard-disqualifier gate flags, and a full report.
 
 The core thesis: **judge each token by the dimensions that matter for its asset
 class.** A DeFi app is judged on fees/revenue/TVL; Bitcoin is not penalised for
@@ -390,6 +390,25 @@ Changes (commit `e68acd2`, `docs/DATA-COVERAGE-2026-09-26.md` has the numbers):
   Santiment's dev-activity window shows events (`dev_activity_events`, a new
   gate input). Santiment alone was not enough — its repo lists for USDC,
   Balancer, Maker and BCH are stale too — hence the overrides.
+- **2026-09-27 — the report shows its working; scores are 0–100.** The token
+  page's "The numbers behind it" list is replaced by a ledger: for every
+  feature of the token's class, the raw figures (which fees window, both sides
+  of each ratio, the Santiment window means, the ten holder shares …) with the
+  feed they came from, the formula with those figures substituted, the value,
+  its percentile against the reference basket (and the basket size), its weight
+  in the composite and the points it adds; then the domain roll-up
+  (weight → renormalized weight → domain score → points = raw score), every
+  gate rule with its evidence and result, and the tier thresholds. Missing
+  features say why (feed empty/off/error, keyed source, undefined ratio).
+  Server side: `build_record` keeps `_inputs`, the pipeline keeps per-feature
+  percentiles on `ScoreResult`, `dyor/explain.py` builds the ledger, and
+  `analyze_to_dict` serves it as `explain`. The "Data sources" card links each
+  feed to its own page for the token (`_sources` on the record) and carries a
+  key for the four feed states (ok / empty / error / off). **Presentation scale
+  is now 0–100** everywhere a human reads a number — API/MCP JSON
+  (`scale: 100`), web, CLI, memo, alerts; tier thresholds and gate caps in the
+  methodology are 0–100 too. The engine still computes in [0, 1]; only
+  `scoring.composite.display()` converts, so no weight, threshold or cap moved.
 - `universe.make_target` is the one enrichment path for universe, baskets and
   analyze, so the anchor and live records share feature sets. Baskets rebuilt.
 

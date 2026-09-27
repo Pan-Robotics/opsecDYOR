@@ -82,13 +82,20 @@ def series_growth(series: Sequence[Number], window_frac: float = 1 / 3) -> float
     to day-to-day spikiness because it averages the head and tail windows.
     Returns None if there's too little data or the baseline is zero.
     """
+    d = series_growth_detail(series, window_frac)
+    return None if d is None else d["growth"]
+
+
+def series_growth_detail(series: Sequence[Number], window_frac: float = 1 / 3) -> dict | None:
+    """`series_growth` with its working, for the report's math ledger:
+    {n, k, early_mean, late_mean, growth}. None when there are fewer than 3
+    points; `growth` is None (not inf) on a zero baseline."""
     arr = _clean(series)
     n = arr.size
     if n < 3:
         return None
     k = max(1, round(n * window_frac))
-    early = arr[:k].mean()
-    late = arr[-k:].mean()
-    if early == 0:
-        return None
-    return float((late - early) / abs(early))
+    early = float(arr[:k].mean())
+    late = float(arr[-k:].mean())
+    growth = None if early == 0 else float((late - early) / abs(early))
+    return {"n": int(n), "k": int(k), "early_mean": early, "late_mean": late, "growth": growth}

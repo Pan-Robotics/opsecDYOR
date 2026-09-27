@@ -19,7 +19,8 @@ export function ClassBadge({ label }: { label: string }) {
   return <span className="pill border border-brand2/30 bg-brand2/15 text-brand2">{label}</span>;
 }
 
-export function fmt(n: number | null | undefined, d = 3) {
+// Scores arrive from the API on the 0–100 scale; one decimal is plenty.
+export function fmt(n: number | null | undefined, d = 1) {
   return n === null || n === undefined || Number.isNaN(n) ? "—" : n.toFixed(d);
 }
 
@@ -52,11 +53,11 @@ export function Stat({ label, value, sub }: { label: string; value: React.ReactN
 }
 
 export function ScoreBar({ value }: { value: number | null }) {
-  const v = value ?? 0;
-  const color = v >= 0.8 ? "bg-emerald-400" : v >= 0.6 ? "bg-sky-400" : v >= 0.4 ? "bg-amber-400" : "bg-rose-400";
+  const v = value ?? 0; // 0–100
+  const color = v >= 80 ? "bg-emerald-400" : v >= 60 ? "bg-sky-400" : v >= 40 ? "bg-amber-400" : "bg-rose-400";
   return (
     <div className="h-2 w-full overflow-hidden rounded-full bg-edge">
-      <div className={`h-full ${color}`} style={{ width: `${Math.max(0, Math.min(1, v)) * 100}%` }} />
+      <div className={`h-full ${color}`} style={{ width: `${Math.max(0, Math.min(100, v))}%` }} />
     </div>
   );
 }

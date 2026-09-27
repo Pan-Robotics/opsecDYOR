@@ -10,6 +10,7 @@ from __future__ import annotations
 from typing import Any
 
 from dyor.pipeline import score_universe
+from dyor.scoring.composite import display
 
 _TIER_RANK = {"A": 0, "B": 1, "C": 2, "D": 3}
 
@@ -20,15 +21,16 @@ def screen(
     *,
     asset_class: str | None = None,
     min_tier: str | None = None,      # e.g. "B" → A or B
-    min_score: float | None = None,
-    min_coverage: float | None = None,
+    min_score: float | None = None,       # on the 0–100 display scale
+    min_coverage: float | None = None,    # percent, 0–100
     no_flags: bool = False,
     feature_min: dict[str, float] | None = None,   # {"real_yield": 0.045}
     feature_max: dict[str, float] | None = None,   # {"fdv_mcap_ratio": 3}
     peer_groups: bool = False,
     limit: int | None = None,
 ) -> list[dict[str, Any]]:
-    """Score `records` and return those passing every criterion, ranked high→low."""
+    """Score `records` and return those passing every criterion, ranked high→low.
+    `min_score` / `min_coverage` are on the 0–100 scale the results use."""
     by_token = {r.get("token"): r for r in records}
     results = score_universe(records, config, peer_groups=peer_groups)
     max_tier_rank = _TIER_RANK.get((min_tier or "").strip()[:1], 99)
@@ -40,9 +42,9 @@ def screen(
             continue
         if min_tier and _TIER_RANK.get(r.tier.strip()[:1], 99) > max_tier_rank:
             continue
-        if min_score is not None and (r.final_score != r.final_score or r.final_score < min_score):
+        if min_score is not None and (display(r.final_score) is None or display(r.final_score) < min_score):
             continue
-        if min_coverage is not None and (r.coverage != r.coverage or r.coverage < min_coverage):
+        if min_coverage is not None and (display(r.coverage) is None or display(r.coverage) < min_coverage):
             continue
         if no_flags and r.flags:
             continue
@@ -55,9 +57,9 @@ def screen(
         out.append({
             "token": r.token,
             "class": rec.get("_class"),
-            "score": None if r.final_score != r.final_score else round(r.final_score, 4),
+            "score": display(r.final_score),
             "tier": r.tier,
-            "coverage": None if r.coverage != r.coverage else round(r.coverage, 3),
+            "coverage": display(r.coverage, 0),
             "confidence": r.confidence,
             "flags": list(r.flags),
         })

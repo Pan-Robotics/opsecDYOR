@@ -227,7 +227,7 @@ function TierTable({ rows, total }: { rows: Score[]; total: number }) {
                 </div>
               </td>
               <td className="p-3"><TierBadge tier={r.tier} /></td>
-              <td className="p-3 tabular-nums text-muted">{r.coverage === null ? "—" : `${Math.round(r.coverage * 100)}%`}</td>
+              <td className="p-3 tabular-nums text-muted">{r.coverage === null ? "—" : `${Math.round(r.coverage)}%`}</td>
               <td className="p-3 text-xs text-rose-300">{r.flags.join(", ") || "—"}</td>
             </tr>
           ))}

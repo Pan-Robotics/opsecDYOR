@@ -3,7 +3,7 @@ import Link from "next/link";
 const FEATURES: { href: string; icon: string; title: string; body: string; tag: string }[] = [
   {
     href: "/analyze", icon: "🔍", title: "Analyze any token", tag: "name · symbol · contract",
-    body: "Search by name, ticker, or contract address — it resolves the unified token across every chain. Get an asset-class-aware 0–1 score, A–D tier, gate flags, confidence + robustness, a market snapshot, every web/social link, a peer comparison, and a one-click analyst memo.",
+    body: "Search by name, ticker, or contract address — it resolves the unified token across every chain. Get an asset-class-aware 0–100 score, A–D tier, gate flags, confidence + robustness, a market snapshot, every web/social link, a peer comparison, and a one-click analyst memo.",
   },
   {
     href: "/screener", icon: "📊", title: "Tier screener", tag: "build · filter",
@@ -28,7 +28,7 @@ const STEPS = [
   ["Classify", "Type each token — DeFi, L1, monetary, memecoin, stablecoin — and judge it on what matters for it."],
   ["Measure", "Derived metrics: P/F, P/S, FDV/MCAP, token-sink, unlock overhang, holder concentration, growth."],
   ["Score", "Normalize across same-class peers, weight by domain, then gate — hard red flags cap or zero the score."],
-  ["Rank", "Map the 0–1 score to a tier — A (high conviction) → D (avoid) — with a confidence + robustness read."],
+  ["Rank", "Map the 0–100 score to a tier — A (high conviction) → D (avoid) — with a confidence + robustness read."],
 ];
 
 const CLASSES = [

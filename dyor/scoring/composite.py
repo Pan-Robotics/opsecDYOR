@@ -15,6 +15,20 @@ from dyor.config import load_config
 from dyor.scoring.gate import GateResult, evaluate
 from dyor.scoring.weights import Weights, load_weights
 
+# The engine computes in [0, 1] — percentiles, domain weights, gate caps and
+# tier thresholds all live on that scale — and PRESENTS on 0–100. Every
+# API / MCP / CLI / memo surface goes through `display()` so a reader sees 47.5,
+# never 0.4746. Internal comparisons (tiers, caps, alert thresholds) stay in
+# [0, 1]; nothing below this line re-scales the math.
+SCORE_SCALE = 100
+
+
+def display(x: float | None, digits: int = 1) -> float | None:
+    """[0, 1] engine value → 0–100 display value (None for None / NaN)."""
+    if x is None or (isinstance(x, float) and math.isnan(x)):
+        return None
+    return round(float(x) * SCORE_SCALE, digits)
+
 
 @dataclass(frozen=True)
 class ScoreResult:
@@ -29,6 +43,12 @@ class ScoreResult:
     features_total: int = 0
     advisories: list[str] = field(default_factory=list)  # non-fatal notes
     tier_stability: float = 1.0  # fraction of ±20% weight perturbations keeping the tier
+    # The working behind the number (see dyor/explain.py): each scored feature's
+    # percentile against its class's reference basket, how big that basket was,
+    # and the ceiling the gate applied.
+    feature_scores: dict[str, float] = field(default_factory=dict)  # feature → percentile, [0, 1]
+    feature_ref_n: dict[str, int] = field(default_factory=dict)     # feature → reference-basket size
+    gate_cap: float | None = None                                    # None = no cap applied
 
     @property
     def confidence(self) -> str:
@@ -106,6 +126,8 @@ def score_token(
     gate_result: GateResult | None = None,
     coverage: tuple[int, int] = (0, 0),
     advisories: list[str] | None = None,
+    feature_scores: dict[str, float] | None = None,
+    feature_ref_n: dict[str, int] | None = None,
 ) -> ScoreResult:
     """End-to-end for one token: combine → gate → tier.
 
@@ -136,4 +158,7 @@ def score_token(
         features_total=total,
         advisories=list(advisories or []),
         tier_stability=_tier_stability(domain_scores, w, gate_result, cfg, final),
+        feature_scores=dict(feature_scores or {}),
+        feature_ref_n=dict(feature_ref_n or {}),
+        gate_cap=gate_result.cap,
     )

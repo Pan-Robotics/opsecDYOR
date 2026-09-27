@@ -222,14 +222,18 @@ def classes() -> dict[str, Any]:
 
 @app.get("/api/methodology")
 def methodology() -> dict[str, Any]:
+    from dyor.scoring.composite import SCORE_SCALE, display
+
     cfg = load_config()
     return {
+        "scale": SCORE_SCALE,  # every score, tier threshold and gate cap below is 0–100
         "weights": cfg["scoring"]["weights"],
-        "tiers": [{"label": t["label"], "min": t["min"], "color": tier_color(t["label"])}
+        "tiers": [{"label": t["label"], "min": display(t["min"], 0), "color": tier_color(t["label"])}
                   for t in cfg["scoring"]["tiers"]],
         # each rule carries `active_on_open_data` — three of the five can't fire
         # without a keyed source, and a "transparent" methodology should say so
-        "gating": rule_activity(cfg),
+        "gating": {name: {**rule, **({"cap": display(rule["cap"], 0)} if rule.get("cap") is not None else {})}
+                   for name, rule in rule_activity(cfg).items()},
         "reference": cfg["reference"],
         "domains": {k: {"label": v[0], "description": v[1]} for k, v in DOMAIN_META.items()},
         "glossary": [{"key": k, "label": v[0], "meaning": v[1], "direction": v[2]}
@@ -248,6 +252,6 @@ def benchmark() -> dict[str, Any]:
     return {
         "passed": report.passed, "total": report.total, "accuracy": report.accuracy,
         "results": [{"name": r.name, "passed": r.passed, "tier": r.tier,
-                     "final_score": None if r.final_score != r.final_score else round(r.final_score, 4),
+                     "final_score": (lambda x: None if x != x else round(x * 100, 1))(r.final_score),
                      "reasons": r.reasons} for r in report.results],
     }

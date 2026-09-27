@@ -10,6 +10,8 @@ from __future__ import annotations
 from collections import Counter
 from typing import Any
 
+from dyor.scoring.composite import display
+
 
 def score_portfolio(queries: list[str], config: dict | None = None,
                     *, peer_mode: str = "class") -> dict[str, Any]:
@@ -27,7 +29,7 @@ def score_portfolio(queries: list[str], config: dict | None = None,
             "token": res.resolved.gecko_id, "name": res.resolved.name,
             "symbol": res.resolved.symbol,
             "class": (res.record or {}).get("_class"),
-            "score": None if s is None else round(s.final_score, 4) if s.final_score == s.final_score else None,
+            "score": None if s is None else display(s.final_score),
             "tier": None if s is None else s.tier,
             "flags": [] if s is None else list(s.flags),
         })
@@ -54,7 +56,7 @@ def score_portfolio(queries: list[str], config: dict | None = None,
         "scored": len(scored),
         "tier_distribution": dict(tiers),
         "class_exposure": dict(classes),
-        "avg_score": round(sum(valid_scores) / len(valid_scores), 4) if valid_scores else None,
+        "avg_score": round(sum(valid_scores) / len(valid_scores), 1) if valid_scores else None,
         "flagged": flagged,
         "notes": notes or ["Looks balanced against the barbell heuristic."],
         "disclaimer": "Research aid, not financial advice.",
@@ -86,14 +88,14 @@ def barbell(config: dict | None = None, *, n_satellites: int = 5,
         if r.flags or r.tier.strip()[:1] not in ("A", "B"):
             continue
         sats.append({"token": r.token, "class": rec.get("_class"),
-                     "score": round(r.final_score, 4), "tier": r.tier})
+                     "score": display(r.final_score), "tier": r.tier})
         if len(sats) >= n_satellites:
             break
 
     anchor_res = analyze_token("bitcoin", config, peer_mode="class")
     anchor_s = anchor_res.result
     anchor = {"token": "bitcoin", "tier": anchor_s.tier if anchor_s else None,
-              "score": round(anchor_s.final_score, 4) if anchor_s else None}
+              "score": display(anchor_s.final_score) if anchor_s else None}
 
     return {
         "anchor": anchor,

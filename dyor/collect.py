@@ -90,6 +90,20 @@ def days_since(iso_timestamp: str | None) -> float | None:
 
 _WINDOWS = ("total1y", "total30d", "total7d", "total24h")
 _ANNUALIZE = {"total1y": 1.0, "total30d": 365 / 30, "total7d": 365 / 7, "total24h": 365.0}
+_WINDOW_DAYS = {"total1y": 365, "total30d": 30, "total7d": 7, "total24h": 1}
+
+
+def annualized_detail(summary: dict[str, Any] | None) -> dict[str, Any] | None:
+    """`annualized` with its working, for the report's math ledger:
+    {window, days, total, annualized}. None when nothing usable is present."""
+    if not isinstance(summary, dict):  # DefiLlama returns [] for absent dataTypes
+        return None
+    for key in _WINDOWS:
+        value = summary.get(key)
+        if value:
+            return {"window": key, "days": _WINDOW_DAYS[key], "total": value,
+                    "annualized": value * _ANNUALIZE[key]}
+    return None
 
 
 def annualized(summary: dict[str, Any] | None) -> float | None:
@@ -98,13 +112,8 @@ def annualized(summary: dict[str, Any] | None) -> float | None:
     total1y is used as-is; otherwise the shortest available window is scaled up.
     Returns None if the summary is missing or carries no usable total.
     """
-    if not isinstance(summary, dict):  # DefiLlama returns [] for absent dataTypes
-        return None
-    for key in _WINDOWS:
-        value = summary.get(key)
-        if value:
-            return value * _ANNUALIZE[key]
-    return None
+    d = annualized_detail(summary)
+    return None if d is None else d["annualized"]
 
 
 def same_window_pair(
@@ -117,15 +126,23 @@ def same_window_pair(
     `total30d` and distort the result. Returns (None, None) if no shared window
     has a usable denominator.
     """
+    num, den, _ = same_window_pair_detail(num_summary, den_summary)
+    return num, den
+
+
+def same_window_pair_detail(
+    num_summary: dict[str, Any] | None, den_summary: dict[str, Any] | None
+) -> tuple[float | None, float | None, str | None]:
+    """`same_window_pair` plus WHICH window was shared, for the math ledger."""
     if not isinstance(num_summary, dict) or not isinstance(den_summary, dict):
-        return None, None
+        return None, None, None
     for w in _WINDOWS:
         den = den_summary.get(w)
         if den:
             num = num_summary.get(w)
             if num is not None:
-                return num, den
-    return None, None
+                return num, den, w
+    return None, None, None
 
 
 def parse_unlock(emissions: dict[str, Any] | None, market: dict[str, Any]) -> dict[str, Any]:
@@ -191,10 +208,18 @@ def holder_concentration(holders: list[dict[str, Any]] | None, n: int = 10) -> f
     only the top holders, so summing balances would mis-compute the total.
     Lower is better (less concentration). None if no holder data.
     """
+    shares = top_holder_shares(holders, n)
+    if not shares:
+        return None
+    return sum(shares) / 100.0
+
+
+def top_holder_shares(holders: list[dict[str, Any]] | None, n: int = 10) -> list[float] | None:
+    """The top-N holders' individual `share` percentages, largest first — the
+    figures `holder_concentration` sums, kept for the report's math ledger."""
     if not holders:
         return None
-    shares = sorted((h.get("share") or 0.0) for h in holders)[::-1][:n]
-    return sum(shares) / 100.0
+    return sorted((h.get("share") or 0.0) for h in holders)[::-1][:n]
 
 
 def _drawdown_from_ath(ath_change_pct: float | None) -> float | None:
@@ -226,6 +251,11 @@ def build_record(
     vc: dict[str, Any] | None = None,
     watchlist_users: int | None = None,
     audited: bool | None = None,
+    santiment_detail: dict[str, Any] | None = None,
+    top10_shares: list[float] | None = None,
+    sentiment_votes_up_pct: float | None = None,
+    unlock_inputs: dict[str, Any] | None = None,
+    github_account: str | None = None,
 ) -> dict[str, Any]:
     """Pure transform: raw API payloads → one scoring record.
 
@@ -234,20 +264,31 @@ def build_record(
     `address_growth`/`dev_commit_trend`/`social_trend` are precomputed Santiment
     growth signals. Missing inputs yield None features (skipped downstream),
     never exceptions.
+
+    The record also carries `_inputs`: every raw figure a feature was computed
+    from (which fees window, both sides of each ratio, the Santiment window
+    means, the holder shares …) so the report can show the working next to the
+    result (see dyor/explain.py). `_inputs` is informational — never scored.
     """
     mc = market.get("market_cap")
     circ = market.get("circulating_supply")
     total = market.get("total_supply") or market.get("max_supply")
     volume = market.get("total_volume")
 
-    ann_fees = annualized(fees)
-    ann_rev = annualized(revenue)
-    ann_holders = annualized(holders_revenue)
+    fees_d = annualized_detail(fees)
+    rev_d = annualized_detail(revenue)
+    holders_d = annualized_detail(holders_revenue)
+    ann_fees = None if fees_d is None else fees_d["annualized"]
+    ann_rev = None if rev_d is None else rev_d["annualized"]
+    ann_holders = None if holders_d is None else holders_d["annualized"]
+    va_num, va_den, va_window = same_window_pair_detail(holders_revenue, revenue)
 
     # FDV/MCAP from supply ratio (robust); fall back to CoinGecko's FDV/MC.
     fdv_mcap = valuation.fdv_mcap_ratio(total, circ)
+    fdv_mcap_method = "supply"
     if fdv_mcap is None:
         fdv_mcap = valuation._safe_div(market.get("fully_diluted_valuation"), mc)
+        fdv_mcap_method = "fdv_over_mcap" if fdv_mcap is not None else None
 
     unlock = unlock or {}
 
@@ -262,7 +303,7 @@ def build_record(
         "fdv_mcap_ratio": fdv_mcap,
         "float_ratio": tokenomics.float_ratio(circ, total),
         # token-sink: compare holders-rev and revenue over the SAME window
-        "value_accrual": tokenomics.value_accrual(*same_window_pair(holders_revenue, revenue)),
+        "value_accrual": tokenomics.value_accrual(va_num, va_den),
         # unlock overhang: locked-supply % when vesting (CryptoRank v0, open)
         "unlock_overhang": unlock_overhang,
         # precise next-unlock ÷ volume — populated only with a keyed unlock source
@@ -301,6 +342,57 @@ def build_record(
             "ath_change_pct": market.get("ath_change_percentage"),
             "price_change_24h_pct": market.get("price_change_percentage_24h"),
         },
+        # --- informational (not scored): the raw figures behind each feature ---
+        "_inputs": {
+            "price": market.get("current_price"),
+            "market_cap": mc,
+            "fdv": market.get("fully_diluted_valuation"),
+            "circulating_supply": circ,
+            "total_supply": total,
+            "max_supply": market.get("max_supply"),
+            "volume_24h": volume,
+            "fdv_mcap_method": fdv_mcap_method,
+            "fees": fees_d,                      # {window, days, total, annualized}
+            "revenue": rev_d,
+            "holders_revenue": holders_d,
+            "value_accrual_window": {"window": va_window, "holders_revenue": va_num, "revenue": va_den},
+            "tvl": tvl,
+            "last_push": last_push_iso,
+            "github_account": github_account,
+            "unlock": {**(unlock_inputs or {}), "next_unlock_usd": unlock.get("next_unlock_usd")},
+            "santiment": santiment_detail,       # {window_days, slug, <metric>: {n, k, early_mean, late_mean, growth}}
+            "top10_shares_pct": top10_shares,
+            "sentiment_votes_up_pct": sentiment_votes_up_pct,
+            "watchlist_users": watchlist_users,
+            "audited": audited,
+        },
+    }
+
+
+def source_links(
+    gecko_id: str,
+    *,
+    defillama_slug: str | None = None,
+    chain_name: str | None = None,
+    santiment_slug: str | None = None,
+    github_account: str | None = None,
+    eth_contract: str | None = None,
+    verify_address: str | None = None,
+    cryptorank_key: str | None = None,
+) -> dict[str, str | None]:
+    """Where a reader can see each feed's own page for this token — one entry
+    per feed in `_feeds`, None when the feed had no identifier to look up."""
+    from urllib.parse import quote
+
+    return {
+        "coingecko": f"https://www.coingecko.com/en/coins/{quote(gecko_id)}",
+        "defillama": (f"https://defillama.com/protocol/{quote(defillama_slug)}" if defillama_slug
+                      else f"https://defillama.com/chain/{quote(chain_name)}" if chain_name else None),
+        "santiment": f"https://app.santiment.net/charts?slug={quote(santiment_slug)}" if santiment_slug else None,
+        "github": f"https://github.com/{quote(github_account)}" if github_account else None,
+        "ethplorer": f"https://ethplorer.io/address/{quote(eth_contract)}" if eth_contract else None,
+        "sourcify": f"https://sourcify.dev/#/lookup/{quote(verify_address)}" if verify_address else None,
+        "cryptorank": f"https://cryptorank.io/price/{quote(cryptorank_key)}" if cryptorank_key else None,
     }
 
 
@@ -527,10 +619,10 @@ class Collector:
         frm = to - timedelta(days=_SANTIMENT_WINDOW_DAYS)
         fi, ti = frm.isoformat(), to.isoformat()
 
-        def growth(series):
+        def detail(series):
             if not series:
                 return None
-            return onchain.series_growth([p.get("value") for p in series])
+            return onchain.series_growth_detail([p.get("value") for p in series])
 
         def total(series):
             if not series:
@@ -543,14 +635,19 @@ class Collector:
             self._try("santiment", token, lambda: self.san.social_volume(slug, fi, ti))
             if self._has_santiment_key else None
         )
+        daa_d, dev_d, social_d = detail(daa), detail(dev), detail(social)
         return {
-            "address_growth": growth(daa),
-            "dev_commit_trend": growth(dev),
+            "address_growth": (daa_d or {}).get("growth"),
+            "dev_commit_trend": (dev_d or {}).get("growth"),
             # Raw event count over the window: Santiment tracks a curated repo set
             # per project, so events here prove the project is alive even when the
             # GitHub org we discovered has gone quiet (dead_token corroboration).
             "dev_activity_events": total(dev),
-            "social_trend": growth(social),
+            "social_trend": (social_d or {}).get("growth"),
+            # The working (window means) for the report's math ledger.
+            "_detail": {"window_days": _SANTIMENT_WINDOW_DAYS, "slug": slug,
+                        "daily_active_addresses": daa_d, "dev_activity": dev_d,
+                        "social_volume": social_d},
         }
 
     def collect(self, targets: list[Target] | None = None) -> list[dict[str, Any]]:
@@ -616,11 +713,15 @@ class Collector:
             # Unlock overhang + VC backing via CryptoRank (v0 open path is dead
             # since 2026-09 and disabled in config; a key re-enables via v3).
             overhang = None
+            unlock_inputs = None
             vc = {}
             cr_on = bool(target.cryptorank_key) and self.cr.enabled
             if cr_on:
                 coin = self._try("cryptorank", tok, lambda k=target.cryptorank_key: self.cr.coin(k))
                 if coin:
+                    unlock_inputs = {"available_supply": coin.get("availableSupply"),
+                                     "max_supply": coin.get("maxSupply"),
+                                     "has_vesting": coin.get("hasVesting")}
                     overhang = tokenomics.unlock_overhang(
                         coin.get("availableSupply"), coin.get("maxSupply"), coin.get("hasVesting"))
                     vc = vc_backing(coin)
@@ -642,10 +743,11 @@ class Collector:
 
             # Holder concentration (Ethplorer) + contract verification (Sourcify),
             # both Ethereum-only. NOTE: distinct var from DefiLlama holders_rev.
-            eth_holders = top10 = contract_verified = None
+            eth_holders = top10 = top10_shares = contract_verified = None
             if target.eth_contract:
                 eth_holders = self._try("ethplorer", tok, lambda a=target.eth_contract: self.eth.top_token_holders(a, 100))
                 top10 = holder_concentration(eth_holders)
+                top10_shares = top_holder_shares(eth_holders)
             # Sourcify covers many EVM chains; verify the first supported deployment
             # (Ethereum if there is one, else Arbitrum/Base/OP/Polygon/BSC/Avalanche).
             v_chain, v_addr = target.verify_chain_id, target.verify_address
@@ -670,11 +772,22 @@ class Collector:
                 vc=vc,
                 watchlist_users=meta.get("watchlist_users"),
                 audited=audited_for_class(asset_class, target.audits, target.has_audit_links),
+                santiment_detail=santiment.get("_detail"),
+                top10_shares=top10_shares,
+                sentiment_votes_up_pct=sentiment_pct,
+                unlock_inputs=unlock_inputs,
+                github_account=gh_account,
             )
             record["_group"] = target.category  # peer group for category-relative scoring
             record["_class"] = asset_class       # asset-class-aware scoring profile
             record["_categories"] = categories[:6]
             record["_github_account"] = gh_account  # which account the last push came from
+            record["_sources"] = source_links(
+                tok, defillama_slug=target.defillama_slug, chain_name=target.chain_name,
+                santiment_slug=san_slug, github_account=gh_account or (gh_accounts[0] if gh_accounts else None),
+                eth_contract=target.eth_contract, verify_address=v_addr,
+                cryptorank_key=target.cryptorank_key if cr_on else None,
+            )
             record["_feeds"] = {
                 "coingecko": "ok",
                 "defillama": _feed_status(bool(target.defillama_slug or target.chain_name), fees or tvl, self._errored(tok, "defillama")),

@@ -19,7 +19,8 @@ from dyor.sample_data import SAMPLE_UNIVERSE
 
 
 def _fmt(x: float) -> str:
-    return "  n/a" if math.isnan(x) else f"{x:5.3f}"
+    """Engine [0, 1] → the 0–100 display scale every surface uses."""
+    return "  n/a" if math.isnan(x) else f"{x * 100:5.1f}"
 
 
 def _print_table(results) -> None:
@@ -36,21 +37,8 @@ def _print_table(results) -> None:
 
 
 def _to_dict(r) -> dict:
-    return {
-        "token": r.token,
-        "raw_score": None if math.isnan(r.raw_score) else round(r.raw_score, 4),
-        "final_score": None if math.isnan(r.final_score) else round(r.final_score, 4),
-        "tier": r.tier,
-        "flags": r.flags,
-        "advisories": r.advisories,
-        "coverage": None if math.isnan(r.coverage) else round(r.coverage, 3),
-        "features_present": r.features_present,
-        "features_total": r.features_total,
-        "domain_scores": {
-            k: (None if math.isnan(v) else round(v, 4))
-            for k, v in r.domain_scores.items()
-        },
-    }
+    from dyor.api.serialize import score_to_dict  # one serializer → one scale (0–100)
+    return score_to_dict(r)
 
 
 def _cmd_score(args: argparse.Namespace) -> int:
@@ -238,7 +226,7 @@ def _cmd_analyze(args: argparse.Namespace) -> int:
 
     sr = res.result
     cov = "n/a" if math.isnan(sr.coverage) else f"{sr.coverage:.0%}"
-    print(f"\nscore:    {_fmt(sr.final_score)}  ({sr.tier})   coverage {cov}   "
+    print(f"\nscore:    {_fmt(sr.final_score).strip()}/100  ({sr.tier})   coverage {cov}   "
           f"vs {res.peer_count} peers")
     if sr.flags:
         print(f"flags:    {', '.join(sr.flags)}")
@@ -280,7 +268,7 @@ def _cmd_screen(args: argparse.Namespace) -> int:
                   feature_min=fmin, feature_max=fmax, limit=args.limit)
     print(f"{'TOKEN':<18}{'CLASS':<14}{'SCORE':>6} {'TIER':<8} CONF")
     for r in rows:
-        sc = "  n/a" if r["score"] is None else f"{r['score']:.3f}"
+        sc = "  n/a" if r["score"] is None else f"{r['score']:.1f}"
         print(f"{r['token']:<18}{r['class']!s:<14}{sc:>6} {r['tier'][:1]:<8} {r['confidence']}")
     print(f"\n{len(rows)} match of {len(records)}", file=sys.stderr)
     return 0
@@ -341,7 +329,7 @@ def main(argv: list[str] | None = None) -> int:
     screen.add_argument("--source", default="stored", choices=["stored", "sample"])
     screen.add_argument("--asset-class")
     screen.add_argument("--min-tier", choices=["A", "B", "C", "D"])
-    screen.add_argument("--min-score", type=float)
+    screen.add_argument("--min-score", type=float, help="on the 0–100 scale, e.g. 60")
     screen.add_argument("--min-real-yield", type=float)
     screen.add_argument("--max-fdv-mcap", type=float)
     screen.add_argument("--no-flags", action="store_true")

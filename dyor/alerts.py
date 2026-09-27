@@ -56,12 +56,13 @@ def score_change_alerts(prev, curr, *, drop: float = 0.10, rise: float = 0.15) -
         if token not in pi:
             continue
         delta = _get(c, "final_score") - _get(pi[token], "final_score")
+        # thresholds are engine-scale fractions; the message reads on 0–100
         if delta <= -drop:
             out.append(Alert("score_drop", token,
-                             f"score fell {delta:+.2f} to {_get(c, 'final_score'):.2f}", "warn"))
+                             f"score fell {delta * 100:+.1f} to {_get(c, 'final_score') * 100:.1f}", "warn"))
         elif delta >= rise:
             out.append(Alert("score_rise", token,
-                             f"score rose {delta:+.2f} to {_get(c, 'final_score'):.2f}", "info"))
+                             f"score rose {delta * 100:+.1f} to {_get(c, 'final_score') * 100:.1f}", "info"))
     return out
 
 

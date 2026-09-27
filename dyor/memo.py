@@ -13,7 +13,8 @@ from dyor.api.serialize import analyze_to_dict
 
 
 def _pct(x):
-    return "n/a" if x is None else f"{x:.0%}"
+    """`coverage` / `tier_stability` arrive from the serializer as 0–100 percentages."""
+    return "n/a" if x is None else f"{x:.0f}%"
 
 
 def _top_domains(domain_scores: dict, n: int = 2, best: bool = True):
@@ -36,7 +37,7 @@ def memo_from_analysis(d: dict) -> str:
     lines: list[str] = []
 
     # Verdict
-    lines.append(f"# {r['name']} ({r['symbol']}) — {s['tier']}  ·  score {s['final_score']}")
+    lines.append(f"# {r['name']} ({r['symbol']}) — {s['tier']}  ·  score {s['final_score']}/100")
     lines.append(f"**Asset class:** {cls.get('label')} · **confidence:** {s.get('confidence')} "
                  f"(coverage {_pct(s.get('coverage'))}, tier-stability {_pct(s.get('tier_stability'))})"
                  + (f" · ranked #{d['rank']} of {d['peer_count'] + 1} peers" if d.get('rank') else ""))
@@ -47,9 +48,9 @@ def memo_from_analysis(d: dict) -> str:
     weak = _top_domains(s["domain_scores"], best=False)
     lines.append("\n## What drove the score")
     if strong:
-        lines.append("Strongest: " + ", ".join(f"**{d}** ({v:.2f})" for d, v in strong) + ".")
+        lines.append("Strongest: " + ", ".join(f"**{d}** ({v:.0f}/100)" for d, v in strong) + ".")
     if weak:
-        lines.append("Weakest: " + ", ".join(f"**{d}** ({v:.2f})" for d, v in weak) + ".")
+        lines.append("Weakest: " + ", ".join(f"**{d}** ({v:.0f}/100)" for d, v in weak) + ".")
 
     # Risks
     lines.append("\n## Risks")
@@ -63,7 +64,7 @@ def memo_from_analysis(d: dict) -> str:
     conc = feats.get("top10_concentration")
     if conc is not None and conc >= 0.5:
         lines.append(f"- ⚠ **Concentration:** top-10 wallets hold ~{conc:.0%} of supply.")
-    if (s.get("coverage") or 1) < 0.5:
+    if (s.get("coverage") if s.get("coverage") is not None else 100) < 50:
         lines.append(f"- ⚠ **Thin data** ({_pct(s.get('coverage'))} coverage) — treat the tier as low-confidence.")
     miss = [k for k in ("cryptorank", "santiment", "defillama")
             if (rec.get("feeds") or {}).get(k) in ("error", "empty")]

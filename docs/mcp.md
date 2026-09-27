@@ -11,7 +11,7 @@ opinionated, **asset-class-aware**, **gated** assessment — not scraped raw dat
 
 | Tool | What it does |
 |---|---|
-| `analyze_token(query, peer_mode?, penalize_missing_core?)` | Resolve a token by **name / symbol / contract address** (cross-chain) → asset class, 0–1 score, tier (A→D), gate flags, advisories, per-domain scores, market snapshot, coverage, feed status, ranked peers. **The flagship.** |
+| `analyze_token(query, peer_mode?, penalize_missing_core?)` | Resolve a token by **name / symbol / contract address** (cross-chain) → asset class, 0–100 score, tier (A→D), gate flags, advisories, per-domain scores, market snapshot, coverage, feed status, ranked peers. **The flagship.** |
 | `resolve_token(query)` | Fast identity resolve (no scoring): gecko_id, all chains + addresses, explorer/project links. Confirm you've got the *right* token. |
 | `compare_tokens(queries[])` | Analyze several at once → compact ranked summary. |
 | `narratives(by?, top?)` | Sectors/narratives ranked by momentum (CoinGecko categories). |

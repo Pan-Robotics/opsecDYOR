@@ -6,7 +6,8 @@ import math
 from typing import Any
 
 from dyor.classes import FEATURE_DIRECTION, class_profile
-from dyor.scoring.composite import ScoreResult
+from dyor.explain import explain
+from dyor.scoring.composite import SCORE_SCALE, ScoreResult, display
 
 
 def _num(x: Any) -> float | None:
@@ -39,19 +40,23 @@ def chart_summary(prices: list[list[float]], max_points: int = 150) -> dict[str,
 
 
 def score_to_dict(sr: ScoreResult) -> dict[str, Any]:
+    """Scores on the 0–100 display scale (`scale` says so); `coverage` and
+    `tier_stability` are percentages. The engine's [0, 1] values never leave
+    the process."""
     return {
         "token": sr.token,
-        "raw_score": _num(sr.raw_score),
-        "final_score": _num(sr.final_score),
+        "raw_score": display(sr.raw_score),
+        "final_score": display(sr.final_score),
+        "scale": SCORE_SCALE,
         "tier": sr.tier,
-        "coverage": _num(sr.coverage),
+        "coverage": display(sr.coverage, 0),
         "features_present": sr.features_present,
         "features_total": sr.features_total,
-        "tier_stability": _num(sr.tier_stability),
+        "tier_stability": display(sr.tier_stability, 0),
         "confidence": sr.confidence,
         "flags": list(sr.flags),
         "advisories": list(sr.advisories),
-        "domain_scores": {k: _num(v) for k, v in sr.domain_scores.items()},
+        "domain_scores": {k: display(v) for k, v in sr.domain_scores.items()},
     }
 
 
@@ -69,6 +74,8 @@ def record_to_dict(rec: dict | None) -> dict[str, Any]:
         "market": rec.get("_market"),
         "categories": rec.get("_categories"),
         "feeds": rec.get("_feeds"),
+        "sources": rec.get("_sources"),            # feed → that source's page for this token
+        "github_account": rec.get("_github_account"),
         "contract_verified": rec.get("contract_verified"),
         "audited": rec.get("audited"),
         "vc": {"num_backers": rec.get("num_vc_backers"),
@@ -93,6 +100,8 @@ def analyze_to_dict(res) -> dict[str, Any]:
         "resolved": None if res.resolved is None else resolved_to_dict(res.resolved),
         "score": None if res.result is None else score_to_dict(res.result),
         "record": record_to_dict(res.record),
+        # the working: inputs → formula → value → percentile → weight → composite → gate → tier
+        "explain": explain(res.record, res.result),
         "peer_count": res.peer_count,
         "rank": res.rank,
         "peers": [score_to_dict(r) for r in res.all_results],

@@ -9,6 +9,7 @@ export type Score = {
   features_present: number;
   features_total: number;
   tier_stability?: number | null;
+  scale?: number;               // 100 — every score / domain score / coverage is 0–100
   confidence?: string;
   flags: string[];
   advisories: string[];
@@ -58,10 +59,46 @@ export type RecordData = {
   market: Market;
   categories: string[] | null;
   feeds: Record<string, string> | null;
+  sources?: Record<string, string | null> | null;   // feed → that source's page for this token
+  github_account?: string | null;
   contract_verified: boolean | null;
   audited: boolean | null;
   vc: { num_backers: number | null; had_public_sale: boolean | null };
   class: ClassInfo;
+};
+
+// --- the working behind the score (dyor/explain.py) ---------------------------
+export type ExplainInput = {
+  key: string; label: string; value: number | boolean | number[] | string | null;
+  unit: string; source: string;
+};
+export type ExplainFeature = {
+  feature: string; label: string; meaning: string; domain: string; direction: string;
+  source: string | null; feed_status: string | null;
+  inputs: ExplainInput[]; formula: string | null;
+  value: number | null; unit: string | null;
+  percentile: number | null; reference_n: number | null;
+  weight: number | null; contribution: number | null;
+  status: "scored" | "missing"; missing_reason: string | null;
+};
+export type ExplainDomain = {
+  domain: string; label: string; description: string;
+  weight: number; weight_renormalized: number | null;
+  features_total: number; features_scored: number;
+  score: number | null; penalized: boolean; required: boolean; contribution: number | null;
+};
+export type ExplainGateRule = {
+  rule: string; action: string; cap: number | null; active_on_open_data: boolean; tripped: boolean;
+  evidence: { label: string; value: number | boolean | string | null; unit: string; threshold: string | null }[];
+};
+export type Explain = {
+  method: { class: string; class_label: string; normalization: string; reference_anchored: boolean;
+            penalize_missing_core: boolean; missing_core_penalty: number | null; scale: number };
+  features: ExplainFeature[];
+  domains: ExplainDomain[];
+  gate: { rules: ExplainGateRule[]; flags: string[]; cap: number | null; raw_score: number | null; final_score: number | null };
+  tier: { tier: string; thresholds: { label: string; min: number }[]; stability: number | null;
+          confidence: string; coverage: { present: number; total: number; pct: number | null } };
 };
 
 export type Analysis = {
@@ -69,6 +106,7 @@ export type Analysis = {
   resolved: Resolved | null;
   score: Score | null;
   record: RecordData;
+  explain?: Explain | null;
   peer_count: number;
   rank: number | null;
   peers: Score[];
@@ -79,6 +117,7 @@ export type Analysis = {
 export type GateRule = { action: string; cap?: number; threshold?: number; active_on_open_data: boolean };
 
 export type Methodology = {
+  scale?: number;               // 100 — tier thresholds and gate caps are 0–100
   weights: Record<string, number>;
   tiers: { label: string; min: number; color: string }[];
   gating: Record<string, GateRule>;

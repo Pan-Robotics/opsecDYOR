@@ -40,9 +40,11 @@ export default function MethodologyPage() {
             {m.tiers.map((t) => (
               <span key={t.label} className="pill border border-edge bg-panel2 text-white">
                 <span className="inline-block h-2 w-2 rounded-full" style={{ background: t.color }} /> {t.label}
+                <span className="ml-1 text-muted">≥ {t.min}</span>
               </span>
             ))}
           </div>
+          <p className="mt-2 text-xs text-muted">Scores run 0–100: each feature is a percentile against the asset class&apos;s reference basket, averaged per domain, weighted, then capped by any gate that trips.</p>
           <h3 className="mb-2 mt-5 font-semibold text-white">Hurdle</h3>
           <p className="text-sm text-muted">
             10Y treasury <b className="text-white">{m.reference.treasury_10y_yield_pct}%</b> (as of {m.reference.reference_date}).

@@ -234,6 +234,15 @@ def score_universe(
     for i, rec in enumerate(records):
         profile = class_profile(rec.get("_class"), cfg)
         domain_scores = _domain_scores(norm_features, i, profile)
+        # Keep the per-feature percentiles (and the basket size each was ranked
+        # against) so the report can show the working, not just the averages.
+        feature_scores = {
+            f: float(norm_features[f][i])
+            for feats in profile.feature_spec.values() for f, _ in feats
+            if f in norm_features and not np.isnan(norm_features[f][i])
+        }
+        cls_dist = (ref_dist or {}).get(rec.get("_class")) or {}
+        feature_ref_n = {f: int(len(cls_dist[f])) for f in feature_scores if f in cls_dist}
 
         advisories = _advisories(rec, cfg)
         penalized = _apply_core_penalty(domain_scores, profile, penalize=penalize, floor=floor)
@@ -250,6 +259,8 @@ def score_universe(
                 config=cfg,
                 coverage=_coverage(rec, profile),
                 advisories=advisories,
+                feature_scores=feature_scores,
+                feature_ref_n=feature_ref_n,
             )
         )
 

@@ -61,7 +61,7 @@ function parseOpenApi(schema: OpenApiSchema): Group[] {
 // ---- MCP tools -------------------------------------------------------------
 type Tool = { sig: string; desc: string };
 const TOOLS: Tool[] = [
-  { sig: "analyze_token(query, peer_mode='stored', penalize_missing_core=None)", desc: "Vet ONE token end-to-end: resolve + asset class + 0–1 score & tier + gate flags + per-domain scores + market snapshot + ranked peers." },
+  { sig: "analyze_token(query, peer_mode='stored', penalize_missing_core=None)", desc: "Vet ONE token end-to-end: resolve + asset class + 0–100 score & tier + gate flags + per-domain scores + market snapshot + ranked peers." },
   { sig: "resolve_token(query)", desc: "Resolve a name/symbol/contract to a canonical identity (every chain, explorer + project links) WITHOUT scoring — confirm you've got the right token." },
   { sig: "compare_tokens(queries[], peer_mode='stored')", desc: "Analyze several tokens at once → a compact ranked like-for-like summary (token, class, score, tier, coverage, flags)." },
   { sig: "analyst_memo(query, peer_mode='class')", desc: "Reasoned markdown memo: verdict, drivers, risks, and 'break your thesis' answered with the data." },
