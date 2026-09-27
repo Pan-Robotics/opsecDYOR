@@ -130,10 +130,10 @@ if [ "$1" = "1" ]; then
   # a WARN, not a FAIL. Errors mean the token expired/was revoked (401).
   if [ "${4:-0}" -gt 0 ] && [ "${4:-0}" -ge "${2:-0}" ]; then
     no "github feed in latest run" "error=$4 ok=$2 — token expired or revoked?"
-  elif [ "${3:-0}" = "0" ] && [ "${2:-0}" -gt 0 ]; then
-    ok "github feed in latest run" "ok=$2"
+  elif [ "${2:-0}" -gt 0 ]; then
+    ok "github feed in latest run" "ok=$2 off=$3 (off = no GitHub account known for the token)"
   else
-    wr "github feed in latest run" "ok=${2:-?} off=${3:-?} — turns on at the next refresh"
+    wr "github feed in latest run" "ok=0 off=${3:-?} — turns on at the next refresh"
   fi
 else
   wr "GitHub token configured (server .env)" "DYOR_GITHUB_TOKEN unset — dead_token commit criterion inert"
@@ -191,9 +191,25 @@ if [ "$INFLIGHT" = yes ]; then
 else
   wr "concurrency check" "no refresh in flight to test against"
 fi
-A1=$(curl -s --max-time 90 "$BASE/api/analyze?q=bitcoin" | python3 -c "import json,sys;print(json.load(sys.stdin)['score']['final_score'])" 2>/dev/null)
-curl -s --max-time 90 "$BASE/api/analyze?q=litecoin" >/dev/null
-A2=$(curl -s --max-time 90 "$BASE/api/analyze?q=bitcoin" | python3 -c "import json,sys;print(json.load(sys.stdin)['score']['final_score'])" 2>/dev/null)
+# Three live analyses through nginx share the per-IP dyor_live limit (6 r/m)
+# with the rest of this sweep, and the API answers 503 when its live slots are
+# busy — so retry on anything but 200 instead of reading a rate limit as drift.
+analyze_score(){
+  local i out code
+  for i in 1 2 3 4; do
+    out=$(curl -s --max-time 120 -w '\n%{http_code}' "$BASE/api/analyze?q=$1")
+    code=${out##*$'\n'}; out=${out%$'\n'*}
+    if [ "$code" = "200" ]; then
+      printf '%s' "$out" | python3 -c "import json,sys;print(json.load(sys.stdin)['score']['final_score'])" 2>/dev/null
+      return
+    fi
+    sleep 20
+  done
+  echo "HTTP $code"
+}
+A1=$(analyze_score bitcoin)
+analyze_score litecoin >/dev/null
+A2=$(analyze_score bitcoin)
 [ -n "$A1" ] && [ "$A1" = "$A2" ] && ok "anchor drift regression" "bitcoin $A1 stable across same-class persist" \
   || no "anchor drift regression" "$A1 -> $A2"
 
