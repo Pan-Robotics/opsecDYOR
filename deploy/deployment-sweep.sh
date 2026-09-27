@@ -101,7 +101,7 @@ con.close()"')
 set -- $D
 ok "persisted runs" "$1"
 [ "$2" -ge 60 ] && ok "latest run size" "$2 tokens" || wr "latest run size" "$2 tokens (was 60)"
-chk "reference basket rows" "$3" "61"
+chk "reference basket rows" "$3" "81"
 chk "reference basket classes" "$4" "5"
 
 sec "E2 · FEED HEALTH (latest run)"
