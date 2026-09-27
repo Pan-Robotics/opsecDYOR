@@ -706,6 +706,8 @@ class Collector:
                 if self.dl.has_pro:  # Pro-only emissions endpoint
                     unlock = self._try("defillama", tok,
                                        lambda s=slug, m=market: parse_unlock(self.dl.emissions(s), m))
+            if tvl is not None and tvl <= 0:
+                tvl = None  # a zero-TVL stub row (foundation, bridge) must not block the fallbacks
             # A parent slug that serves nothing at all → its top version instead
             # (never mixed: parent fees with a version's TVL would be two products).
             if (target.defillama_fallback_slug and fees is None and revenue is None

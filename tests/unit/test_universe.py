@@ -78,7 +78,7 @@ def test_fold_parent_protocols_gives_versions_their_parent_slug():
 def test_chain_beats_a_bridge_row_for_a_chain_token():
     from dyor.universe import make_target
 
-    bridge = {"slug": "starknet-bridge", "gecko_id": "starknet", "category": "Bridge", "tvl": 1e9,
+    bridge = {"slug": "starknet-bridge", "gecko_id": "starknet", "category": "Canonical Bridge", "tvl": 1e9,
               "github": ["starkware-libs"], "audits": "0"}
     t = make_target("starknet", dl_info=bridge, chain={"name": "Starknet", "tvl": 5e8})
     assert t.defillama_slug is None and t.chain_name == "Starknet"      # chain-level fundamentals
@@ -88,6 +88,9 @@ def test_chain_beats_a_bridge_row_for_a_chain_token():
     # an application protocol is never overridden by a chain of the same id
     app = {"slug": "aave", "gecko_id": "aave", "category": "Lending", "tvl": 1e9}
     assert make_target("aave", dl_info=app, chain={"name": "Aave Chain", "tvl": 1}).defillama_slug == "aave"
+    # a foundation treasury row is not the token's product either
+    fnd = {"slug": "ethereum-foundation", "gecko_id": "ethereum", "category": "Foundation", "tvl": 1e9}
+    assert make_target("ethereum", dl_info=fnd, chain={"name": "Ethereum", "tvl": 6e10}).defillama_slug is None
 
 
 def test_eth_contracts_map_only_ethereum_lowercased():

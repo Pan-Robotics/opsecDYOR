@@ -31,6 +31,11 @@ from dyor.config import load_config
 
 # Categories that aren't protocol tokens we score the same way.
 DEFAULT_EXCLUDE = frozenset({"CEX", "Chain", "Bridge"})
+# Rows that describe infrastructure AROUND a token rather than the token's own
+# product: a chain's canonical bridge (starknet-bridge, mantle-bridge, and
+# DefiLlama's "solana" row is one too), a foundation treasury. Their TVL, fees
+# and audit record must not stand in for the token's; chain-level data does.
+UMBRELLA_CATEGORIES = DEFAULT_EXCLUDE | {"Canonical Bridge", "Foundation"}
 
 # CoinGecko platform id → EVM chain id, in the order Sourcify is tried. Ethereum
 # first (also feeds Ethplorer); the rest cover the common L2/alt-L1 deployments.
@@ -135,7 +140,7 @@ def fold_parent_protocols(
         if not gecko:
             continue
         category = children[0].get("category")
-        if category in DEFAULT_EXCLUDE:
+        if category in UMBRELLA_CATEGORIES:
             continue
         audits, links = _merge_audits(children)
         github: list[str] = []
@@ -190,7 +195,7 @@ def make_target(
     # row by gecko_id (starknet → starknet-bridge, mantle → mantle-bridge). The
     # bridge's TVL and fees are not the token's product; when DefiLlama knows the
     # chain, the chain-level fundamentals are, so the row's slug is dropped.
-    if chain and info.get("category") in DEFAULT_EXCLUDE:
+    if chain and info.get("category") in UMBRELLA_CATEGORIES:
         info = {k: v for k, v in info.items() if k != "slug"}
     plats = platforms or {}
     verify = pick_verify_contract(plats)
@@ -198,7 +203,7 @@ def make_target(
     # DefiLlama lists chains/CEXs/bridges as "protocols" with audits "0". An
     # audit is only a meaningful expectation of an application protocol — an
     # L1's chain row carrying "0" must not become a no_audit flag on ETH or BTC.
-    audit_row = info.get("category") not in DEFAULT_EXCLUDE
+    audit_row = info.get("category") not in UMBRELLA_CATEGORIES
     children = info.get("children") or []
     return Target(
         gecko_id=gecko_id,
