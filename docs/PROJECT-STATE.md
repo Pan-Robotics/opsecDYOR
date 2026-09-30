@@ -476,6 +476,20 @@ Changes (commit `e68acd2`, `docs/DATA-COVERAGE-2026-09-26.md` has the numbers):
   used by the 2026-10-02 timer (`dyor reference`, then the weekly refresh so
   the board matches the anchor); until then live analyses hit the exhausted
   budget and the persist guard keeps the board intact.
+- **2026-09-30 — a tweet quoted "6260/100" for ETH's fundamentals.** Three
+  defects in what we hand a reader, all fixed: (1) a feed that failed on a live
+  collect (Santiment over its monthly budget) left its domains out and the
+  weight was redistributed — Ethereum read 76 (B) live against 52 (C) on the
+  board; `dyor/feeds.py` now maps feeds to fields and `analyze` carries the
+  last stored values forward for a feed that errored (`stale`, dated), while a
+  feed that still errors yields a "provisional" advisory naming the affected
+  domains; (2) nothing said the numbers were already 0–100 — `analyze_to_dict`
+  carries `scale: 100` and a quotable `summary` (class, score/100, tier, each
+  domain with its weight, coverage, caveats, "do not rescale"), and the MCP
+  instructions say the same; (3) only the DeFi default weights were exposed —
+  `class_to_dict` carries the class's own weights, methodology returns
+  `class_weights`, the methodology page shows them. Live ETH now 54.3 C ==
+  board.
 - `universe.make_target` is the one enrichment path for universe, baskets and
   analyze, so the anchor and live records share feature sets. Baskets rebuilt.
 
