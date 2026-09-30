@@ -55,6 +55,19 @@ def test_carry_forward_skips_empty_off_and_feeds_the_store_lacks():
     assert feeds.carry_forward(_rec("y"), None, None) == []          # nothing stored → nothing carried
 
 
+def test_carry_forward_from_an_already_carried_row_keeps_the_original_date():
+    """During an outage the first live analysis carries and is persisted as
+    `stale`; the second must carry from THAT row (not find no `ok` row and drop
+    the domains) and keep the date the values were really collected."""
+    first = _rec("eth", _feeds={**_rec("eth")["_feeds"], "santiment": "stale"},
+                 _stale={"santiment": "2026-09-27 03:25:42"})
+    second = _rec("eth", address_growth=None, dev_activity=None, dev_activity_events=None, _inputs={},
+                  _feeds={**_rec("eth")["_feeds"], "santiment": "error"})
+    assert feeds.carry_forward(second, first, "2026-09-30 11:40:00") == ["santiment"]
+    assert second["address_growth"] == 0.1 and second["_feeds"]["santiment"] == "stale"
+    assert second["_stale"] == {"santiment": "2026-09-27 03:25:42"}      # original, not the persist time
+
+
 def test_domains_for_feeds():
     assert feeds.domains_for_feeds(["santiment"], FEATURE_SPECS["l1"]) == ["onchain", "social", "dev"]  # social_trend too
     assert feeds.domains_for_feeds(["defillama"], FEATURE_SPECS["meme"]) == []

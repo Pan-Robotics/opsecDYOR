@@ -57,10 +57,18 @@ def carry_forward(record: dict[str, Any], stored: dict[str, Any] | None,
         return []
     feeds = record.get("_feeds") or {}
     stored_feeds = stored.get("_feeds") or {}
+    stored_stale = stored.get("_stale") or {}
     carried: list[str] = []
+    dates: dict[str, str | None] = {}
     for feed, status in list(feeds.items()):
-        if status != "error" or stored_feeds.get(feed) != "ok":
+        # A stored row that is itself `stale` already holds carried values (a
+        # carried live record gets persisted in place); carry from it too, and
+        # keep the ORIGINAL date — otherwise the second analysis during an
+        # outage found no `ok` row, dropped the domains and scored 11 points
+        # differently from the first (sweep drift check, 2026-09-30).
+        if status != "error" or stored_feeds.get(feed) not in ("ok", "stale"):
             continue
+        dates[feed] = stored_stale.get(feed) or stored_at
         for key in FEED_FIELDS.get(feed, []):
             if record.get(key) is None and stored.get(key) is not None:
                 record[key] = stored[key]
@@ -76,7 +84,7 @@ def carry_forward(record: dict[str, Any], stored: dict[str, Any] | None,
         carried.append(feed)
     if carried:
         record["_feeds"] = feeds
-        record["_stale"] = {f: stored_at for f in carried}
+        record["_stale"] = {f: dates[f] for f in carried}
     return carried
 
 
