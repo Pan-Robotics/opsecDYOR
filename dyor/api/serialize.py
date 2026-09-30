@@ -82,7 +82,7 @@ def analysis_summary(res, score: dict[str, Any], record: dict[str, Any],
     head = f"{r.name} ({r.symbol}) · {cls.get('label', 'token')} · score {score['final_score']}/100 · tier {score['tier']}"
     if res.rank:
         head += f" · rank #{res.rank} of {res.peer_count + 1} same-class peers"
-    parts = [head]
+    parts = [head + "."]
     if explain_d and explain_d.get("domains"):
         doms = []
         for d in explain_d["domains"]:
