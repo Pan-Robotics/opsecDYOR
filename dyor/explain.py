@@ -26,20 +26,9 @@ from typing import Any
 from dyor.app.copy import DOMAIN_META, FEATURE_META
 from dyor.classes import class_profile
 from dyor.config import load_config
+from dyor.feeds import FEATURE_SOURCE  # feature → feed, derived from FEED_FIELDS
 from dyor.scoring.composite import ScoreResult, display
 from dyor.scoring.gate import OPEN_DATA_ACTIVE
-
-# Which feed each feature's inputs come from (keys match the record's `_feeds`).
-FEATURE_SOURCE: dict[str, str] = {
-    "price_to_fees": "defillama", "price_to_sales": "defillama", "mc_tvl": "defillama",
-    "real_yield": "defillama", "value_accrual": "defillama",
-    "fdv_mcap_ratio": "coingecko", "float_ratio": "coingecko",
-    "unlock_overhang": "cryptorank", "unlock_pct_of_volume": "cryptorank",
-    "top10_concentration": "ethplorer",
-    "address_growth": "santiment", "dev_commit_trend": "santiment", "dev_activity": "santiment",
-    "social_trend": "santiment",
-    "social_sentiment": "coingecko", "watchlist_users": "coingecko",
-}
 
 # Features that need a keyed / paid source even when the feed itself is on.
 FEATURE_GATED: dict[str, str] = {

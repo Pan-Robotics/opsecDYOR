@@ -23,6 +23,7 @@ export type ClassInfo = {
   label: string;
   description: string;
   domains: string[];
+  weights?: Record<string, number>;   // this class's domain weights (fractions)
   required_domains: string[];
 };
 
@@ -60,6 +61,7 @@ export type RecordData = {
   categories: string[] | null;
   feeds: Record<string, string> | null;
   sources?: Record<string, string | null> | null;   // feed → that source's page for this token
+  stale?: Record<string, string | null> | null;     // feed → date of the stored values carried forward
   github_account?: string | null;
   contract_verified: boolean | null;
   audited: boolean | null;
@@ -103,6 +105,8 @@ export type Explain = {
 
 export type Analysis = {
   query: string;
+  scale?: number;
+  summary?: string | null;
   resolved: Resolved | null;
   score: Score | null;
   record: RecordData;
@@ -119,6 +123,8 @@ export type GateRule = { action: string; cap?: number; threshold?: number; activ
 export type Methodology = {
   scale?: number;               // 100 — tier thresholds and gate caps are 0–100
   weights: Record<string, number>;
+  weights_note?: string;
+  class_weights?: Record<string, Record<string, number>>;
   tiers: { label: string; min: number; color: string }[];
   gating: Record<string, GateRule>;
   reference: { treasury_10y_yield_pct: number; reference_date: string };

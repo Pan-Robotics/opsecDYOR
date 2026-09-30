@@ -155,6 +155,15 @@ def _analyze_locked(query, cfg, *, peers, peer_mode, penalize_missing_core, use_
     record = next((r for r in records if r.get("token") == target.gecko_id), None)
     if record is None:
         return AnalyzeResult(query=query, resolved=resolved, errors=errors)
+    # A feed that failed on THIS collect must not change the token's score: carry
+    # the last stored values for that feed (marked `stale`, dated in the report)
+    # rather than score without the domains it feeds (see dyor/feeds.py).
+    if any(v == "error" for v in (record.get("_feeds") or {}).values()):
+        stored = _stored_record(record["token"])
+        if stored:
+            from dyor.feeds import carry_forward
+
+            carry_forward(record, stored[0], str(stored[1]) if stored[1] else None)
     if persist:
         _persist_live(record)
     live_peers = [r for r in records if r.get("token") != target.gecko_id]
@@ -205,6 +214,20 @@ def _persist_live(record: dict) -> bool:
         except Exception:
             time.sleep(0.05 * (3 ** attempt))
     return False
+
+
+def _stored_record(token: str):
+    """(record, collected_at) for a token on the board, or None (read-only, brief)."""
+    try:
+        from dyor.store import db
+
+        con = db.connect(read_only=True)
+        try:
+            return db.latest_record_for(con, token)
+        finally:
+            con.close()
+    except Exception:
+        return None
 
 
 def _stored_peers() -> list[dict]:

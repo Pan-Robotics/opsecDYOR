@@ -51,9 +51,15 @@ INSTRUCTIONS = (
     "(DeFi protocols on fees/revenue/TVL, monetary assets on scarcity/adoption, "
     "memecoins on distribution/social, etc.), normalizes across peers, then applies "
     "hard disqualifier gates. Use `analyze_token` to vet a specific token by name, "
-    "symbol, or contract address (it resolves cross-chain). Scores are a research "
-    "aid, NOT financial advice — always present the tier/flags as analysis, not a "
-    "buy/sell call."
+    "symbol, or contract address (it resolves cross-chain). EVERY score, domain "
+    "score, percentile, coverage and tier-stability figure is ALREADY on a 0–100 "
+    "scale (`scale: 100`) — never multiply by 100 again; 62.6 means 62.6/100. "
+    "Domain weights differ by asset class: use `record.class.weights` (or "
+    "`explain.domains`) for the token at hand, not the DeFi defaults in "
+    "`methodology.weights`. Quote `summary` for prose. A feed marked `stale` "
+    "carried the last stored values because the source failed this run; `error` "
+    "means the score is provisional. Scores are a research aid, NOT financial "
+    "advice — always present the tier/flags as analysis, not a buy/sell call."
 )
 
 mcp = FastMCP("dyor", instructions=INSTRUCTIONS, transport_security=_TRANSPORT_SECURITY)
@@ -73,10 +79,14 @@ def analyze_token(query: str, peer_mode: str = "class",
     contract address (any chain — resolves the unified token cross-chain), then
     score it.
 
-    Returns: the resolved identity (+ all chains), asset class, a 0–100 score and
-    tier (A high-conviction → D avoid), gate flags (e.g. dead_token, extreme
-    FDV/MCAP), non-fatal advisories, per-domain scores, a market snapshot, data
-    coverage, feed status, and the ranked peer set the score is relative to.
+    Returns: `summary` (one quotable paragraph — class, score/100, tier, each
+    domain with ITS weight, coverage, caveats), the resolved identity (+ all
+    chains), asset class WITH its domain weights, a 0–100 score and tier (A
+    high-conviction → D avoid), gate flags (e.g. dead_token, extreme FDV/MCAP),
+    advisories, per-domain scores (0–100, already scaled — never ×100 again),
+    the full working (`explain`: raw figures → formula → value → percentile →
+    weight → points), a market snapshot, data coverage, feed status (ok / empty
+    / error / off / stale), and the ranked peer set the score is relative to.
 
     peer_mode: "class" (default — the token's own asset class, fairest),
     "stored" (last saved universe), "sample" (built-in set), or "category"
@@ -232,10 +242,16 @@ def methodology() -> dict[str, Any]:
     from dyor.config import load_config
     from dyor.scoring.gate import rule_activity
 
+    from dyor.classes import LABELS
+    from dyor.scoring.composite import SCORE_SCALE, display
+
     cfg = load_config()
     return {
+        "scale": SCORE_SCALE,
         "weights": cfg["scoring"]["weights"],
-        "tiers": cfg["scoring"]["tiers"],
+        "weights_note": "`weights` is the DeFi / general profile; every class has its own — see class_weights",
+        "class_weights": {name: class_to_dict(name)["weights"] for name in LABELS},
+        "tiers": [{**t, "min": display(t["min"], 0)} for t in cfg["scoring"]["tiers"]],
         "gates": rule_activity(cfg),  # each with active_on_open_data
         "reference": cfg["reference"],
         "domains": {k: {"label": v[0], "description": v[1]} for k, v in DOMAIN_META.items()},

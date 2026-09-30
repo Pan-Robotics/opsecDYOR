@@ -66,10 +66,13 @@ def memo_from_analysis(d: dict) -> str:
         lines.append(f"- ⚠ **Concentration:** top-10 wallets hold ~{conc:.0%} of supply.")
     if (s.get("coverage") if s.get("coverage") is not None else 100) < 50:
         lines.append(f"- ⚠ **Thin data** ({_pct(s.get('coverage'))} coverage) — treat the tier as low-confidence.")
-    miss = [k for k in ("cryptorank", "santiment", "defillama")
-            if (rec.get("feeds") or {}).get(k) in ("error", "empty")]
+    feeds = rec.get("feeds") or {}
+    miss = [k for k in ("cryptorank", "santiment", "defillama") if feeds.get(k) in ("error", "empty")]
     if miss:
         lines.append(f"- ℹ Missing/empty feeds: {', '.join(miss)} (some signals not captured).")
+    stale = [k for k, v in feeds.items() if v == "stale"]
+    if stale:
+        lines.append(f"- ℹ Stale feeds (source failed this run; last stored values used): {', '.join(stale)}.")
     if len(lines) and not lines[-1].startswith("-"):
         lines.append("- No hard red flags surfaced.")
 

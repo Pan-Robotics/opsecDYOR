@@ -178,6 +178,24 @@ def _advisories(rec: dict, cfg: dict) -> list[str]:
     ry = rec.get("real_yield")
     if ry is not None and 0 < ry < hurdle:
         out.append(f"real yield {ry:.1%} below {hurdle:.1%} treasury hurdle")
+    # A feed that failed THIS run is a delivery problem, not a fact about the
+    # token — say so, name the domains it took with it, and call the number
+    # provisional. Carried-forward values (analyze.py) are dated instead.
+    from dyor.feeds import domains_for_feeds
+
+    feeds = rec.get("_feeds") or {}
+    errored = sorted(k for k, v in feeds.items() if v == "error")
+    if errored:
+        profile = class_profile(rec.get("_class"), cfg)
+        doms = domains_for_feeds(errored, profile.feature_spec)
+        where = (" — " + ", ".join(DOMAIN_LABEL.get(d, d) for d in doms) +
+                 " features missing and their weight redistributed") if doms else ""
+        out.append(f"{', '.join(errored)} feed{'s' if len(errored) > 1 else ''} failed this run{where}; "
+                   "treat the score as provisional")
+    stale = rec.get("_stale") or {}
+    if stale:
+        parts = ", ".join(f"{f} (stored {str(d)[:10]})" if d else f for f, d in stale.items())
+        out.append(f"source failed this run — values carried from the last stored run: {parts}")
     return out
 
 

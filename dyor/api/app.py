@@ -239,6 +239,8 @@ def methodology() -> dict[str, Any]:
     return {
         "scale": SCORE_SCALE,  # every score, tier threshold and gate cap below is 0–100
         "weights": cfg["scoring"]["weights"],
+        "weights_note": "`weights` is the DeFi / general profile; every class has its own — see class_weights",
+        "class_weights": {name: class_to_dict(name)["weights"] for name in LABELS},
         "tiers": [{"label": t["label"], "min": display(t["min"], 0), "color": tier_color(t["label"])}
                   for t in cfg["scoring"]["tiers"]],
         # each rule carries `active_on_open_data` — three of the five can't fire

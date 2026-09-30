@@ -9,6 +9,7 @@ const FEED_STATUS: Record<string, { dot: string; label: string; meaning: string 
   empty: { dot: "bg-white", label: "empty", meaning: "reachable, but has nothing on this token (not tracked there) — scored without it" },
   error: { dot: "bg-rose-500", label: "error", meaning: "the request failed this run (rate limit / outage) — scored without it; retried next refresh" },
   off: { dot: "bg-slate-600", label: "off", meaning: "not queried — no identifier for this token, or the source needs a key / plan we don't have" },
+  stale: { dot: "bg-amber-400", label: "stale", meaning: "the source failed this run — the last stored values were carried forward (dated in the advisory) so the score does not move on an outage" },
 };
 const FEED_ROLE: Record<string, string> = {
   coingecko: "price, market cap, supply, volume, community up-votes, watchlists, repo links",
@@ -152,6 +153,12 @@ export default function TokenReport({ a }: { a: Analysis }) {
               )}
               {rec.audited === false && (
                 <span className="pill border border-rose-500/30 bg-rose-500/10 text-rose-300" title="DefiLlama has no audit on record for this protocol">no audit on record</span>
+              )}
+              {rec.feeds && Object.values(rec.feeds).some((v) => v === "error") && (
+                <span className="pill border border-rose-500/30 bg-rose-500/10 text-rose-300" title="a data source failed this run and its features are missing">provisional</span>
+              )}
+              {rec.feeds && !Object.values(rec.feeds).some((v) => v === "error") && Object.values(rec.feeds).some((v) => v === "stale") && (
+                <span className="pill border border-amber-500/30 bg-amber-500/10 text-amber-300" title="a data source failed this run; its last stored values were carried forward">stale data carried</span>
               )}
             </div>
             <div className="mt-1 text-sm text-muted">

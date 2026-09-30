@@ -64,7 +64,48 @@ def class_to_dict(name: str | None) -> dict[str, Any]:
     p = class_profile(name)
     return {"name": p.name, "label": p.label, "description": p.description,
             "domains": list(p.feature_spec.keys()),
+            # THIS class's domain weights (the methodology's `weights` are the
+            # DeFi/general default — an L1 puts 18% on fundamentals, not 30%)
+            "weights": {d: round(w, 4) for d, w in p.weights.items()},
             "required_domains": sorted(p.required_domains)}
+
+
+def analysis_summary(res, score: dict[str, Any], record: dict[str, Any],
+                     explain_d: dict[str, Any] | None) -> str:
+    """One paragraph a reader (or an agent writing prose) can quote verbatim:
+    class, score/100, tier, every domain with ITS weight, coverage, flags and
+    data caveats — with the scale spelled out. Written after an agent multiplied
+    the already-0–100 domain scores by 100 and cited the DeFi default weights
+    for an L1 (2026-09-30)."""
+    r = res.resolved
+    cls = record.get("class") or {}
+    head = f"{r.name} ({r.symbol}) · {cls.get('label', 'token')} · score {score['final_score']}/100 · tier {score['tier']}"
+    if res.rank:
+        head += f" · rank #{res.rank} of {res.peer_count + 1} same-class peers"
+    parts = [head]
+    if explain_d and explain_d.get("domains"):
+        doms = []
+        for d in explain_d["domains"]:
+            w = round((d.get("weight") or 0) * 100)
+            if d.get("score") is None:
+                doms.append(f"{d['label'].lower()} no data (its {w}% weight redistributed)")
+            else:
+                doms.append(f"{d['label'].lower()} {d['score']}/100 (weight {w}%)")
+        parts.append("Domains, 0–100 with each one's weight in this class's composite: " + ", ".join(doms) + ".")
+    cov = score.get("coverage")
+    parts.append(f"Data coverage {score.get('features_present')}/{score.get('features_total')} features"
+                 + (f" ({round(cov)}%)" if cov is not None else "")
+                 + f", confidence {score.get('confidence')}"
+                 + (f", {round(score['tier_stability'])}% tier-stable" if score.get("tier_stability") is not None else "") + ".")
+    parts.append("Gate flags: " + (", ".join(score["flags"]) if score.get("flags") else "none") + ".")
+    feeds = record.get("feeds") or {}
+    bad = [f"{k} {v}" for k, v in feeds.items() if v in ("error", "stale")]
+    if bad:
+        parts.append("Data caveat: " + ", ".join(bad) + " (see advisories).")
+    if score.get("advisories"):
+        parts.append("Advisories: " + " | ".join(score["advisories"]) + ".")
+    parts.append("All figures are already on a 0–100 scale; do not rescale.")
+    return " ".join(parts)
 
 
 def record_to_dict(rec: dict | None) -> dict[str, Any]:
@@ -75,6 +116,7 @@ def record_to_dict(rec: dict | None) -> dict[str, Any]:
         "categories": rec.get("_categories"),
         "feeds": rec.get("_feeds"),
         "sources": rec.get("_sources"),            # feed → that source's page for this token
+        "stale": rec.get("_stale"),                # feed → date of the stored values carried forward
         "github_account": rec.get("_github_account"),
         "contract_verified": rec.get("contract_verified"),
         "audited": rec.get("audited"),
@@ -95,13 +137,19 @@ def resolved_to_dict(rt) -> dict[str, Any]:
 
 
 def analyze_to_dict(res) -> dict[str, Any]:
+    score = None if res.result is None else score_to_dict(res.result)
+    record = record_to_dict(res.record)
+    explain_d = explain(res.record, res.result)
     return {
         "query": res.query,
+        "scale": SCORE_SCALE,  # every score / domain score / percentile below is 0–100
+        "summary": (analysis_summary(res, score, record, explain_d)
+                    if (score is not None and res.resolved is not None) else None),
         "resolved": None if res.resolved is None else resolved_to_dict(res.resolved),
-        "score": None if res.result is None else score_to_dict(res.result),
-        "record": record_to_dict(res.record),
+        "score": score,
+        "record": record,
         # the working: inputs → formula → value → percentile → weight → composite → gate → tier
-        "explain": explain(res.record, res.result),
+        "explain": explain_d,
         "peer_count": res.peer_count,
         "rank": res.rank,
         "peers": [score_to_dict(r) for r in res.all_results],

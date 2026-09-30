@@ -33,6 +33,26 @@ export default function MethodologyPage() {
               <div className="w-12 text-right tabular-nums">{Math.round(w * 100)}%</div>
             </div>
           ))}
+          {m.class_weights && (
+            <div className="mt-4">
+              <div className="mb-1 text-xs uppercase text-muted">Per asset class</div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead className="text-left uppercase text-muted">
+                    <tr><th className="py-1 pr-2">class</th>{Object.keys(m.weights).map((d) => <th key={d} className="pr-2 text-right">{d}</th>)}</tr>
+                  </thead>
+                  <tbody>
+                    {Object.entries(m.class_weights).filter(([c]) => c !== "general").map(([c, w]) => (
+                      <tr key={c} className="border-t border-edge">
+                        <td className="py-1 pr-2 text-white">{c}</td>
+                        {Object.keys(m.weights).map((d) => <td key={d} className="pr-2 text-right tabular-nums">{w[d] != null ? `${Math.round(w[d] * 100)}%` : "—"}</td>)}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
         <div className="card">
           <h3 className="mb-3 font-semibold text-white">Tiers</h3>

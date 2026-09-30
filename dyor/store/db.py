@@ -137,6 +137,20 @@ def token_in_latest_run(con: duckdb.DuckDBPyConnection, token: str) -> bool:
     return row is not None
 
 
+def latest_record_for(con: duckdb.DuckDBPyConnection, token: str) -> tuple[dict[str, Any], Any] | None:
+    """(record, collected_at) of a token's row in the most recent run, or None."""
+    run = con.execute(
+        "SELECT run_id FROM token_records ORDER BY collected_at DESC LIMIT 1"
+    ).fetchone()
+    if not run:
+        return None
+    row = con.execute(
+        "SELECT record, collected_at FROM token_records WHERE run_id = ? AND token = ? LIMIT 1",
+        [run[0], token],
+    ).fetchone()
+    return (json.loads(row[0]), row[1]) if row else None
+
+
 def upsert_into_latest_run(con: duckdb.DuckDBPyConnection, record: dict[str, Any]) -> str:
     """Write ONE token's record into the most recent run, adding it if absent.
 
