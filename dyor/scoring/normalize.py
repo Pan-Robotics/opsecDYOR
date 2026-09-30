@@ -33,7 +33,8 @@ def percentile_rank(values: ArrayLike, higher_is_better: bool = True) -> np.ndar
 
 
 def percentile_of_score(
-    value: float | None, reference: ArrayLike, higher_is_better: bool = True
+    value: float | None, reference: ArrayLike, higher_is_better: bool = True,
+    *, tie_rtol: float = 1e-3,
 ) -> float:
     """Rank ONE value against a *fixed* reference distribution → [0, 1].
 
@@ -64,11 +65,27 @@ def percentile_of_score(
         pct = 0.5 if v == ref[0] else (1.0 if v > ref[0] else 0.0)
     else:
         positions = np.arange(ref.size, dtype="float64") / (ref.size - 1)
-        xs, inverse = np.unique(ref, return_inverse=True)      # one knot per distinct value …
-        knots = np.zeros(xs.size)
-        np.add.at(knots, inverse, positions)
-        knots /= np.bincount(inverse)                          # … at the mean position of its ties
-        pct = float(np.interp(v, xs, knots))                   # clamps to 0 / 1 outside the range
+        # Values closer than `tie_rtol` (relative) are one value: provider
+        # rounding puts fully-diluted coins at 0.99999 / 1.0 / 1.00001, and
+        # ranking those strictly let Bitcoin's float ratio swing between the
+        # 67th and 100th percentile on a 0.001% flicker (2026-09-30). Cluster
+        # sorted neighbours within the tolerance; one knot per cluster at its
+        # mean value and the mean position of its members.
+        tol = tie_rtol * max(abs(float(ref[-1])), abs(float(ref[0])), abs(v), 1e-12)
+        xs: list[float] = []
+        knots: list[float] = []
+        start = 0
+        for i in range(1, ref.size + 1):
+            if i == ref.size or ref[i] - ref[i - 1] > tol:
+                xs.append(float(ref[start:i].mean()))
+                knots.append(float(positions[start:i].mean()))
+                start = i
+        if len(xs) == 1:
+            pct = knots[0] if abs(v - xs[0]) <= tol else (1.0 if v > xs[0] else 0.0)
+        else:
+            near = min(range(len(xs)), key=lambda j: abs(v - xs[j]))
+            # snapped into its cluster, else interpolated (clamps to 0 / 1 outside the range)
+            pct = knots[near] if abs(v - xs[near]) <= tol else float(np.interp(v, xs, knots))
     return pct if higher_is_better else 1.0 - pct
 
 

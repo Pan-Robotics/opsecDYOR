@@ -95,6 +95,22 @@ def test_percentile_of_score_is_continuous_across_a_tie_cluster():
     assert all(b >= a - 1e-12 for a, b in zip(vals, vals[1:]))
 
 
+def test_percentile_of_score_treats_near_identical_values_as_ties():
+    """Fully-diluted coins read 0.99999 / 1.0 / 1.00001 depending on the
+    provider's rounding that day; they must share one position, and a token at
+    any of those values must get that same position (Bitcoin 2026-09-30)."""
+    ref = [0.68, 0.78, 0.90, 0.95, 0.9999, 1.0, 1.00001]
+    cluster = norm.percentile_of_score(1.0, ref)
+    assert cluster == pytest.approx(5 / 6)                 # mean position of the top three
+    for v in (0.99995, 0.9999, 1.00002):
+        assert norm.percentile_of_score(v, ref) == pytest.approx(cluster)
+    # a genuinely different value still ranks on its own
+    assert norm.percentile_of_score(0.95, ref) == pytest.approx(3 / 6)
+    assert 3 / 6 < norm.percentile_of_score(0.97, ref) < 5 / 6
+    # the tolerance is relative: 1300 vs 1300.5 on a P/F scale is a tie too
+    assert norm.percentile_of_score(1300.5, [10, 100, 1300, 5000]) == norm.percentile_of_score(1300, [10, 100, 1300, 5000])
+
+
 def test_percentile_of_score_single_reference_value():
     assert norm.percentile_of_score(2.0, [2.0]) == 0.5
     assert norm.percentile_of_score(3.0, [2.0]) == 1.0
