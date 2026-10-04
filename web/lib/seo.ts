@@ -8,7 +8,7 @@ export const SITE = {
   name: "DYOR",
   fullName: "DYOR by CryptoOpsec",
   org: "CryptoOpsec",
-  orgUrl: (process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.cryptoopsec.com").replace(/\/$/, ""),
+  orgUrl: (process.env.NEXT_PUBLIC_SITE_URL ?? "https://cryptoopsec.com").replace(/\/$/, ""),
   twitter: process.env.NEXT_PUBLIC_TWITTER_HANDLE || "@cryptoopseccom", // X / Twitter account for cards + sameAs
   title: "DYOR: Crypto Token Scoring on Fundamentals, Tokenomics and On-chain Data",
   description:

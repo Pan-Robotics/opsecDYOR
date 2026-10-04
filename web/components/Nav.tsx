@@ -17,7 +17,7 @@ const LINKS: [string, string][] = [
   ["/api-mcp", "API & MCP"],
 ];
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.cryptoopsec.com";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://cryptoopsec.com";
 
 // One header for every width: brand row, then a single-line tab strip that
 // scrolls sideways on narrow screens (the active tab is kept in view) and sits
