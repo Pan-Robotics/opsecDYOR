@@ -527,6 +527,14 @@ Changes (commit `e68acd2`, `docs/DATA-COVERAGE-2026-09-26.md` has the numbers):
   rewritten without em or en dashes, middle dots, arrows, ellipses or `≥ ≤ ×`;
   tier labels are now `"C (watchlist)"` style, so anything parsing the old
   `"C — watchlist"` form must use the parenthesised word.
+- **2026-10-04 (later still): tab persistence.** The sticky store
+  (`web/components/AppState.tsx`) is now mirrored to `sessionStorage` and
+  restored after mount, so screener ranking, filters, selection, the analyze
+  query and result, tools inputs and results survive tab switches and reloads.
+  The Compare tab returns to the compared set (`compare:ids`), the token page's
+  compare link appends to it, and the screener keeps its loaded board in memory
+  so returning is instant. `web/scripts/tab-persistence.mjs` drives a headless
+  Chrome over the DevTools protocol through 18 checks.
 
 ## 9. Gaps in this reconstruction
 

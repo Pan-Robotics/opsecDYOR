@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 type Option = { id: string; name: string; symbol: string };
@@ -9,6 +9,9 @@ export default function ComparePicker({ initial, options }: { initial: string[];
   const router = useRouter();
   const [ids, setIds] = useState<string[]>(initial);
   const [q, setQ] = useState("");
+  // Follow the URL (back/forward, nav tab): the server passes the current set.
+  const initialKey = initial.join(",");
+  useEffect(() => { setIds(initialKey ? initialKey.split(",") : []); }, [initialKey]);
   const byId = useMemo(() => new Map(options.map((o) => [o.id, o])), [options]);
 
   const matches = useMemo(() => {

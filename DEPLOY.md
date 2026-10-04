@@ -367,6 +367,27 @@ for p in / /screener /token/aave /compare?tokens=aave,uniswap; do curl -s "https
   Tier labels are `"A (high conviction)"` .. `"D (avoid)"`; the Open Graph card
   reads the word inside the parentheses.
 
+## Tab persistence (added 2026-10-04)
+
+Each tab comes back as it was left. `web/components/AppState.tsx` holds the
+sticky store in the root layout and mirrors it to `sessionStorage` (per browser
+tab, survives reloads, gone when the tab closes; keys starting with `cache:`
+stay in memory only). Pages use `useStickyState(key, initial)`; anything that
+must wait for the restored state (a first fetch whose parameters are sticky, an
+auto-run from `?q=`) checks `useAppStateHydrated()` first. The Compare tab in
+the nav returns to the set being compared (`compare:ids`, recorded by
+`RememberCompare` on the compare page); a token page's `CompareLink` appends to
+that set. The screener keeps its loaded board in memory under `cache:screener:*`.
+
+Rules: the setter from `useStickyState` is stable per key, so it is safe in
+dependency lists; a component that writes a sticky value from an effect must
+skip the write when the value is already equal, or it loops. Check with a real
+browser after touching any of this:
+
+```bash
+node web/scripts/tab-persistence.mjs https://dyor.cryptoopsec.com   # 18 checks, ALL PASSED
+```
+
 ## Coverage matrix
 
 `deploy/coverage-matrix.py` prints, for the latest persisted run, how many

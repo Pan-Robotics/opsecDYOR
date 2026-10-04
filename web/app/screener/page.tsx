@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { api, type TokenDetail } from "@/lib/api";
 import { fmt, ScoreBar, Spinner, TierBadge } from "@/components/ui";
-import { useStickyState } from "@/components/AppState";
+import { useAppStateHydrated, useStickyState } from "@/components/AppState";
 import { METRICS, fmtMetric, metricByKey, type Metric } from "@/lib/metrics";
 
 const CLASSES = ["defi", "l1", "monetary", "meme", "stablecoin"];
@@ -30,11 +30,16 @@ function metricPercentile(row: TokenDetail, m: Metric): number | null {
 }
 
 export default function ScreenerPage() {
-  const [rows, setRows] = useState<TokenDetail[] | null>(null);
-  const [meta, setMeta] = useState<{ run: string | null; at: string | null }>({ run: null, at: null });
+  const hydrated = useAppStateHydrated();
   const [error, setError] = useState<string | null>(null);
   const [peerGroups, setPeerGroups] = useStickyState("screener:peerGroups", false);
   const [penalize, setPenalize] = useStickyState("screener:penalize", true);
+  // The loaded board stays in memory for the tab (not in storage: it is bulky and
+  // cheap to refetch), so coming back from Compare or a token page is instant.
+  type Board = { rows: TokenDetail[]; run: string | null; at: string | null };
+  const [board, setBoard] = useStickyState<Board | null>(`cache:screener:${peerGroups ? 1 : 0}${penalize ? 1 : 0}`, null);
+  const rows = board?.rows ?? null;
+  const meta = { run: board?.run ?? null, at: board?.at ?? null };
 
   const [metricKey, setMetricKey] = useStickyState("screener:metric", "final_score");
   const [order, setOrder] = useStickyState<"best" | "worst">("screener:order", "best");
@@ -46,13 +51,14 @@ export default function ScreenerPage() {
   const [selected, setSelected] = useStickyState<string[]>("screener:selected", []);
 
   const load = useCallback(async () => {
-    setRows(null); setError(null);
+    setBoard(null); setError(null);
     try {
       const d = await api.tokensDetail(peerGroups, penalize);
-      setRows(d.tokens); setMeta({ run: d.run_id, at: d.collected_at });
+      setBoard({ rows: d.tokens, run: d.run_id, at: d.collected_at });
     } catch (e: any) { setError(e.message); }
-  }, [peerGroups, penalize]);
-  useEffect(() => { load(); }, [load]);
+  }, [peerGroups, penalize, setBoard]);
+  // First load waits for the tab's stored state (the toggles above may differ from the defaults).
+  useEffect(() => { if (hydrated && !board) load(); }, [hydrated, board, load]);
 
   const metric = metricByKey(metricKey) ?? METRICS[0];
   const bestFirst = order === "best";

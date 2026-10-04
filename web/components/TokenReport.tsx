@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Analysis, ExplainFeature, ExplainGateRule } from "@/lib/api";
 import ShareBar from "./ShareBar";
+import CompareLink from "./CompareLink";
 import { ClassBadge, DomainBars, fmt, fmtNum, fmtUsd, ScoreBar, Stat, TierBadge, tierColor } from "./ui";
 import TokenLink from "./TokenLink";
 import PriceChart from "./PriceChart";
@@ -207,9 +208,7 @@ export default function TokenReport({ a, headingTag = "h2", permalink = true }: 
               text={`${r.name} (${r.symbol}) scores ${fmt(s.final_score)}/100, tier ${s.tier.trim().charAt(0)}, on DYOR by CryptoOpsec. ${rec.class?.label ?? ""} judged on ${Object.keys(s.domain_scores).filter((k) => s.domain_scores[k] !== null).length} domains. Research aid, not advice.`}
               summary={a.summary ?? null}
             />
-            <Link href={`/compare?tokens=${encodeURIComponent(r.gecko_id)}`} className="text-xs text-brand hover:text-brand2">
-              Compare with other tokens
-            </Link>
+            <CompareLink id={r.gecko_id} className="text-xs text-brand hover:text-brand2" />
           </div>
         )}
 

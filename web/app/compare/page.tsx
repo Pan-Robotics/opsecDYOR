@@ -5,6 +5,7 @@ import { SITE, breadcrumbJsonLd, jsonLd, pageMeta, tierLetter } from "@/lib/seo"
 import { DOMAIN_LABELS, METRICS, fmtMetric } from "@/lib/metrics";
 import { TierBadge, fmt, fmtUsd } from "@/components/ui";
 import ComparePicker from "@/components/ComparePicker";
+import RememberCompare from "@/components/RememberCompare";
 
 // Several tokens, line for line: one column per token, one row per figure, the
 // best value in each numeric row highlighted. Server-rendered from the board.
@@ -115,6 +116,7 @@ export default async function ComparePage({ searchParams }: Props) {
 
   return (
     <div className="space-y-6">
+      <RememberCompare ids={ids} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(breadcrumbJsonLd([
         { name: "Home", path: "/" }, { name: "Compare", path },
       ])) }} />

@@ -5,7 +5,7 @@ import { api, type Analysis } from "@/lib/api";
 import { Spinner } from "@/components/ui";
 import TokenReport from "@/components/TokenReport";
 import Markdown from "@/components/Markdown";
-import { useStickyState } from "@/components/AppState";
+import { useAppStateHydrated, useStickyState } from "@/components/AppState";
 
 export default function AnalyzePage() {
   return (
@@ -41,7 +41,9 @@ function AnalyzeInner() {
   const [error, setError] = useStickyState<string | null>("analyze:error", null);
   const [result, setResult] = useStickyState<Analysis | null>("analyze:result", null);
   const [memo, setMemo] = useStickyState<string | null>("analyze:memo", null);
+  const [lastQ, setLastQ] = useStickyState<string | null>("analyze:lastQ", null);
   const [memoLoading, setMemoLoading] = useState(false);
+  const hydrated = useAppStateHydrated();
 
   const runQuery = useCallback(async (query: string) => {
     if (!query.trim()) return;
@@ -51,6 +53,7 @@ function AnalyzeInner() {
     setMemo(null);
     try {
       setResult(await api.analyze(query.trim(), peerMode, penalize));
+      setLastQ(query.trim());
     } catch (err: any) {
       setError(err.message ?? "Analysis failed");
     } finally {
@@ -65,15 +68,19 @@ function AnalyzeInner() {
 
   // Auto-run when arriving with ?q=<token> (from the screener or a peer link),
   // re-running whenever the param changes even if the page is already open.
+  // Waits for the tab's stored state, and skips the run when the result on
+  // screen already answers that query (coming back to the tab, or a reload).
   const params = useSearchParams();
   const urlQ = params.get("q");
   useEffect(() => {
-    if (urlQ && urlQ.trim()) {
-      setQ(urlQ);
-      runQuery(urlQ);
-    }
+    if (!hydrated) return;
+    const wanted = (urlQ ?? "").trim();
+    if (!wanted) return;
+    setQ(wanted);
+    const answered = result && lastQ && lastQ.toLowerCase() === wanted.toLowerCase();
+    if (!answered) runQuery(wanted);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [urlQ]);
+  }, [urlQ, hydrated]);
 
   async function loadMemo() {
     if (!result?.resolved) return;
