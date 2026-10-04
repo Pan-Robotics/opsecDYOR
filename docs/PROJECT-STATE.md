@@ -544,6 +544,15 @@ Changes (commit `e68acd2`, `docs/DATA-COVERAGE-2026-09-26.md` has the numbers):
   overflow (grid items are `min-width: 0`); touch targets and form controls
   were enlarged; narratives load on first visit. Every route reports zero
   sideways overflow at 390px and 1366px.
+- **2026-10-04 (night): CryptoOpsec Accounts.** A separate wallet-only sign-in
+  service (EVM via EIP-4361, Solana via Sign-In With Solana) at
+  accounts.cryptoopsec.com, built in the sibling `Accounts/` repo: Hono +
+  Postgres, ES256 access cookie for `.cryptoopsec.com` with `plan`/`feat`
+  claims, rotating refresh with reuse detection, hosted login/account pages
+  under a strict CSP, export and delete. DYOR became its first relying app:
+  `dyor/api/auth.py` (offline JWT verification, `require_feature` ready for the
+  paid tier), `GET /api/me`, and a sign-in menu in the header. Nothing is gated
+  yet; the paid tier will cover MCP, API keys, Tools and pro data sources.
 
 ## 9. Gaps in this reconstruction
 

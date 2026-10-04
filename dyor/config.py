@@ -75,6 +75,12 @@ class Settings(BaseSettings):
     # Unset = the endpoint is disabled; the weekly cron is the normal path.
     admin_token: str | None = None
 
+    # CryptoOpsec Accounts (accounts.cryptoopsec.com): who signed the access
+    # cookie, for whom, and the cookie's name. Verification is offline via JWKS.
+    accounts_issuer: str = "https://accounts.cryptoopsec.com"
+    accounts_audience: str = "cryptoopsec"
+    accounts_cookie: str = "__Secure-cos_at"
+
     # Stage 2 paid add-ons
     tokenterminal_api_key: str | None = None
     coinglass_api_key: str | None = None

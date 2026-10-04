@@ -17,6 +17,8 @@ from fastapi import FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
 from dyor.api import jobs
+from dyor.api.auth import classify
+from fastapi import Request
 from dyor.config import get_settings
 from dyor.resolve import is_gecko_id
 from dyor.scoring.gate import rule_activity
@@ -63,6 +65,21 @@ async def _reference_unavailable(_request, exc: ReferenceUnavailable):
 
     return JSONResponse(status_code=503, headers={"Retry-After": "5"},
                         content={"detail": f"scoring anchor temporarily unreadable, retry: {exc}"})
+
+
+@app.get("/api/me")
+def me(request: Request):
+    """The signed-in CryptoOpsec account behind this request, or why there is none.
+
+    Reads the `__Secure-cos_at` cookie set by accounts.cryptoopsec.com (or a
+    bearer token) and verifies it offline. 200 with the principal, 401 with a
+    reason (missing | expired | invalid) and the login URL otherwise.
+    """
+    user, reason = classify(request)
+    if user is None:
+        raise HTTPException(status_code=401, detail={"error": "not signed in", "reason": reason,
+                                                     "login": f"{get_settings().accounts_issuer}/login"})
+    return {"user": user.to_dict()}
 
 
 @app.get("/api/health")

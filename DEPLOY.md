@@ -414,6 +414,26 @@ node web/scripts/screenshots.mjs https://dyor.cryptoopsec.com /tmp/shots
 node web/scripts/tab-persistence.mjs https://dyor.cryptoopsec.com
 ```
 
+## Accounts (sign-in) integration (added 2026-10-04)
+
+Sign-in is provided by the separate CryptoOpsec Accounts service at
+`https://accounts.cryptoopsec.com` (repo `Accounts/`, deployed to `/root/Accounts`,
+pm2 `accounts`). Wallet only (EVM and Solana). DYOR is a relying app:
+
+- Browser: `web/lib/account.ts` posts to `/auth/session` with credentials; the
+  header's `UserMenu` shows "Sign in" (hosted login with `return_to`) or the
+  handle with Account and Sign out. `NEXT_PUBLIC_ACCOUNTS_URL` overrides the host.
+- API: `dyor/api/auth.py` verifies the `__Secure-cos_at` cookie (or a bearer
+  token) offline against the JWKS; `GET /api/me` returns the principal or a 401
+  with `reason` missing | expired | invalid. Settings: `DYOR_ACCOUNTS_ISSUER`,
+  `DYOR_ACCOUNTS_AUDIENCE`, `DYOR_ACCOUNTS_COOKIE`.
+- Paid tier later: put `Depends(require_feature("mcp"))` (or `api_keys`,
+  `tools`, `pro_sources`) on the endpoints to gate. The free surface (screener,
+  compare, analyze, token pages) stays open; nothing is gated today.
+- Test a session without a wallet: on the box,
+  `cd /root/Accounts && node scripts/mint-session.mjs` prints the cookies; then
+  `curl -H "Cookie: __Secure-cos_at=<jwt>" https://dyor.cryptoopsec.com/api/me`.
+
 ## Coverage matrix
 
 `deploy/coverage-matrix.py` prints, for the latest persisted run, how many

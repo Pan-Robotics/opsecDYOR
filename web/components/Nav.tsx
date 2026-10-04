@@ -3,6 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
 import { useStickyValue } from "./AppState";
+import UserMenu from "./UserMenu";
 
 const LINKS: [string, string][] = [
   ["/", "Home"],
@@ -60,10 +61,13 @@ export default function Nav() {
         </a>
         <span className="hidden text-edge md:order-first md:inline">/</span>
 
+        {/* CryptoOpsec account: sign in, or the handle with account and sign-out */}
+        <div className="md:order-last"><UserMenu /></div>
+
         <nav
           ref={strip}
           aria-label="Primary"
-          className="no-scrollbar -mx-4 flex w-[calc(100%+2rem)] gap-1 overflow-x-auto px-4 py-1.5 pr-10 text-sm [mask-image:linear-gradient(to_right,transparent,black_1rem,black_calc(100%-2.5rem),transparent)] md:order-last md:mx-0 md:w-auto md:min-w-0 md:flex-1 md:px-0 md:py-0 md:[mask-image:none]"
+          className="no-scrollbar -mx-4 flex w-[calc(100%+2rem)] gap-1 overflow-x-auto px-4 py-1.5 pr-10 text-sm [mask-image:linear-gradient(to_right,transparent,black_1rem,black_calc(100%-2.5rem),transparent)] md:order-2 md:mx-0 md:w-auto md:min-w-0 md:flex-1 md:px-0 md:py-0 md:[mask-image:none]"
         >
           {LINKS.map(([base, label]) => {
             const active = isActive(base);
