@@ -109,7 +109,7 @@ def to_tier(score: float, config: dict | None = None) -> str:
     cfg = config if config is not None else load_config()
     tiers = sorted(cfg["scoring"]["tiers"], key=lambda t: t["min"], reverse=True)
     if _is_missing(score):
-        return "N/A — insufficient data"
+        return "N/A (insufficient data)"
     for tier in tiers:
         if score >= tier["min"]:
             return tier["label"]

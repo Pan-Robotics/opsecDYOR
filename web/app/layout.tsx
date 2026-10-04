@@ -15,7 +15,7 @@ const mono = localFont({ src: "./fonts/jetbrains-mono-latin.woff2", weight: "400
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE.url),
-  title: { default: SITE.title, template: `%s · ${SITE.fullName}` },
+  title: { default: SITE.title, template: `%s | ${SITE.fullName}` },
   description: SITE.description,
   applicationName: SITE.name,
   keywords: SITE.keywords,
@@ -57,8 +57,9 @@ export const viewport: Viewport = {
 const FOOTER_LINKS: [string, string][] = [
   ["/analyze", "Analyze a token"],
   ["/tokens", "All scored tokens"],
-  ["/screener", "Tier screener"],
-  ["/tools", "Portfolio · barbell · backtest"],
+  ["/screener", "Screener: rank and filter"],
+  ["/compare", "Compare tokens"],
+  ["/tools", "Portfolio, barbell, backtest"],
   ["/narratives", "Narrative rotation"],
   ["/methodology", "Methodology"],
   ["/api-mcp", "API & MCP"],
@@ -80,9 +81,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               ))}
             </nav>
             <p>
-              DYOR — a{" "}
+              DYOR is a{" "}
               <a href={SITE.orgUrl} className="text-brand hover:text-brand2">CryptoOpsec</a>{" "}
-              app tool · free/open-data token scorer. Scores are 0–100 and asset-class-aware. Research aid, not investment advice.
+              app tool: a free, open-data token scorer. Scores are 0 to 100 and asset-class-aware. Research aid, not investment advice.
             </p>
           </footer>
         </AppStateProvider>

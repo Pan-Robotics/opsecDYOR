@@ -9,8 +9,8 @@ import { fmt, ScoreBar, TierBadge } from "@/components/ui";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = pageMeta({
-  title: "All scored crypto tokens — DYOR scores and tiers",
-  description: "Every token on the DYOR board with its 0–100 score, A–D tier, asset class and gate flags, grouped by tier and refreshed weekly. Open any token for the full ledger: raw figures, formulas, percentiles and weights.",
+  title: "All scored crypto tokens: DYOR scores and tiers",
+  description: "Every token on the DYOR board with its 0 to 100 score, A to D tier, asset class and gate flags, grouped by tier and refreshed weekly. Open any token for the full ledger: raw figures, formulas, percentiles and weights.",
   path: "/tokens",
 });
 
@@ -36,7 +36,7 @@ export default async function TokensPage() {
         <h1 className="text-2xl font-bold text-white">All scored tokens</h1>
         <p className="mt-1 max-w-3xl text-muted">
           {tokens.length} tokens on the board{date ? `, scored from the run of ${date}` : ""}: the top protocols by TVL plus every
-          asset class&apos;s reference basket. Scores are 0–100 against same-class peers; the tier maps A ≥ 80, B ≥ 60, C ≥ 40, D below.
+          asset class&apos;s reference basket. Scores are 0 to 100 against same-class peers; the tier maps A at 80 or above, B at 60, C at 40, D below.
           Each page shows the full working. For filters and live rebuilds use the{" "}
           <Link href="/screener" className="text-brand hover:text-brand2">screener</Link>; for a token that isn&apos;t listed,{" "}
           <Link href="/analyze" className="text-brand hover:text-brand2">analyze it live</Link>.
@@ -44,13 +44,13 @@ export default async function TokensPage() {
       </div>
 
       {tokens.length === 0 && (
-        <div className="card text-muted">The board is empty on this instance — the weekly refresh hasn&apos;t run yet.</div>
+        <div className="card text-muted">The board is empty on this instance; the weekly refresh has not run yet.</div>
       )}
 
       {TIERS.map(([letter, name]) => byTier[letter].length > 0 && (
         <section key={letter} className="space-y-2">
           <h2 className="text-lg font-semibold text-white">
-            Tier {letter} <span className="text-sm font-normal text-muted">— {name} · {byTier[letter].length} token{byTier[letter].length === 1 ? "" : "s"}</span>
+            Tier {letter} <span className="text-sm font-normal text-muted">({name}), {byTier[letter].length} token{byTier[letter].length === 1 ? "" : "s"}</span>
           </h2>
           <div className="card !p-0 overflow-x-auto">
             <table className="w-full text-sm">
@@ -72,8 +72,8 @@ export default async function TokensPage() {
                     <td className="p-3 text-muted">{t.class_label}</td>
                     <td className="p-3"><div className="flex items-center gap-2"><ScoreBar value={t.final_score} /><span className="w-12 text-right tabular-nums">{fmt(t.final_score)}</span></div></td>
                     <td className="p-3"><TierBadge tier={t.tier} /></td>
-                    <td className="p-3 tabular-nums text-muted">{t.coverage === null ? "—" : `${Math.round(t.coverage)}%`}</td>
-                    <td className="p-3 text-xs text-rose-300">{t.flags.join(", ") || "—"}</td>
+                    <td className="p-3 tabular-nums text-muted">{t.coverage === null ? "n/a" : `${Math.round(t.coverage)}%`}</td>
+                    <td className="p-3 text-xs text-rose-300">{t.flags.join(", ") || "none"}</td>
                   </tr>
                 ))}
               </tbody>

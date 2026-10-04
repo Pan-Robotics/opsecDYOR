@@ -38,7 +38,7 @@ export default function NarrativesPage() {
       <div>
         <h1 className="text-2xl font-bold text-white">🔥 Narrative rotation</h1>
         <p className="mt-1 max-w-2xl text-muted">
-          Capital rotates between narratives (AI, DePIN, RWA, gaming…). Spotting a sector heating
+          Capital rotates between narratives (AI, DePIN, RWA, gaming and more). Spotting a sector heating
           before price follows is an edge. Ranked live from CoinGecko&apos;s 700+ categories.
         </p>
       </div>
@@ -53,7 +53,7 @@ export default function NarrativesPage() {
         {!rows && !loading && <button onClick={() => load(by)} className="btn ml-auto">Load narratives</button>}
       </div>
 
-      {loading && <div className="card"><Spinner label="Fetching CoinGecko categories…" /></div>}
+      {loading && <div className="card"><Spinner label="Fetching CoinGecko categories..." /></div>}
       {error && <div className="card border-rose-500/30 text-rose-200">{error}</div>}
 
       {rows && (

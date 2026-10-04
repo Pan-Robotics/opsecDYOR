@@ -64,7 +64,7 @@ export default function PriceChart({ id }: { id: string }) {
           )}
           {data?.change_pct != null && (
             <span className={up ? "text-sm text-emerald-300" : "text-sm text-rose-300"}>
-              {data.change_pct > 0 ? "+" : ""}{data.change_pct}% · {RANGES.find(([, d]) => d === days)?.[0]}
+              {data.change_pct > 0 ? "+" : ""}{data.change_pct}% over {RANGES.find(([, d]) => d === days)?.[0]}
             </span>
           )}
         </div>

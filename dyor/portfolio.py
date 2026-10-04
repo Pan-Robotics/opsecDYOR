@@ -42,12 +42,12 @@ def score_portfolio(queries: list[str], config: dict | None = None,
 
     notes = []
     if not any(h.get("class") in ("monetary",) for h in scored):
-        notes.append("No monetary anchor (BTC-like) — the thesis wants a store-of-value core.")
+        notes.append("No monetary anchor (BTC-like); the thesis wants a store-of-value core.")
     sats = [h for h in scored if h.get("class") not in ("monetary", "stablecoin")]
     if len(sats) > 8:
-        notes.append(f"{len(sats)} satellites — over-diversified; the barbell favors 3–5 high-conviction picks.")
+        notes.append(f"{len(sats)} satellites is over-diversified; the barbell favors 3 to 5 high-conviction picks.")
     if tiers.get("D"):
-        notes.append(f"{tiers['D']} holding(s) in tier D (avoid) — candidates to trim.")
+        notes.append(f"{tiers['D']} holding(s) in tier D (avoid): candidates to trim.")
     if flagged:
         notes.append(f"Gate-flagged: {', '.join(flagged)}.")
 

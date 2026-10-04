@@ -75,7 +75,7 @@ def tier_change_alerts(prev, curr) -> list[Alert]:
         old, new = _tier_letter(_get(pi[token], "tier")), _tier_letter(_get(c, "tier"))
         if old != new:
             worse = _TIER_ORDER.get(new, 9) > _TIER_ORDER.get(old, 9)
-            out.append(Alert("tier_change", token, f"tier {old} → {new}",
+            out.append(Alert("tier_change", token, f"tier {old} to {new}",
                              "warn" if worse else "info"))
     return out
 
@@ -123,7 +123,7 @@ def feed_outage_alerts(records: Iterable[dict], threshold: float = 0.5) -> list[
         if c["n"] and c["error"] / c["n"] >= threshold:
             out.append(Alert("feed_outage", feed,
                              f"{c['error']}/{c['n']} tokens errored ({c['error'] / c['n']:.0%}) "
-                             f"— source down, blocked, or quota exhausted", "critical"))
+                             f"(source down, blocked, or quota exhausted)", "critical"))
     return out
 
 

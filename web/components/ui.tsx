@@ -19,13 +19,13 @@ export function ClassBadge({ label }: { label: string }) {
   return <span className="pill border border-brand2/30 bg-brand2/15 text-brand2">{label}</span>;
 }
 
-// Scores arrive from the API on the 0–100 scale; one decimal is plenty.
+// Scores arrive from the API on the 0 to 100 scale; one decimal is plenty.
 export function fmt(n: number | null | undefined, d = 1) {
-  return n === null || n === undefined || Number.isNaN(n) ? "—" : n.toFixed(d);
+  return n === null || n === undefined || Number.isNaN(n) ? "n/a" : n.toFixed(d);
 }
 
 export function fmtUsd(v: number | null | undefined) {
-  if (v === null || v === undefined) return "—";
+  if (v === null || v === undefined) return "n/a";
   const a = Math.abs(v);
   if (a >= 1e9) return `$${(v / 1e9).toFixed(2)}B`;
   if (a >= 1e6) return `$${(v / 1e6).toFixed(2)}M`;
@@ -34,7 +34,7 @@ export function fmtUsd(v: number | null | undefined) {
 }
 
 export function fmtNum(v: number | null | undefined) {
-  if (v === null || v === undefined) return "—";
+  if (v === null || v === undefined) return "n/a";
   const a = Math.abs(v);
   if (a >= 1e9) return `${(v / 1e9).toFixed(2)}B`;
   if (a >= 1e6) return `${(v / 1e6).toFixed(2)}M`;
@@ -53,7 +53,7 @@ export function Stat({ label, value, sub }: { label: string; value: React.ReactN
 }
 
 export function ScoreBar({ value }: { value: number | null }) {
-  const v = value ?? 0; // 0–100
+  const v = value ?? 0; // 0 to 100
   const color = v >= 80 ? "bg-emerald-400" : v >= 60 ? "bg-sky-400" : v >= 40 ? "bg-amber-400" : "bg-rose-400";
   return (
     <div className="h-2 w-full overflow-hidden rounded-full bg-edge">
@@ -82,7 +82,7 @@ export function Spinner({ label }: { label?: string }) {
   return (
     <div className="flex items-center gap-3 text-muted">
       <span className="h-4 w-4 animate-spin rounded-full border-2 border-edge border-t-brand" />
-      {label ?? "Loading…"}
+      {label ?? "Loading..."}
     </div>
   );
 }

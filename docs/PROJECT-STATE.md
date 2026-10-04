@@ -510,6 +510,23 @@ Changes (commit `e68acd2`, `docs/DATA-COVERAGE-2026-09-26.md` has the numbers):
   `NEXT_PUBLIC_GSC_VERIFICATION` / `NEXT_PUBLIC_TWITTER_HANDLE`.
 - `universe.make_target` is the one enrichment path for universe, baskets and
   analyze, so the anchor and live records share feature sets. Baskets rebuilt.
+- **2026-10-04 (later): share, ranked screener, compare, plain punctuation.**
+  `TokenReport` carries a `ShareBar` (copy link, post on X via the intent URL,
+  native share, copy the `summary` paragraph) and a "Compare with other tokens"
+  link. The screener (`web/app/screener/page.tsx`) now ranks the stored board by
+  composite score, any domain or any scored metric (best or worst first, presets
+  such as best real yield or most concentrated holders) from the new
+  `GET /api/tokens?detail=true` payload (`domain_scores`, `features`,
+  `percentiles`, `market`, `advisories`), with class, tier, gate-flag and
+  coverage filters and a checkbox selection of up to 6 tokens. `/compare?tokens=`
+  (server-rendered, `GET /api/compare?ids=`) lays those tokens out line for line:
+  score, domains with weights, every per-domain metric from the ledger, market
+  figures and feed states, best value per row marked. `web/lib/metrics.ts` is the
+  single list of rankable metrics. All reader-facing copy (web, API strings,
+  advisories, memo, alerts, MCP instructions, tier labels in `config.yaml`) was
+  rewritten without em or en dashes, middle dots, arrows, ellipses or `≥ ≤ ×`;
+  tier labels are now `"C (watchlist)"` style, so anything parsing the old
+  `"C — watchlist"` form must use the parenthesised word.
 
 ## 9. Gaps in this reconstruction
 

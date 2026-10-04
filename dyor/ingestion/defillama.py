@@ -110,7 +110,7 @@ class DefiLlamaClient(BaseClient):
         """
         if not self._pro_key:
             raise RuntimeError(
-                "DefiLlama emissions is a Pro endpoint — set DYOR_DEFILLAMA_API_KEY"
+                "DefiLlama emissions is a Pro endpoint; set DYOR_DEFILLAMA_API_KEY"
             )
         return self.get_json(f"{PRO_BASE}/{self._pro_key}/api/emissions/{protocol}")
 

@@ -10,9 +10,9 @@ export const SITE = {
   org: "CryptoOpsec",
   orgUrl: (process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.cryptoopsec.com").replace(/\/$/, ""),
   twitter: process.env.NEXT_PUBLIC_TWITTER_HANDLE || "@cryptoopseccom", // X / Twitter account for cards + sameAs
-  title: "DYOR — Crypto Token Scoring on Fundamentals, Tokenomics & On-chain Data",
+  title: "DYOR: Crypto Token Scoring on Fundamentals, Tokenomics and On-chain Data",
   description:
-    "DYOR scores crypto tokens 0–100 on real revenue, tokenomics, on-chain usage, social and developer activity — asset-class-aware, gated by hard disqualifiers, built on free open data. Token analyzer, tier screener, portfolio tools and a hosted MCP server for AI agents.",
+    "DYOR scores crypto tokens 0 to 100 on real revenue, tokenomics, on-chain usage, social and developer activity. Asset-class-aware, gated by hard disqualifiers, built on free open data. Token analyzer, screener, compare view, portfolio tools and a hosted MCP server for AI agents.",
   keywords: [
     "crypto token scoring", "crypto fundamentals", "token analysis", "DYOR crypto", "tokenomics analysis",
     "price to fees crypto", "FDV MCAP ratio", "crypto screener", "DeFi token score", "on-chain analysis",
@@ -24,7 +24,7 @@ export const SITE = {
 // `openGraph` block loses the file-convention image, so pageMeta names it.
 export const DEFAULT_OG_IMAGE = {
   url: "/opengraph-image", width: 1200, height: 630,
-  alt: "DYOR by CryptoOpsec — crypto token scoring on fundamentals, tokenomics and on-chain data",
+  alt: "DYOR by CryptoOpsec: crypto token scoring on fundamentals, tokenomics and on-chain data",
 };
 
 export const abs = (path: string) => (path.startsWith("http") ? path : `${SITE.url}${path.startsWith("/") ? path : `/${path}`}`);
@@ -37,7 +37,7 @@ export function pageMeta(opts: { title: string; description: string; path: strin
     description,
     alternates: { canonical: path },
     openGraph: {
-      title: opts.absoluteTitle ? title : `${title} · ${SITE.fullName}`,
+      title: opts.absoluteTitle ? title : `${title} | ${SITE.fullName}`,
       description,
       url: path,
       siteName: SITE.fullName,
@@ -47,7 +47,7 @@ export function pageMeta(opts: { title: string; description: string; path: strin
     },
     twitter: {
       card: "summary_large_image",
-      title: opts.absoluteTitle ? title : `${title} · ${SITE.fullName}`,
+      title: opts.absoluteTitle ? title : `${title} | ${SITE.fullName}`,
       description,
       images: [DEFAULT_OG_IMAGE.url],
       ...(SITE.twitter ? { site: SITE.twitter, creator: SITE.twitter } : {}),
@@ -101,7 +101,7 @@ export function appJsonLd() {
     description: SITE.description,
     offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
     featureList: [
-      "Asset-class-aware 0–100 token score with A–D tier",
+      "Asset-class-aware 0 to 100 token score with A to D tier",
       "Hard disqualifier gates (extreme FDV/MCAP, no audit on record, dead token)",
       "Per-feature ledger: raw figures, formula, percentile, weight, points",
       "Tier screener over a weekly-refreshed universe",
@@ -138,7 +138,7 @@ export function snippet(text: string, max = 158): string {
   const t = text.replace(/\s+/g, " ").trim();
   if (t.length <= max) return t;
   const cut = t.slice(0, max - 1);
-  return `${cut.slice(0, Math.max(cut.lastIndexOf(" "), 40))}…`;
+  return `${cut.slice(0, Math.max(cut.lastIndexOf(" "), 40))}...`;
 }
 
-export const tierLetter = (tier: string | null | undefined) => (tier ?? "").trim().charAt(0) || "—";
+export const tierLetter = (tier: string | null | undefined) => (tier ?? "").trim().charAt(0) || "?";

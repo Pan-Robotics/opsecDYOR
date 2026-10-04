@@ -61,17 +61,17 @@ function parseOpenApi(schema: OpenApiSchema): Group[] {
 // ---- MCP tools -------------------------------------------------------------
 type Tool = { sig: string; desc: string };
 const TOOLS: Tool[] = [
-  { sig: "analyze_token(query, peer_mode='stored', penalize_missing_core=None)", desc: "Vet ONE token end-to-end: resolve + asset class + 0–100 score & tier + gate flags + per-domain scores + market snapshot + ranked peers." },
-  { sig: "resolve_token(query)", desc: "Resolve a name/symbol/contract to a canonical identity (every chain, explorer + project links) WITHOUT scoring — confirm you've got the right token." },
-  { sig: "compare_tokens(queries[], peer_mode='stored')", desc: "Analyze several tokens at once → a compact ranked like-for-like summary (token, class, score, tier, coverage, flags)." },
+  { sig: "analyze_token(query, peer_mode='stored', penalize_missing_core=None)", desc: "Vet one token end to end: resolution, asset class, 0 to 100 score and tier, gate flags, per-domain scores, market snapshot, ranked peers." },
+  { sig: "resolve_token(query)", desc: "Resolve a name, symbol or contract to a canonical identity (every chain, explorer and project links) without scoring, to confirm it is the right token." },
+  { sig: "compare_tokens(queries[], peer_mode='stored')", desc: "Analyze several tokens at once and get a compact ranked like-for-like summary (token, class, score, tier, coverage, flags)." },
   { sig: "analyst_memo(query, peer_mode='class')", desc: "Reasoned markdown memo: verdict, drivers, risks, and 'break your thesis' answered with the data." },
-  { sig: "screen_tokens(asset_class?, min_tier?, min_score?, no_flags?, min_real_yield?, max_fdv_mcap?, limit=25)", desc: "Screen the saved universe by criteria → matching tokens ranked high→low." },
+  { sig: "screen_tokens(asset_class?, min_tier?, min_score?, no_flags?, min_real_yield?, max_fdv_mcap?, limit=25)", desc: "Screen the saved universe by criteria; matching tokens ranked high to low." },
   { sig: "score_portfolio(tokens[], peer_mode='class')", desc: "Score holdings: tier distribution, asset-class exposure, average score, flagged holdings, barbell notes." },
   { sig: "build_barbell(n_satellites=5)", desc: "BTC monetary anchor + the top-N ungated A/B satellites from the saved universe." },
   { sig: "backtest()", desc: "Per-tier average forward return + win-rate from persisted runs." },
-  { sig: "narratives(by='market_cap_change_24h', top=20)", desc: "Which crypto sectors are heating up — CoinGecko categories ranked by momentum / market cap / volume." },
+  { sig: "narratives(by='market_cap_change_24h', top=20)", desc: "Which crypto sectors are heating up: CoinGecko categories ranked by momentum, market cap or volume." },
   { sig: "asset_classes()", desc: "List the asset classes and what each is judged on, to explain WHY a token scored as it did." },
-  { sig: "methodology()", desc: "Weights, tier thresholds, gates, the treasury hurdle, and the metric glossary — to cite the scoring transparently." },
+  { sig: "methodology()", desc: "Weights, tier thresholds, gates, the treasury hurdle, and the metric glossary, to cite the scoring transparently." },
 ];
 
 function CopyButton({ text }: { text: string }) {
@@ -146,7 +146,7 @@ export default function ApiMcpPage() {
       <div>
         <h1 className="text-2xl font-bold text-white">🔌 API &amp; MCP</h1>
         <p className="mt-1 max-w-3xl text-muted">
-          Everything in DYOR is available programmatically — call the <b className="text-white">REST API</b> from
+          Everything in DYOR is available programmatically: call the <b className="text-white">REST API</b> from
           any script or frontend, or plug the <b className="text-white">MCP server</b> into an AI agent
           (Claude, etc.) so it can vet tokens as native tools. Same scoring engine behind both.
         </p>
@@ -160,15 +160,15 @@ export default function ApiMcpPage() {
             <h3 className="font-semibold text-white">REST API</h3>
             <span className="flex items-center gap-1.5 text-xs">
               <span className={`h-2 w-2 rounded-full ${health === "online" ? "bg-emerald-400" : health === "offline" ? "bg-rose-400" : "bg-amber-400"}`} />
-              <span className="text-muted">{health === "checking" ? "checking…" : health}</span>
+              <span className="text-muted">{health === "checking" ? "checking..." : health}</span>
             </span>
           </div>
-          <p className="mt-2 text-sm text-muted">FastAPI · JSON · CORS-open for local dev. For scripts, dashboards, and this web app.</p>
+          <p className="mt-2 text-sm text-muted">FastAPI, JSON, CORS-open for local dev. For scripts, dashboards, and this web app.</p>
           <div className="mt-3 space-y-1 text-sm">
             <div><span className="text-muted">Base URL</span> <code className="text-sky-300">{API}</code></div>
             <div><span className="text-muted">OpenAPI schema</span>{" "}
-              <a href={`${API}/openapi.json`} target="_blank" rel="noreferrer" className="text-brand hover:text-brand2">{API}/openapi.json ↗</a>{" "}
-              <span className="text-muted">— the endpoint table below renders from it.</span></div>
+              <a href={`${API}/openapi.json`} target="_blank" rel="noreferrer" className="text-brand hover:text-brand2">{API}/openapi.json</a>{" "}
+              <span className="text-muted">(the endpoint table below renders from it)</span></div>
           </div>
           <div className="mt-3"><Code label="run it">{`uvicorn dyor.api.app:app --port 8077`}</Code></div>
         </div>
@@ -176,9 +176,9 @@ export default function ApiMcpPage() {
         <div className="card">
           <div className="flex items-center justify-between">
             <h3 className="font-semibold text-white">MCP server</h3>
-            <span className="pill border border-emerald-500/30 bg-emerald-500/10 text-[11px] text-emerald-300">hosted · 11 tools</span>
+            <span className="pill border border-emerald-500/30 bg-emerald-500/10 text-[11px] text-emerald-300">hosted, 11 tools</span>
           </div>
-          <p className="mt-2 text-sm text-muted">A Model-Context-Protocol server named <code className="text-sky-300">dyor</code> — exposes the engine as tools an AI agent can call directly. <span className="text-white">No install: just point your client at the URL.</span></p>
+          <p className="mt-2 text-sm text-muted">A Model Context Protocol server named <code className="text-sky-300">dyor</code> that exposes the engine as tools an AI agent can call directly. <span className="text-white">No install: just point your client at the URL.</span></p>
           <div className="mt-3 space-y-1 text-sm">
             <div><span className="text-muted">Endpoint</span>{" "}
               <code className="text-sky-300">{MCP_URL}</code></div>
@@ -192,20 +192,20 @@ export default function ApiMcpPage() {
       <section className="card">
         <h3 className="mb-1 font-semibold text-white">Connect an AI agent (MCP)</h3>
         <p className="mb-3 text-sm text-muted">
-          Point any MCP-capable client at the hosted endpoint — nothing to install — then ask it
+          Point any MCP-capable client at the hosted endpoint, with nothing to install, then ask it
           <i> &ldquo;analyze rocket pool&rdquo;</i> or <i> &ldquo;screen for DeFi tokens tier B+ with no flags&rdquo;</i>.
           The agent calls the tools and reasons over the results.
         </p>
 
         <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-brand">Hosted (recommended)</div>
         <div className="grid gap-4 lg:grid-cols-2">
-          <Code label="Claude Code — one line">{hostedAdd}</Code>
+          <Code label="Claude Code, one line">{hostedAdd}</Code>
           <Code label="Claude Desktop / stdio-only clients (mcp-remote bridge)">{hostedConfig}</Code>
         </div>
         <ul className="mt-3 list-disc space-y-1 pl-4 text-sm text-muted">
           <li>Endpoint: <code className="text-sky-300">{MCP_URL}</code> (streamable-http). Cursor, Claude Desktop &ldquo;Connectors&rdquo;, and other URL-based clients can use it directly.</li>
           <li>Tools resolve tokens cross-chain and collect live data on first call, so the first request can take a few seconds.</li>
-          <li>Read-only research surface — no API key required. (Hosted by CryptoOpsec; usage may be rate-limited.)</li>
+          <li>Read-only research surface, no API key required. Hosted by CryptoOpsec; usage may be rate-limited.</li>
         </ul>
 
         <div className="mt-5 mb-2 text-xs font-semibold uppercase tracking-wide text-muted">Or self-host (local stdio)</div>
@@ -215,7 +215,7 @@ export default function ApiMcpPage() {
             <p className="mb-2">Run the server yourself:</p>
             <ul className="list-disc space-y-1 pl-4">
               <li><code className="text-sky-300">pip install .</code> in the DYOR repo, then <code>dyor-mcp</code> is on PATH (or point <code>command</code> at <code className="text-sky-300">/path/to/.venv/bin/dyor-mcp</code>).</li>
-              <li>For your own HTTP host: <code className="text-sky-300">dyor-mcp --transport streamable-http --port 8765</code> → <code className="text-sky-300">http://localhost:8765/mcp</code>.</li>
+              <li>For your own HTTP host: <code className="text-sky-300">dyor-mcp --transport streamable-http --port 8765</code>, served at <code className="text-sky-300">http://localhost:8765/mcp</code>.</li>
             </ul>
           </div>
         </div>
@@ -228,7 +228,7 @@ export default function ApiMcpPage() {
           <span className="text-xs text-muted">
             live from{" "}
             <a href={`${API}/openapi.json`} target="_blank" rel="noreferrer" className="text-brand hover:text-brand2">/openapi.json</a>
-            {endpointCount ? ` · ${endpointCount} operations` : ""}
+            {endpointCount ? `, ${endpointCount} operations` : ""}
           </span>
         </div>
         {restErr && (
@@ -236,7 +236,7 @@ export default function ApiMcpPage() {
             Couldn&apos;t load the live schema from <code className="text-sky-300">{API}</code> ({restErr}). Is the API running?
           </div>
         )}
-        {!restErr && !groups && <div className="card"><Spinner label="loading schema…" /></div>}
+        {!restErr && !groups && <div className="card"><Spinner label="loading schema..." /></div>}
         {groups?.map((g) => (
           <div key={g.group} className="card">
             <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted">{g.group}</h3>
@@ -275,8 +275,8 @@ export default function ApiMcpPage() {
       <section className="space-y-3">
         <h2 className="text-lg font-semibold text-white">Usage examples</h2>
         <div className="grid gap-4 lg:grid-cols-2">
-          <Code label="curl — analyze one token">{`curl "${API}/api/analyze?q=rocket-pool&peer_mode=class"`}</Code>
-          <Code label="curl — screen DeFi, tier B+, no flags">{`curl "${API}/api/screen?asset_class=defi&min_tier=B&no_flags=true"`}</Code>
+          <Code label="curl: analyze one token">{`curl "${API}/api/analyze?q=rocket-pool&peer_mode=class"`}</Code>
+          <Code label="curl: screen DeFi, tier B+, no flags">{`curl "${API}/api/screen?asset_class=defi&min_tier=B&no_flags=true"`}</Code>
           <Code label="JavaScript (fetch)">{`const r = await fetch(
   "${API}/api/analyze?q=uniswap"
 );

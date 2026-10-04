@@ -10,39 +10,39 @@ export const metadata: Metadata = {
 
 const FEATURES: { href: string; icon: string; title: string; body: string; tag: string }[] = [
   {
-    href: "/analyze", icon: "🔍", title: "Analyze any token", tag: "name · symbol · contract",
-    body: "Search by name, ticker, or contract address — it resolves the unified token across every chain. Get an asset-class-aware 0–100 score, A–D tier, gate flags, confidence + robustness, a market snapshot, every web/social link, a peer comparison, and a one-click analyst memo.",
+    href: "/analyze", icon: "🔍", title: "Analyze any token", tag: "name, symbol, contract",
+    body: "Search by name, ticker, or contract address; it resolves the unified token across every chain. Get an asset-class-aware 0 to 100 score, A to D tier, gate flags, confidence and robustness, a market snapshot, every web and social link, a peer comparison, a share card, and a one-click analyst memo.",
   },
   {
-    href: "/screener", icon: "📊", title: "Tier screener", tag: "build · filter",
-    body: "A scored universe grouped into tier tabs (A→D). Build a fresh top-N by TVL in the background, or filter by asset class, minimum tier, real yield, and gate flags. Click any token to dive into its full analysis.",
+    href: "/screener", icon: "📊", title: "Screener", tag: "rank, filter, compare",
+    body: "Rank the whole board by composite score, by one domain such as tokenomics, or by one metric such as real yield or holder concentration, best or worst first. Filter by asset class, tier, gate flags and coverage, then compare your picks line for line.",
   },
   {
-    href: "/tools", icon: "🧪", title: "Portfolio · Barbell · Backtest", tag: "construction",
-    body: "Score a whole portfolio (tier + narrative exposure, flagged risks). Build the thesis' Barbell — a BTC anchor plus qualified, ungated satellites. Backtest whether the tiers actually predicted forward returns.",
+    href: "/tools", icon: "🧪", title: "Portfolio, Barbell, Backtest", tag: "construction",
+    body: "Score a whole portfolio (tier and narrative exposure, flagged risks). Build the thesis' Barbell: a BTC anchor plus qualified, ungated satellites. Backtest whether the tiers actually predicted forward returns.",
   },
   {
     href: "/narratives", icon: "🔥", title: "Narrative rotation", tag: "early signals",
-    body: "Which sectors are heating — AI, DePIN, RWA, gaming, privacy — ranked by momentum across 700+ CoinGecko categories. Spot capital rotation before price follows.",
+    body: "Which sectors are heating (AI, DePIN, RWA, gaming, privacy), ranked by momentum across 700+ CoinGecko categories. Spot capital rotation before price follows.",
   },
   {
     href: "/methodology", icon: "📖", title: "Transparent methodology", tag: "not a black box",
-    body: "Every weight, tier threshold, hard disqualifier gate, asset-class profile, and metric definition — out in the open. Read exactly why a token scored the way it did.",
+    body: "Every weight, tier threshold, hard disqualifier gate, asset-class profile, and metric definition, out in the open. Read exactly why a token scored the way it did.",
   },
 ];
 
 const STEPS = [
-  ["Ingest", "Live data from free/open sources — DefiLlama, CoinGecko, CryptoRank, Ethplorer, Santiment, GitHub, Sourcify."],
-  ["Classify", "Type each token — DeFi, L1, monetary, memecoin, stablecoin — and judge it on what matters for it."],
+  ["Ingest", "Live data from free, open sources: DefiLlama, CoinGecko, CryptoRank, Ethplorer, Santiment, GitHub, Sourcify."],
+  ["Classify", "Type each token (DeFi, L1, monetary, memecoin, stablecoin) and judge it on what matters for it."],
   ["Measure", "Derived metrics: P/F, P/S, FDV/MCAP, token-sink, unlock overhang, holder concentration, growth."],
-  ["Score", "Normalize across same-class peers, weight by domain, then gate — hard red flags cap or zero the score."],
-  ["Rank", "Map the 0–100 score to a tier — A (high conviction) → D (avoid) — with a confidence + robustness read."],
+  ["Score", "Normalize across same-class peers, weight by domain, then gate: hard red flags cap or zero the score."],
+  ["Rank", "Map the 0 to 100 score to a tier, from A (high conviction) to D (avoid), with a confidence and robustness read."],
 ];
 
 const CLASSES = [
   ["DeFi protocol", "Fees, revenue, TVL, value accrual."],
   ["L1 / platform", "Ecosystem TVL, adoption, dev activity."],
-  ["Monetary", "Scarcity + accumulation — no revenue expected."],
+  ["Monetary", "Scarcity and accumulation; no revenue expected."],
   ["Memecoin", "Distribution, liquidity, social attention."],
   ["Stablecoin", "Adoption + distribution; not a price play."],
 ];
@@ -53,13 +53,13 @@ export default function Home() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(appJsonLd()) }} />
       {/* hero */}
       <section className="pt-6">
-        <div className="pill border border-brand/30 bg-brand/10 text-brand">Flight to fundamentals · open data · agent-ready</div>
+        <div className="pill border border-brand/30 bg-brand/10 text-brand">Flight to fundamentals, open data, agent-ready</div>
         <h1 className="mt-4 max-w-3xl text-4xl font-bold tracking-tight text-white sm:text-5xl">
           Qualify any crypto token on the dimensions that actually matter.
         </h1>
         <p className="mt-4 max-w-2xl text-lg text-muted">
-          DYOR scores tokens on real revenue, durable tokenomics, and actual usage —{" "}
-          <span className="text-white">asset-class-aware</span>, so Bitcoin isn&apos;t judged like a DeFi app.
+          DYOR scores tokens on real revenue, durable tokenomics, and actual usage. It is{" "}
+          <span className="text-white">asset-class-aware</span>, so Bitcoin is not judged like a DeFi app.
           Search any token, screen a universe, build a portfolio, or call it from your AI agent. Built on free, open data.
         </p>
         <div className="mt-7 flex flex-wrap gap-3">
@@ -84,7 +84,7 @@ export default function Home() {
                 <span className="pill border border-edge bg-panel2 text-muted">{f.tag}</span>
               </div>
               <p className="mt-2 text-sm text-muted">{f.body}</p>
-              <div className="mt-3 text-sm font-medium text-brand opacity-0 transition group-hover:opacity-100">Open →</div>
+              <div className="mt-3 text-sm font-medium text-brand opacity-0 transition group-hover:opacity-100">Open</div>
             </Link>
           ))}
           {/* MCP / agent card */}
@@ -95,14 +95,14 @@ export default function Home() {
               <span className="pill ml-auto border border-brand2/30 bg-brand2/15 text-brand2">for AI agents</span>
             </div>
             <p className="mt-2 text-sm text-muted">
-              DYOR ships a <span className="text-white">hosted MCP server</span> — Claude, Cursor, Manus and other agents can call
+              DYOR ships a <span className="text-white">hosted MCP server</span>. Claude, Cursor, Manus and other agents can call
               it as tools: <code>analyze_token</code>, <code>screen_tokens</code>, <code>analyst_memo</code>,{" "}
-              <code>score_portfolio</code>, <code>build_barbell</code>, <code>backtest</code>. No install — point your agent
+              <code>score_portfolio</code>, <code>build_barbell</code>, <code>backtest</code>. No install: point your agent
               at the URL and ask “is $TOKEN worth a look?” for an opinionated, gated read.
             </p>
             <div className="mt-3 rounded-lg border border-edge bg-bg/60 p-2 font-mono text-xs text-muted">claude mcp add --transport http dyor https://dyor.cryptoopsec.com/mcp</div>
             <Link href="/api-mcp" className="mt-3 inline-block text-sm font-semibold text-brand hover:text-brand2">
-              API &amp; MCP docs — endpoints, connection, tools →
+              API and MCP docs: endpoints, connection, tools
             </Link>
           </div>
         </div>
@@ -125,7 +125,7 @@ export default function Home() {
       {/* asset classes */}
       <section>
         <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">Judged on their own terms</h2>
-        <p className="mt-1 text-sm text-muted">Each token is classified and scored with a class-appropriate profile — “no protocol revenue” is fatal for a DeFi app but a non-issue for Bitcoin.</p>
+        <p className="mt-1 text-sm text-muted">Each token is classified and scored with a class-appropriate profile. No protocol revenue is fatal for a DeFi app but a non-issue for Bitcoin.</p>
         <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {CLASSES.map(([label, desc]) => (
             <div key={label} className="card">
@@ -140,11 +140,11 @@ export default function Home() {
       <section className="grid gap-4 md:grid-cols-3">
         <div className="card">
           <div className="font-semibold text-white">🚫 The gate</div>
-          <p className="mt-1 text-sm text-muted">Hard disqualifiers <b className="text-white">cap or zero</b> a score so a flaw can&apos;t be averaged away — extreme FDV/MCAP, no audit on record (DefiLlama), or a dead token (no push in 6mo+ on any GitHub account we can find for it and no Santiment dev activity to contradict that, or near-zero volume). Contract-verification and team gates need keyed sources and are marked inactive on open data.</p>
+          <p className="mt-1 text-sm text-muted">Hard disqualifiers <b className="text-white">cap or zero</b> a score so a flaw cannot be averaged away: extreme FDV/MCAP, no audit on record (DefiLlama), or a dead token (no push in six months or more on any GitHub account we can find for it and no Santiment dev activity to contradict that, or near-zero volume). Contract-verification and team gates need keyed sources and are marked inactive on open data.</p>
         </div>
         <div className="card">
           <div className="font-semibold text-white">🎯 Confidence + robustness</div>
-          <p className="mt-1 text-sm text-muted">Every score says how complete the data is and whether the tier survives re-weighting — so a thin or fragile call is labelled, not hidden.</p>
+          <p className="mt-1 text-sm text-muted">Every score says how complete the data is and whether the tier survives re-weighting, so a thin or fragile call is labelled, not hidden.</p>
         </div>
         <div className="card">
           <div className="font-semibold text-white">🟢 Open &amp; free</div>
@@ -158,7 +158,7 @@ export default function Home() {
         <figure className="card mt-4 border-brand/30 bg-gradient-to-br from-panel to-panel2">
           <blockquote className="text-lg leading-relaxed text-white">
             <span aria-hidden="true" className="mr-1 font-orbitron text-2xl text-brand">“</span>
-            Nice work — and thanks for including{" "}
+            Nice work, and thanks for including{" "}
             <a href="https://x.com/ethplorer/status/2080368802261254331" target="_blank" rel="noopener noreferrer"
               className="text-brand hover:text-brand2">@ethplorer</a>{" "}
             in the data stack. We tested four projects in DYOR and found its risk signals broadly
@@ -169,7 +169,7 @@ export default function Home() {
             <a href="https://x.com/ethplorer/status/2080368802261254331" target="_blank" rel="noopener noreferrer"
               className="font-semibold text-white hover:text-brand">Ethplorer</a>
             <a href="https://x.com/ethplorer/status/2080368802261254331" target="_blank" rel="noopener noreferrer"
-              className="text-muted hover:text-white">Ethereum token explorer &amp; analytics · view the post on X ↗</a>
+              className="text-muted hover:text-white">Ethereum token explorer and analytics. View the post on X</a>
             <span className="pill border border-edge bg-panel2 text-muted">holder-concentration source</span>
           </figcaption>
         </figure>
@@ -178,10 +178,10 @@ export default function Home() {
       {/* CTA */}
       <section className="card flex flex-col items-start gap-3 bg-gradient-to-br from-panel to-panel2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <div className="text-lg font-semibold text-white">Search any token — by name, symbol, or contract address.</div>
+          <div className="text-lg font-semibold text-white">Search any token by name, symbol, or contract address.</div>
           <div className="text-sm text-muted">Research aid, not financial advice.</div>
         </div>
-        <Link href="/analyze" className="btn whitespace-nowrap">Start analyzing →</Link>
+        <Link href="/analyze" className="btn whitespace-nowrap">Start analyzing</Link>
       </section>
     </div>
   );

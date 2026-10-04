@@ -28,7 +28,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
   const r = a.resolved;
   const s = a.score;
-  const title = `${r.name} (${r.symbol}) score ${s.final_score}/100 · Tier ${s.tier} | ${SITE.fullName}`;
+  const title = `${r.name} (${r.symbol}) score ${s.final_score}/100, tier ${s.tier} | ${SITE.fullName}`;
   const description = snippet(a.summary ?? `${r.name} scored ${s.final_score}/100 (tier ${tierLetter(s.tier)}) by DYOR on fundamentals, tokenomics, on-chain usage, social and developer activity.`);
   const path = `/token/${encodeURIComponent(id)}`;
   return {
@@ -58,7 +58,7 @@ export default async function TokenPage({ params }: Props) {
     "@type": "WebPage",
     "@id": `${abs(path)}#webpage`,
     url: abs(path),
-    name: `${r.name} (${r.symbol}) — DYOR score and tier`,
+    name: `${r.name} (${r.symbol}): DYOR score and tier`,
     description: snippet(a.summary ?? "", 300),
     isPartOf: { "@id": `${SITE.url}/#website` },
     dateModified: a.source?.collected_at ?? undefined,
@@ -96,9 +96,9 @@ export default async function TokenPage({ params }: Props) {
         <h2 className="font-semibold text-white">About this page</h2>
         <p className="mt-2 text-sm text-muted">
           This is {r.name}&apos;s permanent DYOR page, scored from the board run of{" "}
-          <span className="text-white">{a.source?.collected_at ? a.source.collected_at.slice(0, 10) : "—"}</span>
-          {" "}against {a.peer_count} other {cls?.label ?? "same-class"} tokens. Scores are 0–100; the tier maps
-          A ≥ 80, B ≥ 60, C ≥ 40, D below. Every figure above shows its raw inputs, formula, percentile and weight —
+          <span className="text-white">{a.source?.collected_at ? a.source.collected_at.slice(0, 10) : "n/a"}</span>
+          {" "}against {a.peer_count} other {cls?.label ?? "same-class"} tokens. Scores are 0 to 100; the tier maps
+          A at 80 or above, B at 60, C at 40, D below. Every figure above shows its raw inputs, formula, percentile and weight;
           see the <Link href="/methodology" className="text-brand hover:text-brand2">methodology</Link> for how the
           classes, gates and weights work. For today&apos;s numbers,{" "}
           <Link href={`/analyze?q=${encodeURIComponent(id)}`} className="text-brand hover:text-brand2">run a live analysis</Link>.
@@ -110,7 +110,7 @@ export default async function TokenPage({ params }: Props) {
             {peers.map((p, i) => (
               <span key={p.token}>{i > 0 ? ", " : ""}<TokenLink token={p.token} /> ({p.final_score}/100)</span>
             ))}
-            {" "}· <Link href="/tokens" className="text-brand hover:text-brand2">all scored tokens</Link>
+            {". "}<Link href="/tokens" className="text-brand hover:text-brand2">All scored tokens</Link>
           </div>
         )}
       </section>

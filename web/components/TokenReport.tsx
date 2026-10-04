@@ -1,16 +1,17 @@
 import Link from "next/link";
 import type { Analysis, ExplainFeature, ExplainGateRule } from "@/lib/api";
+import ShareBar from "./ShareBar";
 import { ClassBadge, DomainBars, fmt, fmtNum, fmtUsd, ScoreBar, Stat, TierBadge, tierColor } from "./ui";
 import TokenLink from "./TokenLink";
 import PriceChart from "./PriceChart";
 
 // One feed status vocabulary everywhere: the dot colour, the word, what it means.
 const FEED_STATUS: Record<string, { dot: string; label: string; meaning: string }> = {
-  ok: { dot: "bg-emerald-400", label: "ok", meaning: "returned data for this token — it is in the score" },
-  empty: { dot: "bg-white", label: "empty", meaning: "reachable, but has nothing on this token (not tracked there) — scored without it" },
-  error: { dot: "bg-rose-500", label: "error", meaning: "the request failed this run (rate limit / outage) — scored without it; retried next refresh" },
-  off: { dot: "bg-slate-600", label: "off", meaning: "not queried — no identifier for this token, or the source needs a key / plan we don't have" },
-  stale: { dot: "bg-amber-400", label: "stale", meaning: "the source failed this run — the last stored values were carried forward (dated in the advisory) so the score does not move on an outage" },
+  ok: { dot: "bg-emerald-400", label: "ok", meaning: "returned data for this token; it is in the score" },
+  empty: { dot: "bg-white", label: "empty", meaning: "reachable, but has nothing on this token (not tracked there); scored without it" },
+  error: { dot: "bg-rose-500", label: "error", meaning: "the request failed this run (rate limit or outage); scored without it and retried next refresh" },
+  off: { dot: "bg-slate-600", label: "off", meaning: "not queried: no identifier for this token, or the source needs a key or plan we do not have" },
+  stale: { dot: "bg-amber-400", label: "stale", meaning: "the source failed this run; the last stored values were carried forward (dated in the advisory) so the score does not move on an outage" },
 };
 const FEED_ROLE: Record<string, string> = {
   coingecko: "price, market cap, supply, volume, community up-votes, watchlists, repo links",
@@ -26,20 +27,20 @@ const FEED_ORDER = ["coingecko", "defillama", "santiment", "github", "ethplorer"
 // Link fields come from third-party metadata; only ever render http(s) URLs.
 const safeHref = (u: string | null | undefined) => (u && /^https?:\/\//i.test(u) ? u : null);
 
-// Raw figures keep their own units; scores are 0–100.
+// Raw figures keep their own units; scores are 0 to 100.
 function fmtVal(v: unknown, unit: string | null | undefined): string {
-  if (v === null || v === undefined) return "—";
+  if (v === null || v === undefined) return "n/a";
   if (Array.isArray(v)) return `(${v.map((x) => `${Number(x).toFixed(1)}%`).join(" + ")})`;
   if (typeof v === "boolean") return v ? "yes" : "no";
   if (typeof v === "string") return v;
   const n = Number(v);
-  if (Number.isNaN(n)) return "—";
+  if (Number.isNaN(n)) return "n/a";
   switch (unit) {
     case "usd": return fmtUsd(n);
     case "count": return Math.abs(n) >= 1000 ? fmtNum(n) : n.toLocaleString(undefined, { maximumFractionDigits: 1 });
     case "pct": return `${n.toFixed(1)}%`;
     case "ratio": return `${(n * 100).toFixed(1)}%`;
-    case "x": return `${Math.abs(n) >= 100 ? n.toFixed(0) : n.toFixed(2)}×`;
+    case "x": return `${Math.abs(n) >= 100 ? n.toFixed(0) : n.toFixed(2)}x`;
     case "days": return `${Math.round(n)}`;
     case "per_day": return `${n.toFixed(1)}/day`;
     default: return n.toLocaleString(undefined, { maximumFractionDigits: 4 });
@@ -61,7 +62,7 @@ function FeatureRow({ f }: { f: ExplainFeature }) {
     <tr className={`border-t border-edge align-top ${scored ? "" : "text-muted"}`}>
       <td className="py-2 pr-3">
         <div className={scored ? "text-white" : ""} title={f.meaning}>{f.label}</div>
-        <div className="text-xs text-muted">{f.direction}{f.source ? ` · ${f.source}` : ""}</div>
+        <div className="text-xs text-muted">{f.direction}{f.source ? `, ${f.source}` : ""}</div>
       </td>
       <td className="py-2 pr-3 text-xs">
         {f.inputs.length ? f.inputs.map((i) => (
@@ -69,7 +70,7 @@ function FeatureRow({ f }: { f: ExplainFeature }) {
             <span className="text-muted">{i.label}:</span>{" "}
             <span className="tabular-nums text-white">{fmtVal(i.value, i.unit)}</span>
           </div>
-        )) : <span>—</span>}
+        )) : <span>n/a</span>}
       </td>
       <td className="py-2 pr-3 text-xs">
         {calc ? (
@@ -89,10 +90,10 @@ function FeatureRow({ f }: { f: ExplainFeature }) {
             <div className="text-white">{fmt(f.percentile, 0)}</div>
             {f.reference_n ? <div className="text-xs text-muted">vs {f.reference_n} peers</div> : null}
           </div>
-        ) : "—"}
+        ) : "n/a"}
       </td>
-      <td className="py-2 pr-3 text-right text-xs tabular-nums">{f.weight === null ? "—" : `${f.weight.toFixed(1)}%`}</td>
-      <td className="py-2 text-right tabular-nums">{f.contribution === null ? "—" : <span className="text-white">+{fmt(f.contribution)}</span>}</td>
+      <td className="py-2 pr-3 text-right text-xs tabular-nums">{f.weight === null ? "n/a" : `${f.weight.toFixed(1)}%`}</td>
+      <td className="py-2 text-right tabular-nums">{f.contribution === null ? "n/a" : <span className="text-white">+{fmt(f.contribution)}</span>}</td>
     </tr>
   );
 }
@@ -109,10 +110,10 @@ function GateRow({ g }: { g: ExplainGateRule }) {
           <div key={e.label}>
             <span className="text-muted">{e.label}:</span>{" "}
             <span className="tabular-nums text-white">{fmtVal(e.value, e.unit)}</span>
-            {e.threshold ? <span className="text-muted"> · {e.threshold}</span> : null}
+            {e.threshold ? <span className="text-muted">, {e.threshold}</span> : null}
           </div>
         ))}
-        {!g.evidence.length && <span>—</span>}
+        {!g.evidence.length && <span>n/a</span>}
       </td>
       <td className="py-2 pr-3 text-xs">{g.action === "zero" ? "zeroes the score" : `caps the score at ${g.cap}`}</td>
       <td className="py-2 text-right text-xs">
@@ -169,15 +170,15 @@ export default function TokenReport({ a, headingTag = "h2", permalink = true }: 
             </div>
             <div className="mt-1 text-sm text-muted">
               {a.source?.kind === "stored"
-                ? <>scored from the board run of {a.source.collected_at ? a.source.collected_at.slice(0, 10) : "—"}</>
+                ? <>scored from the board run of {a.source.collected_at ? a.source.collected_at.slice(0, 10) : "n/a"}</>
                 : <>matched by {r.matched_by}</>}
-              {r.market_cap_rank ? ` · CG rank #${r.market_cap_rank}` : ""} ·{" "}
+              {r.market_cap_rank ? `, CG rank #${r.market_cap_rank}` : ""}.{" "}
               <code className="text-xs">{r.gecko_id}</code>
               {permalink && a.on_board && (
-                <> · <Link href={`/token/${encodeURIComponent(r.gecko_id)}`} className="text-brand hover:text-brand2">permanent page ↗</Link></>
+                <>. <Link href={`/token/${encodeURIComponent(r.gecko_id)}`} className="text-brand hover:text-brand2">Permanent page</Link></>
               )}
               {a.source?.kind === "stored" && (
-                <> · <Link href={`/analyze?q=${encodeURIComponent(r.gecko_id)}`} className="text-brand hover:text-brand2">run a live analysis ↗</Link></>
+                <>. <Link href={`/analyze?q=${encodeURIComponent(r.gecko_id)}`} className="text-brand hover:text-brand2">Run a live analysis</Link></>
               )}
             </div>
             {rec.class && <div className="mt-2 max-w-xl text-sm text-muted">🏷️ {rec.class.description}</div>}
@@ -189,20 +190,34 @@ export default function TokenReport({ a, headingTag = "h2", permalink = true }: 
               </div>
               <div className="mt-1"><TierBadge tier={s.tier} /></div>
               <div className="mt-1 text-xs text-muted">
-                coverage {s.coverage === null ? "—" : `${Math.round(s.coverage)}%`}
-                {s.confidence ? ` · ${s.confidence} confidence` : ""}
-                {s.tier_stability != null ? ` · ${Math.round(s.tier_stability)}% tier-stable` : ""}
-                {a.rank ? ` · rank #${a.rank}/${a.peer_count + 1}` : ""}
+                coverage {s.coverage === null ? "n/a" : `${Math.round(s.coverage)}%`}
+                {s.confidence ? `, ${s.confidence} confidence` : ""}
+                {s.tier_stability != null ? `, ${Math.round(s.tier_stability)}% tier-stable` : ""}
+                {a.rank ? `, rank #${a.rank}/${a.peer_count + 1}` : ""}
               </div>
             </div>
           )}
         </div>
 
         {s && (
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+            <ShareBar
+              url={a.on_board ? `/token/${encodeURIComponent(r.gecko_id)}` : `/analyze?q=${encodeURIComponent(r.gecko_id)}`}
+              title={`${r.name} (${r.symbol}) scores ${fmt(s.final_score)}/100 on DYOR`}
+              text={`${r.name} (${r.symbol}) scores ${fmt(s.final_score)}/100, tier ${s.tier.trim().charAt(0)}, on DYOR by CryptoOpsec. ${rec.class?.label ?? ""} judged on ${Object.keys(s.domain_scores).filter((k) => s.domain_scores[k] !== null).length} domains. Research aid, not advice.`}
+              summary={a.summary ?? null}
+            />
+            <Link href={`/compare?tokens=${encodeURIComponent(r.gecko_id)}`} className="text-xs text-brand hover:text-brand2">
+              Compare with other tokens
+            </Link>
+          </div>
+        )}
+
+        {s && (
           <>
             {s.flags.length > 0 && (
               <div className="mt-4 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-200">
-                <b>Gate flags:</b> {s.flags.join(", ")} — these capped or zeroed the score (see the gate table below).
+                <b>Gate flags:</b> {s.flags.join(", ")}. These capped or zeroed the score (see the gate table below).
               </div>
             )}
             {s.advisories.map((adv) => (
@@ -217,12 +232,12 @@ export default function TokenReport({ a, headingTag = "h2", permalink = true }: 
       {/* market snapshot */}
       {m && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Stat label="Price" value={m.price ? `$${m.price < 1 ? m.price.toPrecision(3) : m.price.toLocaleString()}` : "—"} />
+          <Stat label="Price" value={m.price ? `$${m.price < 1 ? m.price.toPrecision(3) : m.price.toLocaleString()}` : "n/a"} />
           <Stat label="Market cap" value={fmtUsd(m.market_cap)} />
           <Stat label="FDV" value={fmtUsd(m.fdv)} />
           <Stat label="24h volume" value={fmtUsd(m.volume_24h)} />
-          <Stat label="24h change" value={m.price_change_24h_pct === null ? "—" : `${m.price_change_24h_pct > 0 ? "+" : ""}${m.price_change_24h_pct.toFixed(1)}%`} />
-          <Stat label="From ATH" value={m.ath_change_pct === null ? "—" : `${m.ath_change_pct.toFixed(0)}%`} />
+          <Stat label="24h change" value={m.price_change_24h_pct === null ? "n/a" : `${m.price_change_24h_pct > 0 ? "+" : ""}${m.price_change_24h_pct.toFixed(1)}%`} />
+          <Stat label="From ATH" value={m.ath_change_pct === null ? "n/a" : `${m.ath_change_pct.toFixed(0)}%`} />
           <Stat label="Circulating" value={fmtNum(m.circulating_supply)} />
           <Stat label="Total supply" value={fmtNum(m.total_supply)} />
         </div>
@@ -236,7 +251,7 @@ export default function TokenReport({ a, headingTag = "h2", permalink = true }: 
         {s && (
           <div className="card">
             <h3 className="mb-3 font-semibold text-white">Domain scores</h3>
-            <p className="mb-3 text-xs text-muted">0–100. Each domain is the mean of its scored features&apos; percentiles against this asset class&apos;s reference basket — the working is tabled below.</p>
+            <p className="mb-3 text-xs text-muted">0 to 100. Each domain is the mean of its scored features&apos; percentiles against this asset class&apos;s reference basket; the working is tabled below.</p>
             <DomainBars score={s} />
           </div>
         )}
@@ -251,7 +266,7 @@ export default function TokenReport({ a, headingTag = "h2", permalink = true }: 
             {Object.entries(r.explorers).filter(([, url]) => safeHref(url)).map(([chain, url]) => (
               <a key={chain} href={url} target="_blank" rel="noreferrer"
                  className="pill border border-edge bg-panel2 text-sky-300 hover:text-sky-200">
-                {chain} ↗
+                {chain}
               </a>
             ))}
           </div>
@@ -273,7 +288,7 @@ export default function TokenReport({ a, headingTag = "h2", permalink = true }: 
                 .map(([label, url]) => (
                   <a key={label} href={url as string} target="_blank" rel="noreferrer"
                      className="pill border border-edge bg-panel2 text-brand hover:text-brand2">
-                    {label} ↗
+                    {label}
                   </a>
                 ))}
             </div>
@@ -281,7 +296,7 @@ export default function TokenReport({ a, headingTag = "h2", permalink = true }: 
           {rec.vc.num_backers !== null && (
             <div className="mt-4 text-sm text-muted">
               🏦 VC backers: <span className="text-white">{rec.vc.num_backers}</span>
-              {rec.vc.had_public_sale ? " · had public sale" : ""}
+              {rec.vc.had_public_sale ? ", had public sale" : ""}
             </div>
           )}
         </div>
@@ -303,7 +318,7 @@ export default function TokenReport({ a, headingTag = "h2", permalink = true }: 
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       {url ? (
-                        <a href={url} target="_blank" rel="noreferrer" className="font-medium text-sky-300 hover:text-sky-200">{k} ↗</a>
+                        <a href={url} target="_blank" rel="noreferrer" className="font-medium text-sky-300 hover:text-sky-200">{k}</a>
                       ) : (
                         <span className="font-medium text-white">{k}</span>
                       )}
@@ -321,7 +336,7 @@ export default function TokenReport({ a, headingTag = "h2", permalink = true }: 
             {Object.entries(FEED_STATUS).map(([k, v]) => (
               <div key={k} className="flex items-start gap-2">
                 <span className={`mt-1 inline-block h-2 w-2 shrink-0 rounded-full ${v.dot}`} />
-                <span><b className="text-white">{v.label}</b> — {v.meaning}</span>
+                <span><b className="text-white">{v.label}</b>: {v.meaning}</span>
               </div>
             ))}
           </dl>
@@ -333,11 +348,11 @@ export default function TokenReport({ a, headingTag = "h2", permalink = true }: 
         <div className="card">
           <h3 className="font-semibold text-white">How the score is built</h3>
           <p className="mt-1 text-xs text-muted">
-            {ex.method.class_label}. Each feature is computed from the raw figures shown, then ranked as a percentile (0–100)
+            {ex.method.class_label}. Each feature is computed from the raw figures shown, then ranked as a percentile (0 to 100)
             {ex.method.reference_anchored ? ` against the ${ex.method.class} reference basket` : " within the peer set (no reference basket cached)"};
             features average within a domain; domains are weighted, with the weights renormalized over the domains that have data
             {ex.method.penalize_missing_core ? " (a domain the class is defined by is floored, not skipped, when it has none)" : ""};
-            any gate that trips caps the result. Points = percentile × weight; they add up to the raw score.
+            any gate that trips caps the result. Points are percentile times weight; they add up to the raw score.
           </p>
 
           {ex.domains.map((d) => {
@@ -352,11 +367,11 @@ export default function TokenReport({ a, headingTag = "h2", permalink = true }: 
                     <span className="ml-2 text-xs text-muted">{d.description}</span>
                   </div>
                   <div className="text-xs tabular-nums text-muted">
-                    weight {w}%{wn !== null && wn !== w ? ` → ${wn}% of what's present` : ""}
-                    {" · "}{d.features_scored}/{d.features_total} features
-                    {" · "}domain score <b className="text-white">{d.score === null ? "—" : fmt(d.score)}</b>
-                    {d.penalized && <span className="ml-2 rounded bg-rose-500/10 px-1.5 py-0.5 text-rose-300">required domain with no data → floored</span>}
-                    {d.score === null && !d.penalized && <span className="ml-2">(no data → weight redistributed)</span>}
+                    weight {w}%{wn !== null && wn !== w ? `, ${wn}% of what is present` : ""}
+                    {", "}{d.features_scored}/{d.features_total} features
+                    {", "}domain score <b className="text-white">{d.score === null ? "n/a" : fmt(d.score)}</b>
+                    {d.penalized && <span className="ml-2 rounded bg-rose-500/10 px-1.5 py-0.5 text-rose-300">required domain with no data, floored</span>}
+                    {d.score === null && !d.penalized && <span className="ml-2">(no data, weight redistributed)</span>}
                   </div>
                 </div>
                 <div className="mt-2 overflow-x-auto">
@@ -397,9 +412,9 @@ export default function TokenReport({ a, headingTag = "h2", permalink = true }: 
                     <tr key={d.domain} className={`border-t border-edge ${d.score === null ? "text-muted" : ""}`}>
                       <td className="py-2 pr-3">{d.label}{d.required ? <span className="ml-1 text-xs text-muted">(required)</span> : null}</td>
                       <td className="py-2 pr-3 text-right tabular-nums">{Math.round(d.weight * 100)}%</td>
-                      <td className="py-2 pr-3 text-right tabular-nums">{d.weight_renormalized === null ? "—" : `${(d.weight_renormalized * 100).toFixed(1)}%`}</td>
+                      <td className="py-2 pr-3 text-right tabular-nums">{d.weight_renormalized === null ? "n/a" : `${(d.weight_renormalized * 100).toFixed(1)}%`}</td>
                       <td className="py-2 pr-3 text-right tabular-nums">{d.score === null ? "no data" : d.penalized ? `${fmt(d.score)} (floored)` : fmt(d.score)}</td>
-                      <td className="py-2 text-right tabular-nums text-white">{d.contribution === null ? "—" : `+${fmt(d.contribution)}`}</td>
+                      <td className="py-2 text-right tabular-nums text-white">{d.contribution === null ? "n/a" : `+${fmt(d.contribution)}`}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -415,7 +430,7 @@ export default function TokenReport({ a, headingTag = "h2", permalink = true }: 
 
           {/* gate */}
           <div className="mt-6">
-            <div className="font-semibold text-white">Gate — hard disqualifiers</div>
+            <div className="font-semibold text-white">Gate: hard disqualifiers</div>
             <p className="mt-1 text-xs text-muted">Each rule is checked against the figures shown; missing data never trips a rule. The strictest tripped rule sets the ceiling.</p>
             <div className="mt-2 overflow-x-auto">
               <table className="w-full text-sm">
@@ -432,8 +447,8 @@ export default function TokenReport({ a, headingTag = "h2", permalink = true }: 
                   <tr className="border-t border-edge font-semibold text-white">
                     <td className="py-2 pr-3" colSpan={3}>
                       {ex.gate.cap === null
-                        ? "No rule tripped → final score = raw score"
-                        : `Ceiling ${fmt(ex.gate.cap)} → final score = min(${fmt(ex.gate.raw_score)}, ${fmt(ex.gate.cap)})`}
+                        ? "No rule tripped, so the final score is the raw score"
+                        : `Ceiling ${fmt(ex.gate.cap)}, so the final score is min(${fmt(ex.gate.raw_score)}, ${fmt(ex.gate.cap)})`}
                     </td>
                     <td className="py-2 text-right tabular-nums">{fmt(ex.gate.final_score)}</td>
                   </tr>
@@ -449,16 +464,16 @@ export default function TokenReport({ a, headingTag = "h2", permalink = true }: 
               {ex.tier.thresholds.map((t) => (
                 <span key={t.label}
                       className={`pill border ${t.label === ex.tier.tier ? tierColor(t.label) : "border-edge text-muted"}`}>
-                  {t.label} <span className="ml-1 opacity-70">≥ {t.min}</span>
+                  {t.label} <span className="ml-1 opacity-70">{t.min}+</span>
                 </span>
               ))}
             </div>
             <div className="mt-2 text-xs text-muted">
-              {fmt(ex.gate.final_score)} → <span className="text-white">{ex.tier.tier}</span>
-              {ex.tier.stability !== null ? ` · ${Math.round(ex.tier.stability)}% of ±20% weight perturbations keep this tier` : ""}
-              {` · coverage ${ex.tier.coverage.present}/${ex.tier.coverage.total} of this class's features`}
+              {fmt(ex.gate.final_score)} maps to <span className="text-white">{ex.tier.tier}</span>
+              {ex.tier.stability !== null ? `. ${Math.round(ex.tier.stability)}% of plus or minus 20% weight perturbations keep this tier` : ""}
+              {`. Coverage ${ex.tier.coverage.present}/${ex.tier.coverage.total} of this class's features`}
               {ex.tier.coverage.pct !== null ? ` (${Math.round(ex.tier.coverage.pct)}%)` : ""}
-              {` · ${ex.tier.confidence} confidence`}
+              {`. ${ex.tier.confidence} confidence.`}
             </div>
           </div>
         </div>

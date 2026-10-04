@@ -33,7 +33,7 @@ from dyor.reference import ReferenceUnavailable
 from dyor.sample_data import SAMPLE_UNIVERSE
 
 app = FastAPI(title="DYOR API", version="0.1.0",
-              description="Crypto token qualification — asset-class-aware scoring.")
+              description="Crypto token qualification: asset-class-aware scoring.")
 
 app.add_middleware(
     CORSMiddleware,
@@ -62,7 +62,7 @@ async def _reference_unavailable(_request, exc: ReferenceUnavailable):
     from fastapi.responses import JSONResponse
 
     return JSONResponse(status_code=503, headers={"Retry-After": "5"},
-                        content={"detail": f"scoring anchor temporarily unreadable — retry: {exc}"})
+                        content={"detail": f"scoring anchor temporarily unreadable, retry: {exc}"})
 
 
 @app.get("/api/health")
@@ -80,7 +80,7 @@ import threading as _threading
 import time as _time
 
 _BOARD_LOCK = _threading.Lock()
-_BOARD: dict[str, Any] = {"key": None, "value": None}
+_BOARDS: dict[tuple, dict[str, Any]] = {}   # (board version, scoring options) → scored board
 _IDENTITY: dict[str, Any] = {"at": 0.0, "map": {}}
 
 
@@ -102,14 +102,16 @@ def _identity_map() -> dict[str, dict[str, str]]:
     return _IDENTITY["map"]
 
 
-def _stored_board(source: str = "stored") -> dict[str, Any]:
+def _stored_board(source: str = "stored", *, peer_groups: bool = False,
+                  penalize_missing_core: bool | None = None) -> dict[str, Any]:
     """{run_id, collected_at, records, results, by_token} for the board, cached
-    by (run_id, last collected_at) so an in-place refresh invalidates it."""
+    by (run_id, last collected_at, scoring options) so an in-place refresh
+    invalidates it and the screener's toggles get their own entry."""
     from dyor.store import db
 
     if source != "stored":
         records = SAMPLE_UNIVERSE
-        key = ("sample", len(records))
+        version = ("sample", len(records))
         run_id, collected_at = None, None
     else:
         con = db.connect(read_only=True)
@@ -119,16 +121,22 @@ def _stored_board(source: str = "stored") -> dict[str, Any]:
         finally:
             con.close()
         run_id, _, collected_at = meta if meta else (None, None, None)
-        key = (run_id, str(collected_at))
+        version = (run_id, str(collected_at))
+    key = (version, bool(peer_groups), penalize_missing_core)
     with _BOARD_LOCK:
-        if _BOARD["key"] == key and _BOARD["value"] is not None:
-            return _BOARD["value"]
-    results = score_universe(records) if records else []
+        hit = _BOARDS.get(key)
+        if hit is not None:
+            return hit
+    results = (score_universe(records, peer_groups=peer_groups, penalize_missing_core=penalize_missing_core)
+               if records else [])
     value = {"run_id": run_id, "collected_at": collected_at, "records": records, "results": results,
              "by_token": {r.get("token"): r for r in records},
              "result_by_token": {r.token: r for r in results}}
     with _BOARD_LOCK:
-        _BOARD["key"], _BOARD["value"] = key, value
+        # drop entries from older board versions; keep this version's option variants
+        for k in [k for k in _BOARDS if k[0] != version]:
+            _BOARDS.pop(k, None)
+        _BOARDS[key] = value
     return value
 
 
@@ -140,32 +148,85 @@ def _token_identity(rec: dict[str, Any], ident_map: dict[str, dict[str, str]]) -
 
 
 @app.get("/api/tokens")
-def tokens(source: str = Query("stored", pattern="^(stored|sample)$")) -> dict[str, Any]:
-    """Every token on the board with identity, class, score and tier — the
-    index behind /tokens, the sitemap and the per-token pages. Scores are
-    0–100 (`scale`)."""
-    board = _stored_board(source)
+def tokens(source: str = Query("stored", pattern="^(stored|sample)$"),
+           detail: bool = Query(False, description="add domain scores, feature values, percentiles, market"),
+           peer_groups: bool = False,
+           penalize_missing_core: bool | None = None) -> dict[str, Any]:
+    """Every token on the board with identity, class, score and tier: the index
+    behind /tokens, the sitemap and the per-token pages. With `detail=true` each
+    row also carries its domain scores, raw feature values, per-feature
+    percentiles and a market snapshot, so the screener can rank and filter by
+    any of them client-side. Scores and percentiles are 0-100 (`scale`)."""
+    from dyor.classes import FEATURE_DIRECTION
+    from dyor.scoring.composite import display
+
+    board = _stored_board(source, peer_groups=peer_groups, penalize_missing_core=penalize_missing_core)
     ident = _identity_map() if source == "stored" else {}
     rows = []
     for r in board["results"]:
         rec = board["by_token"].get(r.token, {})
         who = _token_identity(rec, ident)
         d = score_to_dict(r)
-        rows.append({"id": r.token, "name": who["name"], "symbol": who["symbol"], "image": who["image"],
-                     "class": rec.get("_class"), "class_label": class_to_dict(rec.get("_class"))["label"],
-                     "final_score": d["final_score"], "tier": d["tier"], "flags": d["flags"],
-                     "coverage": d["coverage"], "confidence": d["confidence"]})
+        row = {"id": r.token, "name": who["name"], "symbol": who["symbol"], "image": who["image"],
+               "class": rec.get("_class"), "class_label": class_to_dict(rec.get("_class"))["label"],
+               "final_score": d["final_score"], "tier": d["tier"], "flags": d["flags"],
+               "coverage": d["coverage"], "confidence": d["confidence"]}
+        if detail:
+            m = rec.get("_market") or {}
+            inp = rec.get("_inputs") or {}
+            row.update({
+                "domain_scores": d["domain_scores"],
+                "features": {f: rec.get(f) for f in FEATURE_DIRECTION if rec.get(f) is not None},
+                "percentiles": {f: display(v) for f, v in r.feature_scores.items()},
+                "market": {"price": m.get("price"), "market_cap": m.get("market_cap"), "fdv": m.get("fdv"),
+                           "volume_24h": m.get("volume_24h"), "tvl": inp.get("tvl")},
+                "advisories": d["advisories"],
+                "audited": rec.get("audited"),
+                "days_since_last_commit": rec.get("days_since_last_commit"),
+            })
+        rows.append(row)
     ca = board["collected_at"]
     return {"scale": 100, "run_id": board["run_id"],
             "collected_at": ca.isoformat() if hasattr(ca, "isoformat") else ca,
             "count": len(rows), "tokens": rows}
 
 
+@app.get("/api/compare")
+def compare(ids: str = Query(..., description="comma-separated CoinGecko ids, up to 6"),
+            source: str = Query("stored", pattern="^(stored|sample)$")) -> dict[str, Any]:
+    """Side-by-side material for several tokens on the board: each one's full
+    stored analysis (score, record, ledger, summary) so a page can align them
+    line for line. Ids not on the board are listed under `missing` (a live
+    analysis is the way to see those)."""
+    wanted = [i.strip() for i in ids.split(",") if i.strip()][:6]
+    if not wanted or not all(is_gecko_id(i) for i in wanted):
+        raise HTTPException(422, "ids must be 1-6 CoinGecko ids")
+    board = _stored_board(source)
+    ident = _identity_map() if source == "stored" else {}
+    out, missing = [], []
+    for i in wanted:
+        rec = board["by_token"].get(i)
+        result = board["result_by_token"].get(i)
+        if rec is None or result is None:
+            missing.append(i)
+            continue
+        same_class = [r for r in board["results"]
+                      if (board["by_token"].get(r.token) or {}).get("_class") == rec.get("_class")]
+        d = stored_analysis_to_dict(rec, result, same_class, run_id=board["run_id"],
+                                    collected_at=board["collected_at"],
+                                    identity=_token_identity(rec, ident), peer_limit=0)
+        out.append(d)
+    ca = board["collected_at"]
+    return {"scale": 100, "run_id": board["run_id"],
+            "collected_at": ca.isoformat() if hasattr(ca, "isoformat") else ca,
+            "tokens": out, "missing": missing}
+
+
 @app.get("/api/token")
 def token(id: str = Query(..., description="CoinGecko id, e.g. aave"),
           source: str = Query("stored", pattern="^(stored|sample)$")) -> dict[str, Any]:
     """The full analysis (score, record, ledger, summary) for one token on the
-    board — no live collection. 404 when the token is not on the board."""
+    board, with no live collection. 404 when the token is not on the board."""
     if not is_gecko_id(id):
         raise HTTPException(422, "not a CoinGecko id")
     board = _stored_board(source)
@@ -349,7 +410,7 @@ def methodology() -> dict[str, Any]:
     return {
         "scale": SCORE_SCALE,  # every score, tier threshold and gate cap below is 0–100
         "weights": cfg["scoring"]["weights"],
-        "weights_note": "`weights` is the DeFi / general profile; every class has its own — see class_weights",
+        "weights_note": "`weights` is the DeFi / general profile; every class has its own, see class_weights",
         "class_weights": {name: class_to_dict(name)["weights"] for name in LABELS},
         "tiers": [{"label": t["label"], "min": display(t["min"], 0), "color": tier_color(t["label"])}
                   for t in cfg["scoring"]["tiers"]],

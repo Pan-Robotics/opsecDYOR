@@ -341,6 +341,32 @@ What the web app ships for search and sharing, and what deployment must keep:
   (property: the `dyor.` subdomain). Rich-result check:
   https://search.google.com/test/rich-results on `/`, `/methodology`, `/token/aave`.
 
+## Share, ranked screener, compare (added 2026-10-04)
+
+- **Share bar** on every token report (`web/components/ShareBar.tsx`): copy
+  link, post on X (`https://x.com/intent/post`), native share where the browser
+  has it, copy the API `summary` paragraph. Board tokens share `/token/<id>`;
+  live-only tokens share `/analyze?q=<id>`.
+- **Ranked screener**: `GET /api/tokens?detail=true[&peer_groups=1][&penalize_missing_core=1]`
+  adds `domain_scores`, `features`, `percentiles`, `market`, `advisories`,
+  `audited`, `days_since_last_commit` per row; the page ranks by composite,
+  domain or metric with nulls last. The rankable metric list is
+  `web/lib/metrics.ts` (`higherIsBetter`, unit, domain); extend it when a
+  feature is added to a class spec.
+- **Compare**: `GET /api/compare?ids=a,b,c` (max 6, stored board, same cache as
+  `/api/tokens`) returns `{scale, run_id, collected_at, tokens, missing}`;
+  `/compare?tokens=a,b` renders it on the server (canonical = sorted ids).
+- **Copy rule**: reader-facing text uses plain punctuation only. No em or en
+  dashes, middle dots, arrows, ellipses, `≥ ≤ ×` or `↗`. Check before a deploy:
+
+```bash
+grep -rnE '—|–|·|→|…|≥|≤|×|↗' web/app web/components web/lib --include=*.tsx --include=*.ts | grep -vE '^\S+:[0-9]+:\s*(//|\*|\{/\*)'
+for p in / /screener /token/aave /compare?tokens=aave,uniswap; do curl -s "https://dyor.cryptoopsec.com$p" | sed -E 's/<script[^>]*>.*?<\/script>//g' | grep -c '—\|·\|→'; done   # all 0
+```
+
+  Tier labels are `"A (high conviction)"` .. `"D (avoid)"`; the Open Graph card
+  reads the word inside the parentheses.
+
 ## Coverage matrix
 
 `deploy/coverage-matrix.py` prints, for the latest persisted run, how many

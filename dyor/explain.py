@@ -131,7 +131,7 @@ def feature_working(feature: str, inputs: dict[str, Any] | None) -> tuple[list[d
         ins = [_inp("available_supply", "Available supply", u.get("available_supply"), "count", "cryptorank"),
                _inp("max_supply", "Max supply", u.get("max_supply"), "count", "cryptorank"),
                _inp("has_vesting", "Vesting schedule", u.get("has_vesting"), "bool", "cryptorank")]
-        return ins, ("1 − {available_supply} ÷ {max_supply}" if u.get("has_vesting") else "0 — no vesting schedule")
+        return ins, ("1 − {available_supply} ÷ {max_supply}" if u.get("has_vesting") else "0 (no vesting schedule)")
     if feature == "unlock_pct_of_volume":
         u = i.get("unlock") or {}
         if u.get("next_unlock_usd") is None:
@@ -174,11 +174,11 @@ def missing_reason(feature: str, value: Any, feeds: dict[str, str] | None) -> st
     status = (feeds or {}).get(src) if src else None
     gated = FEATURE_GATED.get(feature)
     if value is not None:
-        return "value collected but no reference basket carries this feature — left out rather than ranked against the ad-hoc peer set"
+        return "value collected but no reference basket carries this feature; left out rather than ranked against the ad-hoc peer set"
     if status == "error":
         return f"{src} errored this run"
     if status == "off":
-        return gated or f"{src} feed off — no identifier for this token"
+        return gated or f"{src} feed off: no identifier for this token"
     if status == "empty":
         return gated or f"{src} has no data for this token"
     if status == "ok":
@@ -264,10 +264,10 @@ def explain(record: dict | None, result: ScoreResult | None, config: dict | None
         "anonymous_team": [ev("Team anonymous", rec.get("team_anonymous"), "bool", "trips when True")],
         "no_audit": [ev("Audit on record (DefiLlama)", rec.get("audited"), "bool", "trips when False")],
         "extreme_fdv_mcap": [ev("FDV / MCAP", rec.get("fdv_mcap_ratio"), "x",
-                                f"trips when > {rules.get('extreme_fdv_mcap', {}).get('threshold', 10.0):g}×")],
+                                f"trips above {rules.get('extreme_fdv_mcap', {}).get('threshold', 10.0):g}x")],
         "dead_token": [
             ev("Days since last GitHub push" + (f" ({gh})" if gh else ""), rec.get("days_since_last_commit"),
-               "days", f"trips at ≥ {crit.get('no_commits_days', 180)} days"),
+               "days", f"trips at {crit.get('no_commits_days', 180)} days or more"),
             ev("Santiment dev events in window", rec.get("dev_activity_events"), "count", "> 0 overrules a stale GitHub org"),
             ev("24h volume", rec.get("daily_volume_usd"), "usd", f"trips below ${crit.get('min_daily_volume_usd', 1000.0):,.0f}"),
         ],

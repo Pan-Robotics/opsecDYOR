@@ -28,7 +28,7 @@ def _print_table(results) -> None:
     print(header)
     print("-" * len(header))
     for r in results:
-        flags = ", ".join(r.flags) if r.flags else "—"
+        flags = ", ".join(r.flags) if r.flags else "none"
         cov = "  n/a" if math.isnan(r.coverage) else f"{r.coverage:4.0%}"
         print(f"{r.token:<18} {_fmt(r.raw_score):>6} {_fmt(r.final_score):>6} {cov:>5}  "
               f"{r.tier:<22} {flags}")
@@ -143,7 +143,7 @@ def _cmd_refresh(args: argparse.Namespace) -> int:
     if not records:
         # Persisting an empty run would make it the "latest" one and blank the
         # screener. A collect that returns nothing is a failure, not a result.
-        print("refresh: collect returned no records — nothing persisted", file=sys.stderr)
+        print("refresh: collect returned no records; nothing persisted", file=sys.stderr)
         return 1
 
     con = db.connect()
@@ -152,7 +152,7 @@ def _cmd_refresh(args: argparse.Namespace) -> int:
         keep = int(load_config().get("store", {}).get("keep_runs", 0) or 0)
         pruned = db.prune_runs(con, keep) if keep else 0
     except db.RunShrinkRefused as exc:
-        print(f"refresh: not persisted — {exc}", file=sys.stderr)
+        print(f"refresh: not persisted: {exc}", file=sys.stderr)
         return 1
     finally:
         con.close()
@@ -217,12 +217,12 @@ def _cmd_analyze(args: argparse.Namespace) -> int:
     if r.chains:
         print(f"chains:   {', '.join(r.chains[:8])}" + (" …" if len(r.chains) > 8 else ""))
     if not res.ok:
-        print("no market data — could not score", file=sys.stderr)
+        print("no market data; could not score", file=sys.stderr)
         return 2
 
     from dyor.classes import class_profile
     cls = class_profile((res.record or {}).get("_class"))
-    print(f"class:    {cls.label} — {cls.description}")
+    print(f"class:    {cls.label}: {cls.description}")
 
     sr = res.result
     cov = "n/a" if math.isnan(sr.coverage) else f"{sr.coverage:.0%}"
@@ -295,7 +295,7 @@ def _cmd_benchmark(args: argparse.Namespace) -> int:
     for r in report.results:
         mark = "✓" if r.passed else "✗"
         print(f"  {mark} {r.name:<22} {r.tier:<22} "
-              + ("" if r.passed else "— " + "; ".join(r.reasons)))
+              + ("" if r.passed else "failed: " + "; ".join(r.reasons)))
     print(f"\nbenchmark: {report.passed}/{report.total} passed "
           f"({report.accuracy:.0%})", file=sys.stderr)
     return 0 if report.ok else 1

@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { pageMeta } from "@/lib/seo";
 
 export const metadata: Metadata = pageMeta({
-  title: 'Crypto token screener by tier — scored universe, filters, gate flags',
-  description: "A weekly-refreshed universe of tokens scored 0–100 and grouped into tiers A–D. Filter by asset class, minimum tier, real yield and gate flags; open any token's full analysis.",
+  title: 'Crypto token screener: rank by score, domain or metric, filter, compare',
+  description: "Rank every token on the DYOR board by composite score, by a single domain such as tokenomics or fundamentals, or by one metric such as real yield or holder concentration, best or worst first. Filter by asset class, tier, gate flags and data coverage, and compare picks line for line.",
   path: '/screener',
 });
 

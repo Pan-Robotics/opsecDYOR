@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 
-export const alt = "DYOR by CryptoOpsec — crypto token scoring on fundamentals, tokenomics and on-chain data";
+export const alt = "DYOR by CryptoOpsec: crypto token scoring on fundamentals, tokenomics and on-chain data";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -19,11 +19,11 @@ export default function Image() {
             Qualify any crypto token on the dimensions that actually matter.
           </div>
           <div style={{ fontSize: 28, color: "#7e96b8", maxWidth: 1000, lineHeight: 1.35 }}>
-            Fundamentals · tokenomics · on-chain usage · social · developers — scored 0–100 against same-class peers, gated by hard disqualifiers, every figure shown.
+            Fundamentals, tokenomics, on-chain usage, social and developers, scored 0 to 100 against same-class peers, gated by hard disqualifiers, every figure shown.
           </div>
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 22, color: "#7e96b8" }}>
-          <div>Free · open data · API & MCP server for AI agents</div>
+          <div>Free, open data, API and MCP server for AI agents</div>
           <div>dyor.cryptoopsec.com</div>
         </div>
       </div>

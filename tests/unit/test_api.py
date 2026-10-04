@@ -200,3 +200,22 @@ def test_tokens_index_and_token_page_payloads():
     assert d["rank"] is not None and len(d["peers"]) <= 12
     assert client.get("/api/token", params={"id": "nope-not-here", "source": "sample"}).status_code == 404
     assert client.get("/api/token", params={"id": "../etc", "source": "sample"}).status_code == 422
+
+
+def test_tokens_detail_and_compare_payloads():
+    """The screener ranks and filters client-side from `detail=true`; the
+    compare page aligns several stored analyses line for line."""
+    body = client.get("/api/tokens", params={"source": "sample", "detail": "true"}).json()
+    row = body["tokens"][0]
+    assert {"domain_scores", "features", "percentiles", "market", "advisories"} <= set(row)
+    assert all(0 <= v <= 100 for v in row["percentiles"].values())
+    assert set(row["percentiles"]) <= set(row["features"])      # only scored features have a percentile
+    # scoring toggles get their own cached board, same shape
+    alt = client.get("/api/tokens", params={"source": "sample", "detail": "true", "peer_groups": "true"}).json()
+    assert alt["count"] == body["count"]
+    ids = [t["id"] for t in body["tokens"][:3]]
+    cmp_ = client.get("/api/compare", params={"ids": ",".join(ids + ["nope-token"]), "source": "sample"}).json()
+    assert [t["resolved"]["gecko_id"] for t in cmp_["tokens"]] == ids and cmp_["missing"] == ["nope-token"]
+    assert all(t["peers"] == [] and t["explain"]["features"] and t["summary"] for t in cmp_["tokens"])
+    assert client.get("/api/compare", params={"ids": "", "source": "sample"}).status_code == 422
+    assert client.get("/api/compare", params={"ids": "a,../b", "source": "sample"}).status_code == 422

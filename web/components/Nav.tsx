@@ -7,6 +7,7 @@ const LINKS: [string, string][] = [
   ["/analyze", "Analyze"],
   ["/screener", "Screener"],
   ["/tokens", "Tokens"],
+  ["/compare", "Compare"],
   ["/tools", "Tools"],
   ["/narratives", "Narratives"],
   ["/methodology", "Methodology"],

@@ -8,22 +8,22 @@ import { breadcrumbJsonLd, faqJsonLd, jsonLd, pageMeta } from "@/lib/seo";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = pageMeta({
-  title: "Methodology — how DYOR scores crypto tokens",
-  description: "How a DYOR score is built: percentiles against a same-class reference basket, per-domain averages, class-specific weights, hard disqualifier gates and A–D tiers — with every metric defined (P/F, P/S, MC/TVL, real yield, FDV/MCAP, float, holder concentration, address growth, dev activity).",
+  title: "Methodology: how DYOR scores crypto tokens",
+  description: "How a DYOR score is built: percentiles against a same-class reference basket, per-domain averages, class-specific weights, hard disqualifier gates and A to D tiers, with every metric defined (P/F, P/S, MC/TVL, real yield, FDV/MCAP, float, holder concentration, address growth, dev activity).",
   path: "/methodology",
 });
 
 const FAQ = [
   { q: "What is a DYOR score?",
-    a: "A 0–100 composite for one crypto token. Each feature (for example price-to-fees or holder concentration) is ranked as a percentile against a fixed reference basket of same-class tokens, features are averaged per domain (fundamentals, tokenomics, on-chain, social, developers), domains are weighted with class-specific weights, and any hard disqualifier that trips caps or zeroes the result." },
+    a: "A 0 to 100 composite for one crypto token. Each feature (for example price-to-fees or holder concentration) is ranked as a percentile against a fixed reference basket of same-class tokens, features are averaged per domain (fundamentals, tokenomics, on-chain, social, developers), domains are weighted with class-specific weights, and any hard disqualifier that trips caps or zeroes the result." },
   { q: "What do the tiers mean?",
     a: "The tier is a fixed mapping of the final score: A (high conviction) is 80 and above, B (qualified) 60 to 79.9, C (watchlist) 40 to 59.9, D (avoid) below 40. Tiers are a research shorthand, not a buy or sell recommendation." },
   { q: "Why isn't Bitcoin judged on revenue like a DeFi protocol?",
-    a: "Tokens are classified first — DeFi protocol, L1 / platform, monetary, memecoin, stablecoin — and each class scores only the dimensions that matter for it. A monetary asset has no fundamentals domain, so missing protocol revenue cannot hurt it; a DeFi app with no measurable fees, revenue or TVL has its fundamentals domain floored instead of skipped." },
+    a: "Tokens are classified first (DeFi protocol, L1 / platform, monetary, memecoin, stablecoin) and each class scores only the dimensions that matter for it. A monetary asset has no fundamentals domain, so missing protocol revenue cannot hurt it; a DeFi app with no measurable fees, revenue or TVL has its fundamentals domain floored instead of skipped." },
   { q: "What are the gates?",
-    a: "Hard disqualifiers checked after the composite: extreme FDV/MCAP (above 10×) caps the score at 40; no audit on record at DefiLlama caps a DeFi protocol at 50; a dead token — no push in 180 days on any GitHub account found for it with no Santiment developer activity to contradict it, or near-zero daily volume — zeroes the score. Missing data never trips a gate." },
+    a: "Hard disqualifiers checked after the composite: extreme FDV/MCAP (above 10x) caps the score at 40; no audit on record at DefiLlama caps a DeFi protocol at 50; a dead token (no push in 180 days on any GitHub account found for it with no Santiment developer activity to contradict it, or near-zero daily volume) zeroes the score. Missing data never trips a gate." },
   { q: "Where does the data come from?",
-    a: "Free, open sources only: CoinGecko (market data, supply, community votes, watchlists), DefiLlama (fees, revenue, holders revenue, TVL, audits — parent protocols aggregate their versions), Santiment (daily active addresses and developer activity over a 90-day window), GitHub (most recent push), Ethplorer (top-10 holder shares), Sourcify (contract verification). Every token page lists each source's status and links to its page." },
+    a: "Free, open sources only: CoinGecko (market data, supply, community votes, watchlists), DefiLlama (fees, revenue, holders revenue, TVL, audits; parent protocols aggregate their versions), Santiment (daily active addresses and developer activity over a 90-day window), GitHub (most recent push), Ethplorer (top-10 holder shares), Sourcify (contract verification). Every token page lists each source's status and links to its page." },
   { q: "Why do scores move between weeks?",
     a: "Because the token's own data moved: a changed TVL, fee run-rate, usage trend or supply figure. The reference baskets that scores are ranked against change only when they are deliberately rebuilt, percentiles are interpolated and treat near-identical values as ties, and a source that fails on a given run has its last stored values carried forward and labelled stale, so outages and provider rounding do not move a score." },
 ];
@@ -40,7 +40,7 @@ export default async function MethodologyPage() {
       <div>
         <h1 className="text-2xl font-bold text-white">📖 Methodology</h1>
         <p className="mt-1 max-w-3xl text-muted">
-          Normalize → weight → gate → tier, asset-class-aware. Scores run 0–100: each feature is a percentile against the
+          Normalize, weight, gate, tier: asset-class-aware. Scores run 0 to 100: each feature is a percentile against the
           asset class&apos;s reference basket, averaged per domain, weighted with that class&apos;s weights, then capped by any gate
           that trips. Every token page shows the working behind each number.
         </p>
@@ -76,7 +76,7 @@ export default async function MethodologyPage() {
                         {Object.entries(m.class_weights).filter(([c]) => c !== "general").map(([c, w]) => (
                           <tr key={c} className="border-t border-edge">
                             <td className="py-1 pr-2 text-white">{c}</td>
-                            {Object.keys(m.weights).map((d) => <td key={d} className="pr-2 text-right tabular-nums">{w[d] != null ? `${Math.round(w[d] * 100)}%` : "—"}</td>)}
+                            {Object.keys(m.weights).map((d) => <td key={d} className="pr-2 text-right tabular-nums">{w[d] != null ? `${Math.round(w[d] * 100)}%` : "n/a"}</td>)}
                           </tr>
                         ))}
                       </tbody>
@@ -91,7 +91,7 @@ export default async function MethodologyPage() {
                 {m.tiers.map((t) => (
                   <span key={t.label} className="pill border border-edge bg-panel2 text-white">
                     <span className="inline-block h-2 w-2 rounded-full" style={{ background: t.color }} /> {t.label}
-                    <span className="ml-1 text-muted">≥ {t.min}</span>
+                    <span className="ml-1 text-muted">{t.min}+</span>
                   </span>
                 ))}
               </div>
@@ -117,7 +117,7 @@ export default async function MethodologyPage() {
           </section>
 
           <section>
-            <h2 className="mb-3 font-semibold text-white">Gate — hard disqualifiers</h2>
+            <h2 className="mb-3 font-semibold text-white">Gate: hard disqualifiers</h2>
             <div className="card space-y-2 text-sm">
               {Object.entries(m.gating).map(([g, rule]) => (
                 <div key={g} className="flex flex-wrap items-center gap-2">
@@ -126,10 +126,10 @@ export default async function MethodologyPage() {
                   </span>
                   <span className="pill border border-edge bg-panel2 text-muted">
                     {rule.action === "zero" ? "zeroes" : `caps at ${rule.cap}`}
-                    {rule.threshold ? ` · > ${rule.threshold}×` : ""}
+                    {rule.threshold ? `, above ${rule.threshold}x` : ""}
                   </span>
                   {!rule.active_on_open_data && (
-                    <span className="pill border border-amber-500/30 bg-amber-500/10 text-amber-300">inactive on open data — needs a keyed source</span>
+                    <span className="pill border border-amber-500/30 bg-amber-500/10 text-amber-300">inactive on open data, needs a keyed source</span>
                   )}
                 </div>
               ))}
@@ -150,7 +150,7 @@ export default async function MethodologyPage() {
                   {m.glossary.map((g) => (
                     <tr key={g.key} className="border-b border-edge/60">
                       <td className="p-3 font-medium text-white">{g.label}</td>
-                      <td className="p-3">{g.direction === "lower" ? "↓ lower" : "↑ higher"}</td>
+                      <td className="p-3">{g.direction === "lower" ? "lower is better" : "higher is better"}</td>
                       <td className="p-3 text-muted">{g.meaning}</td>
                     </tr>
                   ))}

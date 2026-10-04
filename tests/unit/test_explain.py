@@ -135,7 +135,7 @@ def test_gate_rows_show_evidence_and_cap(sample_config):
     rules = {r["rule"]: r for r in ex["gate"]["rules"]}
     assert rules["extreme_fdv_mcap"]["tripped"] is True and rules["extreme_fdv_mcap"]["cap"] == 40.0
     fdv_ev = rules["extreme_fdv_mcap"]["evidence"][0]
-    assert fdv_ev["value"] == pytest.approx(20.0) and fdv_ev["threshold"] == "trips when > 10×"
+    assert fdv_ev["value"] == pytest.approx(20.0) and fdv_ev["threshold"] == "trips above 10x"
     assert ex["gate"]["cap"] == 40.0 and ex["gate"]["final_score"] <= 40.0
     assert "extreme_fdv_mcap" in ex["gate"]["flags"]
     dead = rules["dead_token"]
@@ -144,7 +144,7 @@ def test_gate_rows_show_evidence_and_cap(sample_config):
     assert labels[0].startswith("Days since last GitHub push (x-labs)") and "24h volume" in labels
     assert rules["anonymous_team"]["active_on_open_data"] is False
     # tier block: thresholds on the 0–100 scale, coverage counts
-    assert ex["tier"]["thresholds"][0] == {"label": "A — high conviction", "min": 80}
+    assert ex["tier"]["thresholds"][0] == {"label": "A (high conviction)", "min": 80}
     assert ex["tier"]["coverage"]["total"] == results["d"].features_total
     assert ex["method"]["scale"] == 100 and ex["method"]["class"] == "defi"
 
@@ -155,7 +155,7 @@ def test_feature_working_without_inputs_is_empty():
     ins, formula = feature_working("fdv_mcap_ratio", {"fdv_mcap_method": "fdv_over_mcap", "fdv": 2e9, "market_cap": 1e9})
     assert formula == "{fdv} ÷ {market_cap}" and [i["key"] for i in ins] == ["fdv", "market_cap"]
     ins, formula = feature_working("unlock_overhang", {"unlock": {"has_vesting": False}})
-    assert formula == "0 — no vesting schedule"
+    assert formula == "0 (no vesting schedule)"
 
 
 def test_explain_none_without_a_result():

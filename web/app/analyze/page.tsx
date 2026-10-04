@@ -15,8 +15,8 @@ export default function AnalyzePage() {
         <h1 className="text-2xl font-bold text-white">🔍 Analyze a token</h1>
         <p className="mt-1 text-muted">
           Search by <b className="text-white">name</b> (Aave), <b className="text-white">symbol</b> (UNI),
-          or <b className="text-white">contract address</b> — an address resolves the unified token across all its chains.
-          You get a 0–100 score against same-class peers, the A–D tier, gate flags, and every raw figure and formula behind it.
+          or <b className="text-white">contract address</b>; an address resolves the unified token across all its chains.
+          You get a 0 to 100 score against same-class peers, the A to D tier, gate flags, and every raw figure and formula behind it.
         </p>
       </div>
       <Suspense fallback={<div className="card"><Spinner /></div>}>
@@ -95,7 +95,7 @@ function AnalyzeInner() {
           className="input"
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="e.g.  AAVE   ·   Lido DAO   ·   0x514910771AF9Ca656af840dff83E8264EcF986CA"
+          placeholder="e.g. AAVE, Lido DAO, or 0x514910771AF9Ca656af840dff83E8264EcF986CA"
         />
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs text-muted">Compare against:</span>
@@ -110,17 +110,17 @@ function AnalyzeInner() {
             </button>
           ))}
           <button type="submit" className="btn ml-auto" disabled={loading || !q.trim()}>
-            {loading ? "Analyzing…" : "Analyze"}
+            {loading ? "Analyzing..." : "Analyze"}
           </button>
         </div>
         <label className="flex cursor-pointer items-center gap-2 text-xs text-muted">
           <input type="checkbox" checked={penalize} onChange={(e) => setPenalize(e.target.checked)} />
           Penalize a missing <span className="text-white">core</span> domain
-          <span className="text-muted/70">— e.g. a DeFi app with no fees/revenue is floored, not let off</span>
+          <span className="text-muted/70">(a DeFi app with no fees or revenue is floored, not let off)</span>
         </label>
       </form>
 
-      {loading && <div className="card"><Spinner label="Resolving + scoring live…" /></div>}
+      {loading && <div className="card"><Spinner label="Resolving + scoring live..." /></div>}
       {error && (
         <div className="card border-rose-500/30 bg-rose-500/10 text-rose-200">
           Could not analyze <b>{q}</b>: {error}
@@ -134,11 +134,11 @@ function AnalyzeInner() {
               <h3 className="font-semibold text-white">🧠 Analyst memo</h3>
               {!memo && (
                 <button onClick={loadMemo} disabled={memoLoading} className="btn">
-                  {memoLoading ? "Writing…" : "Generate memo"}
+                  {memoLoading ? "Writing..." : "Generate memo"}
                 </button>
               )}
             </div>
-            {memoLoading && <div className="mt-3"><Spinner label="Composing the write-up…" /></div>}
+            {memoLoading && <div className="mt-3"><Spinner label="Composing the write-up..." /></div>}
             {memo && <div className="mt-4"><Markdown text={memo} /></div>}
           </div>
         </>

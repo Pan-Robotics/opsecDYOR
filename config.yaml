@@ -84,10 +84,10 @@ scoring:
     dev: 0.15                         # commits, contributors, EC dev trend
   # Final score -> risk tier mapping (score is 0..1)
   tiers:
-    - { min: 0.80, label: "A — high conviction" }
-    - { min: 0.60, label: "B — qualified" }
-    - { min: 0.40, label: "C — watchlist" }
-    - { min: 0.00, label: "D — avoid" }
+    - { min: 0.80, label: "A (high conviction)" }
+    - { min: 0.60, label: "B (qualified)" }
+    - { min: 0.40, label: "C (watchlist)" }
+    - { min: 0.00, label: "D (avoid)" }
 
 # ---------------------------------------------------------------------------
 # Hard disqualifiers — gate, don't average. action: zero | cap

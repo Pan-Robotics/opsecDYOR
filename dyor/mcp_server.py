@@ -52,14 +52,14 @@ INSTRUCTIONS = (
     "memecoins on distribution/social, etc.), normalizes across peers, then applies "
     "hard disqualifier gates. Use `analyze_token` to vet a specific token by name, "
     "symbol, or contract address (it resolves cross-chain). EVERY score, domain "
-    "score, percentile, coverage and tier-stability figure is ALREADY on a 0–100 "
-    "scale (`scale: 100`) — never multiply by 100 again; 62.6 means 62.6/100. "
+    "score, percentile, coverage and tier-stability figure is ALREADY on a 0 to 100 "
+    "scale (`scale: 100`); never multiply by 100 again; 62.6 means 62.6/100. "
     "Domain weights differ by asset class: use `record.class.weights` (or "
     "`explain.domains`) for the token at hand, not the DeFi defaults in "
     "`methodology.weights`. Quote `summary` for prose. A feed marked `stale` "
     "carried the last stored values because the source failed this run; `error` "
     "means the score is provisional. Scores are a research aid, NOT financial "
-    "advice — always present the tier/flags as analysis, not a buy/sell call."
+    "advice; always present the tier/flags as analysis, not a buy/sell call."
 )
 
 mcp = FastMCP("dyor", instructions=INSTRUCTIONS, transport_security=_TRANSPORT_SECURITY)
@@ -76,21 +76,21 @@ def _trim_analysis(d: dict[str, Any], peer_limit: int = 8) -> dict[str, Any]:
 def analyze_token(query: str, peer_mode: str = "class",
                   penalize_missing_core: bool | None = None) -> dict[str, Any]:
     """Vet ONE crypto token. Resolve it by name ("Aave"), symbol ("UNI"), or
-    contract address (any chain — resolves the unified token cross-chain), then
+    contract address (any chain; it resolves the unified token cross-chain), then
     score it.
 
-    Returns: `summary` (one quotable paragraph — class, score/100, tier, each
+    Returns: `summary` (one quotable paragraph: class, score/100, tier, each
     domain with ITS weight, coverage, caveats), the resolved identity (+ all
-    chains), asset class WITH its domain weights, a 0–100 score and tier (A
-    high-conviction → D avoid), gate flags (e.g. dead_token, extreme FDV/MCAP),
-    advisories, per-domain scores (0–100, already scaled — never ×100 again),
-    the full working (`explain`: raw figures → formula → value → percentile →
-    weight → points), a market snapshot, data coverage, feed status (ok / empty
+    chains), asset class WITH its domain weights, a 0 to 100 score and tier (A
+    high-conviction to D avoid), gate flags (e.g. dead_token, extreme FDV/MCAP),
+    advisories, per-domain scores (0 to 100, already scaled; never multiply by 100),
+    the full working (`explain`: raw figures, formula, value, percentile,
+    weight, points), a market snapshot, data coverage, feed status (ok / empty
     / error / off / stale), and the ranked peer set the score is relative to.
 
-    peer_mode: "class" (default — the token's own asset class, fairest),
+    peer_mode: "class" (default; the token's own asset class, fairest),
     "stored" (last saved universe), "sample" (built-in set), or "category"
-    (live top-6 of the token's own category — slower).
+    (live top-6 of the token's own category, slower).
     penalize_missing_core: floor a DeFi token's score if it has no
     fees/revenue/TVL data (default = config). This is a research aid, not advice.
     """
@@ -123,7 +123,7 @@ def resolve_token(query: str) -> dict[str, Any]:
 def compare_tokens(queries: list[str], peer_mode: str = "class") -> dict[str, Any]:
     """Analyze and compare several tokens at once. Pass a list of names/symbols/
     addresses. Returns a compact ranked summary (token, class, score, tier,
-    coverage, flags) — for a quick like-for-like read. Use `analyze_token` for the
+    coverage, flags) for a quick like-for-like read. Use `analyze_token` for the
     full report on any one of them."""
     from dyor.analyze import analyze_token as _analyze
 
@@ -148,7 +148,7 @@ def compare_tokens(queries: list[str], peer_mode: str = "class") -> dict[str, An
 
 @mcp.tool()
 def analyst_memo(query: str, peer_mode: str = "class") -> dict[str, Any]:
-    """Generate a reasoned analyst memo for a token — verdict, what drove the
+    """Generate a reasoned analyst memo for a token: verdict, what drove the
     score, risks, the framework's "break your thesis" questions answered WITH the
     data, and a confidence caveat. Use this when you want a defensible write-up,
     not just a tier. Returns markdown text. (Research aid, not financial advice.)"""
@@ -164,9 +164,9 @@ def screen_tokens(
     min_real_yield: float | None = None, max_fdv_mcap: float | None = None,
     limit: int = 25,
 ) -> dict[str, Any]:
-    """Screen the saved universe by criteria — e.g. asset_class="defi", min_tier="B",
-    min_score=60 (scores are 0–100), min_real_yield=0.045 (4.5%), no_flags=true.
-    Returns matching tokens ranked high→low. The universe is rebuilt weekly by
+    """Screen the saved universe by criteria, e.g. asset_class="defi", min_tier="B",
+    min_score=60 (scores are 0 to 100), min_real_yield=0.045 (4.5%), no_flags=true.
+    Returns matching tokens ranked high to low. The universe is rebuilt weekly by
     the scheduled `dyor refresh`."""
     from dyor.screen import screen
     from dyor.store import db
@@ -205,7 +205,7 @@ def build_barbell(n_satellites: int = 5) -> dict[str, Any]:
 @mcp.tool()
 def backtest() -> dict[str, Any]:
     """Does the tier predict forward returns? Computes per-tier average forward
-    return + win-rate from persisted runs (entry price at collection → now). Small
+    return + win-rate from persisted runs (entry price at collection to now). Small
     sample early; compounds as `dyor refresh` runs accumulate."""
     from dyor.backtest import backtest as _bt
 
@@ -217,7 +217,7 @@ def narratives(by: str = "market_cap_change_24h", top: int = 20) -> dict[str, An
     """Which crypto sectors/narratives are heating up. Ranks CoinGecko's 700+
     categories by `by` = "market_cap_change_24h" (momentum), "market_cap", or
     "volume_24h". Returns each sector's name, 24h change, market cap, volume, and
-    top coins — for spotting capital rotation early."""
+    top coins, for spotting capital rotation early."""
     from dyor.narratives import fetch_narratives
 
     return {"by": by, "rows": fetch_narratives(by=by, top=top)}
@@ -225,7 +225,7 @@ def narratives(by: str = "market_cap_change_24h", top: int = 20) -> dict[str, An
 
 @mcp.tool()
 def asset_classes() -> dict[str, Any]:
-    """List DYOR's asset classes and what each is judged on — so you can explain
+    """List DYOR's asset classes and what each is judged on, so you can explain
     WHY a token scored the way it did (e.g. Bitcoin has no 'fundamental' domain:
     it's not penalized for lacking protocol revenue)."""
     from dyor.classes import LABELS
@@ -249,7 +249,7 @@ def methodology() -> dict[str, Any]:
     return {
         "scale": SCORE_SCALE,
         "weights": cfg["scoring"]["weights"],
-        "weights_note": "`weights` is the DeFi / general profile; every class has its own — see class_weights",
+        "weights_note": "`weights` is the DeFi / general profile; every class has its own, see class_weights",
         "class_weights": {name: class_to_dict(name)["weights"] for name in LABELS},
         "tiers": [{**t, "min": display(t["min"], 0)} for t in cfg["scoring"]["tiers"]],
         "gates": rule_activity(cfg),  # each with active_on_open_data

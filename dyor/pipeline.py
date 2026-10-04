@@ -170,7 +170,7 @@ def _advisories(rec: dict, cfg: dict) -> list[str]:
     """Non-fatal notes surfaced alongside the score (don't affect the number)."""
     out: list[str] = []
     if rec.get("_class") == "stablecoin":
-        out.append("stablecoin — scored for adoption/distribution, not price upside")
+        out.append("stablecoin: scored for adoption and distribution, not price upside")
     # Treasury hurdle: a token paying a real yield below the risk-free 10Y is
     # structurally less attractive to institutional capital. No-yield tokens
     # aren't flagged — they're simply not competing on yield.
@@ -188,14 +188,14 @@ def _advisories(rec: dict, cfg: dict) -> list[str]:
     if errored:
         profile = class_profile(rec.get("_class"), cfg)
         doms = domains_for_feeds(errored, profile.feature_spec)
-        where = (" — " + ", ".join(DOMAIN_LABEL.get(d, d) for d in doms) +
+        where = (": " + ", ".join(DOMAIN_LABEL.get(d, d) for d in doms) +
                  " features missing and their weight redistributed") if doms else ""
         out.append(f"{', '.join(errored)} feed{'s' if len(errored) > 1 else ''} failed this run{where}; "
                    "treat the score as provisional")
     stale = rec.get("_stale") or {}
     if stale:
         parts = ", ".join(f"{f} (stored {str(d)[:10]})" if d else f for f, d in stale.items())
-        out.append(f"source failed this run — values carried from the last stored run: {parts}")
+        out.append(f"source failed this run; values carried from the last stored run: {parts}")
     return out
 
 
@@ -282,7 +282,7 @@ def score_universe(
         penalized = _apply_core_penalty(domain_scores, profile, penalize=penalize, floor=floor)
         if penalized:
             doms = ", ".join(DOMAIN_LABEL.get(d, d) for d in penalized)
-            advisories.insert(0, f"{profile.label} with no {doms} data — {doms} domain penalized")
+            advisories.insert(0, f"{profile.label} with no {doms} data: {doms} domain penalized")
 
         results.append(
             score_token(

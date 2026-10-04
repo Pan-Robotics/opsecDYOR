@@ -9,7 +9,7 @@ export type Score = {
   features_present: number;
   features_total: number;
   tier_stability?: number | null;
-  scale?: number;               // 100 — every score / domain score / coverage is 0–100
+  scale?: number;               // 100 — every score / domain score / coverage is 0 to 100
   confidence?: string;
   flags: string[];
   advisories: string[];
@@ -127,8 +127,20 @@ export type TokenListing = {
   final_score: number | null; tier: string; flags: string[];
   coverage: number | null; confidence: string;
 };
-export type TokenIndex = {
-  scale: number; run_id: string | null; collected_at: string | null; count: number; tokens: TokenListing[];
+export type TokenDetail = TokenListing & {
+  domain_scores: Record<string, number | null>;
+  features: Record<string, number | boolean | null>;
+  percentiles: Record<string, number | null>;
+  market: { price: number | null; market_cap: number | null; fdv: number | null; volume_24h: number | null; tvl: number | null };
+  advisories: string[];
+  audited: boolean | null;
+  days_since_last_commit: number | null;
+};
+export type TokenIndex<T = TokenListing> = {
+  scale: number; run_id: string | null; collected_at: string | null; count: number; tokens: T[];
+};
+export type CompareResult = {
+  scale: number; run_id: string | null; collected_at: string | null; tokens: Analysis[]; missing: string[];
 };
 
 // --- server-side access (RSC, route handlers, sitemap, OG images) --------------------
@@ -148,6 +160,8 @@ async function serverGet<T>(path: string, revalidate: number | false): Promise<T
 
 export const serverApi = {
   tokens: (revalidate: number | false = 600) => serverGet<TokenIndex>("/api/tokens", revalidate),
+  compare: (ids: string[], revalidate: number | false = 600) =>
+    serverGet<CompareResult>(`/api/compare?ids=${encodeURIComponent(ids.join(","))}`, revalidate),
   token: (id: string, revalidate: number | false = 3600) =>
     serverGet<Analysis>(`/api/token?id=${encodeURIComponent(id)}`, revalidate),
   methodology: (revalidate: number | false = 3600) => serverGet<Methodology>("/api/methodology", revalidate),
@@ -156,7 +170,7 @@ export const serverApi = {
 export type GateRule = { action: string; cap?: number; threshold?: number; active_on_open_data: boolean };
 
 export type Methodology = {
-  scale?: number;               // 100 — tier thresholds and gate caps are 0–100
+  scale?: number;               // 100 — tier thresholds and gate caps are 0 to 100
   weights: Record<string, number>;
   weights_note?: string;
   class_weights?: Record<string, Record<string, number>>;
@@ -206,6 +220,9 @@ export const api = {
   chart: (id: string, days = 30) =>
     get<ChartData>(`/api/chart?id=${encodeURIComponent(id)}&days=${days}`),
   openapi: () => get<OpenApiSchema>(`/openapi.json`),
+  tokensDetail: (peerGroups = false, penalizeMissingCore?: boolean) =>
+    get<TokenIndex<TokenDetail>>(`/api/tokens?detail=true&peer_groups=${peerGroups}${penaltyParam(penalizeMissingCore)}`),
+  compare: (ids: string[]) => get<CompareResult>(`/api/compare?ids=${encodeURIComponent(ids.join(","))}`),
 };
 
 export type OpenApiParam = {

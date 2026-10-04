@@ -109,7 +109,7 @@ def test_summary_states_scale_and_class_weights(sample_config):
     s = d["summary"]
     assert f"score {d['score']['final_score']}/100" in s and "tier" in s
     assert "fundamentals" in s and "(weight 18%)" in s and "(weight 25%)" in s     # the L1 weights, not 30%
-    assert "santiment stale" in s and "All figures are already on a 0–100 scale" in s
+    assert "santiment stale" in s and "All figures are already on a 0 to 100 scale" in s
     assert d["record"]["stale"] == {"santiment": "2026-09-27"}
     # the domain figures quoted are the 0–100 ones, never ×100
     for v in d["score"]["domain_scores"].values():
@@ -121,7 +121,7 @@ def test_summary_states_scale_and_class_weights(sample_config):
 def test_mcp_instructions_and_methodology_state_the_scale():
     from dyor import mcp_server
 
-    assert "0–100" in mcp_server.INSTRUCTIONS and "never multiply" in mcp_server.INSTRUCTIONS
+    assert "0 to 100" in mcp_server.INSTRUCTIONS and "never multiply" in mcp_server.INSTRUCTIONS
     m = mcp_server.methodology()
     assert m["scale"] == 100 and m["class_weights"]["l1"]["fundamental"] == pytest.approx(0.18)
     assert m["tiers"][0]["min"] in (80, 80.0)

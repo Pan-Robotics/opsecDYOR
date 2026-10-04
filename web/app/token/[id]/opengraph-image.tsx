@@ -45,13 +45,13 @@ export default async function Image({ params }: { params: Promise<{ id: string }
           </div>
           <div style={{ display: "flex", alignItems: "flex-end", gap: 24 }}>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
-              <div style={{ fontSize: 96, fontWeight: 700, lineHeight: 1 }}>{score === null ? "—" : String(score)}</div>
+              <div style={{ fontSize: 96, fontWeight: 700, lineHeight: 1 }}>{score === null ? "n/a" : String(score)}</div>
               <div style={{ fontSize: 24, color: "#7e96b8" }}>/ 100</div>
             </div>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "14px 22px", borderRadius: 16,
                           border: `3px solid ${color}`, color, background: "rgba(0,0,0,0.25)" }}>
               <div style={{ fontSize: 64, fontWeight: 700, lineHeight: 1 }}>{letter}</div>
-              <div style={{ fontSize: 18, marginTop: 4 }}>{tier.includes("—") ? tier.split("—")[1].trim() : "tier"}</div>
+              <div style={{ fontSize: 18, marginTop: 4 }}>{/\(([^)]+)\)/.exec(tier)?.[1] ?? "tier"}</div>
             </div>
           </div>
         </div>
@@ -70,7 +70,7 @@ export default async function Image({ params }: { params: Promise<{ id: string }
         </div>
 
         <div style={{ marginTop: "auto", display: "flex", justifyContent: "space-between", fontSize: 20, color: "#7e96b8" }}>
-          <div>Scores 0–100 vs same-class peers · open data · research aid, not advice</div>
+          <div>Scores 0 to 100 vs same-class peers. Open data. Research aid, not advice.</div>
           <div>dyor.cryptoopsec.com</div>
         </div>
       </div>

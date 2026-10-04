@@ -1,6 +1,6 @@
 import React from "react";
 
-// **bold** and _italic_ (a whole `_…_` span with no inner underscores). Other
+// **bold** and _italic_ (a whole `_..._` span with no inner underscores). Other
 // underscores are content — feature names like `price_to_fees` must survive.
 function inline(s: string): React.ReactNode[] {
   return s.split(/(\*\*[^*]+\*\*|(?<![\w])_[^_\n]+_(?![\w]))/g).filter(Boolean).map((p, i) => {

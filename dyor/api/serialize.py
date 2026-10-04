@@ -79,9 +79,9 @@ def analysis_summary(res, score: dict[str, Any], record: dict[str, Any],
     for an L1 (2026-09-30)."""
     r = res.resolved
     cls = record.get("class") or {}
-    head = f"{r.name} ({r.symbol}) · {cls.get('label', 'token')} · score {score['final_score']}/100 · tier {score['tier']}"
+    head = f"{r.name} ({r.symbol}), {cls.get('label', 'token')}: score {score['final_score']}/100, tier {score['tier']}"
     if res.rank:
-        head += f" · rank #{res.rank} of {res.peer_count + 1} same-class peers"
+        head += f", rank #{res.rank} of {res.peer_count + 1} same-class peers"
     parts = [head + "."]
     if explain_d and explain_d.get("domains"):
         doms = []
@@ -91,7 +91,7 @@ def analysis_summary(res, score: dict[str, Any], record: dict[str, Any],
                 doms.append(f"{d['label'].lower()} no data (its {w}% weight redistributed)")
             else:
                 doms.append(f"{d['label'].lower()} {d['score']}/100 (weight {w}%)")
-        parts.append("Domains, 0–100 with each one's weight in this class's composite: " + ", ".join(doms) + ".")
+        parts.append("Domains, 0 to 100, with each one's weight in this class's composite: " + ", ".join(doms) + ".")
     cov = score.get("coverage")
     parts.append(f"Data coverage {score.get('features_present')}/{score.get('features_total')} features"
                  + (f" ({round(cov)}%)" if cov is not None else "")
@@ -104,7 +104,7 @@ def analysis_summary(res, score: dict[str, Any], record: dict[str, Any],
         parts.append("Data caveat: " + ", ".join(bad) + " (see advisories).")
     if score.get("advisories"):
         parts.append("Advisories: " + " | ".join(score["advisories"]) + ".")
-    parts.append("All figures are already on a 0–100 scale; do not rescale.")
+    parts.append("All figures are already on a 0 to 100 scale; do not rescale.")
     return " ".join(parts)
 
 

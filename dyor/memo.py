@@ -37,10 +37,10 @@ def memo_from_analysis(d: dict) -> str:
     lines: list[str] = []
 
     # Verdict
-    lines.append(f"# {r['name']} ({r['symbol']}) — {s['tier']}  ·  score {s['final_score']}/100")
-    lines.append(f"**Asset class:** {cls.get('label')} · **confidence:** {s.get('confidence')} "
+    lines.append(f"# {r['name']} ({r['symbol']}): {s['tier']}, score {s['final_score']}/100")
+    lines.append(f"**Asset class:** {cls.get('label')}. **Confidence:** {s.get('confidence')} "
                  f"(coverage {_pct(s.get('coverage'))}, tier-stability {_pct(s.get('tier_stability'))})"
-                 + (f" · ranked #{d['rank']} of {d['peer_count'] + 1} peers" if d.get('rank') else ""))
+                 + (f". Ranked #{d['rank']} of {d['peer_count'] + 1} peers" if d.get('rank') else ""))
     lines.append(f"_{cls.get('description','')}_")
 
     # What drove it
@@ -55,17 +55,17 @@ def memo_from_analysis(d: dict) -> str:
     # Risks
     lines.append("\n## Risks")
     if s["flags"]:
-        lines.append(f"- 🔴 **Gate flags:** {', '.join(s['flags'])} — these capped or zeroed the score.")
+        lines.append(f"- 🔴 **Gate flags:** {', '.join(s['flags'])} ; these capped or zeroed the score.")
     for a in s.get("advisories", []):
         lines.append(f"- ⚠ {a}")
     oh = feats.get("unlock_overhang")
     if oh is not None and oh >= 0.3:
-        lines.append(f"- ⚠ **Unlock overhang:** ~{oh:.0%} of max supply still vesting — supply risk.")
+        lines.append(f"- ⚠ **Unlock overhang:** ~{oh:.0%} of max supply still vesting, a supply risk.")
     conc = feats.get("top10_concentration")
     if conc is not None and conc >= 0.5:
         lines.append(f"- ⚠ **Concentration:** top-10 wallets hold ~{conc:.0%} of supply.")
     if (s.get("coverage") if s.get("coverage") is not None else 100) < 50:
-        lines.append(f"- ⚠ **Thin data** ({_pct(s.get('coverage'))} coverage) — treat the tier as low-confidence.")
+        lines.append(f"- ⚠ **Thin data** ({_pct(s.get('coverage'))} coverage); treat the tier as low-confidence.")
     feeds = rec.get("feeds") or {}
     miss = [k for k in ("cryptorank", "santiment", "defillama") if feeds.get(k) in ("error", "empty")]
     if miss:
@@ -82,21 +82,21 @@ def memo_from_analysis(d: dict) -> str:
     lines.append("- **Retention / usage:** active-address growth "
                  + (f"{ag:+.0%}." if ag is not None else "not available."))
     lines.append("- **Supply shock:** "
-                 + (f"~{oh:.0%} of supply still unlocking — watch the schedule." if oh else
+                 + (f"~{oh:.0%} of supply still unlocking; watch the schedule." if oh else
                     "no major vesting overhang detected (or not tracked)."))
     fdv = feats.get("fdv_mcap_ratio")
     lines.append("- **Dilution:** "
-                 + (f"FDV/MCAP {fdv:.2f}× ({'high overhang' if fdv > 2 else 'modest'})." if fdv else "n/a."))
+                 + (f"FDV/MCAP {fdv:.2f}x ({'high overhang' if fdv > 2 else 'modest'})." if fdv else "n/a."))
     dd = m.get("ath_change_pct")
     lines.append("- **Bear-market survival:** "
                  + (f"{dd:.0f}% from ATH." if dd is not None else "n/a.")
-                 + " Alts fall harder than BTC — size accordingly.")
+                 + " Alts fall harder than BTC; size accordingly.")
     va = feats.get("value_accrual")
     if va is not None:
         lines.append(f"- **Value accrual:** ~{va:.0%} of revenue routed to holders (token sink).")
 
     # Caveat
-    lines.append(f"\n_Peer set: {d.get('peer_count', 0)} tokens. Research aid — not financial advice._")
+    lines.append(f"\n_Peer set: {d.get('peer_count', 0)} tokens. Research aid, not financial advice._")
     return "\n".join(lines)
 
 

@@ -106,12 +106,12 @@ STATIC_WEIGHTS: dict[str, dict[str, float]] = {
 }
 
 LABELS: dict[str, tuple[str, str]] = {
-    "defi": ("DeFi protocol", "Cash-flow app — judged on fees, revenue, TVL, and value accrual."),
-    "general": ("General", "Default profile (DeFi-style) — judged on fundamentals + tokenomics."),
-    "l1": ("L1 / platform", "Smart-contract platform — ecosystem TVL, adoption, and dev activity lead."),
-    "monetary": ("Monetary / store-of-value", "No protocol revenue expected — judged on scarcity, decentralized accumulation, and adoption."),
-    "meme": ("Memecoin", "Speculative — judged on distribution, liquidity, and social attention; not fundamentals."),
-    "stablecoin": ("Stablecoin", "Not a price-appreciation play — scored for adoption and holder distribution only."),
+    "defi": ("DeFi protocol", "Cash-flow app, judged on fees, revenue, TVL, and value accrual."),
+    "general": ("General", "Default profile (DeFi-style), judged on fundamentals and tokenomics."),
+    "l1": ("L1 / platform", "Smart-contract platform: ecosystem TVL, adoption, and dev activity lead."),
+    "monetary": ("Monetary / store-of-value", "No protocol revenue expected; judged on scarcity, decentralized accumulation, and adoption."),
+    "meme": ("Memecoin", "Speculative; judged on distribution, liquidity, and social attention, not fundamentals."),
+    "stablecoin": ("Stablecoin", "Not a price-appreciation play; scored for adoption and holder distribution only."),
 }
 
 # Known-id safety nets (categories can be missing/sparse from CoinGecko).
