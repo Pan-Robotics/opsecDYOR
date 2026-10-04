@@ -388,6 +388,32 @@ browser after touching any of this:
 node web/scripts/tab-persistence.mjs https://dyor.cryptoopsec.com   # 18 checks, ALL PASSED
 ```
 
+## Responsive layout (added 2026-10-04)
+
+The site is laid out for phones first, then widened. The rules that keep it so:
+
+- **Header**: one brand row plus a single-line tab strip that scrolls sideways
+  (`components/Nav.tsx`, active tab kept in view, faded edges). From `md` the
+  strip sits inline beside the brand. Never let the tabs wrap.
+- **Tables**: a table with more than about four columns gets a stacked layout
+  under `md` (`MobileTokenRow` in `components/TokenRows.tsx` for token lists;
+  `FeatureCard`/`GateCard` in `TokenReport.tsx` for the ledger; the glossary
+  on `/methodology`). Client pages pick ONE layout with `useMediaQuery(NARROW)`
+  so controls are not duplicated in the DOM; server pages use `md:hidden` /
+  `hidden md:block`. Anything that must stay a table sits in a `.scroll-x`
+  wrapper; the compare table pins its label column with `.sticky-col`.
+- **Width discipline** (`app/globals.css`): `.card` and every `.grid > *` are
+  `min-width: 0`, inline `code` wraps anywhere, `body` is `overflow-x: clip`.
+  Form controls are 16px on phones (iOS zoom), interactive `.pill`s and `.btn`s
+  are at least 34 to 40px tall.
+- **Check before a deploy**: every route must report `overflow 0px` at both
+  widths, and the sheets should be eyeballed after layout changes:
+
+```bash
+node web/scripts/screenshots.mjs https://dyor.cryptoopsec.com /tmp/shots
+node web/scripts/tab-persistence.mjs https://dyor.cryptoopsec.com
+```
+
 ## Coverage matrix
 
 `deploy/coverage-matrix.py` prints, for the latest persisted run, how many

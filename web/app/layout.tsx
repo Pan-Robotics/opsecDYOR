@@ -73,9 +73,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(websiteJsonLd()) }} />
         <AppStateProvider>
           <Nav />
-          <main id="main" className="mx-auto max-w-6xl px-4 py-8">{children}</main>
-          <footer className="mx-auto max-w-6xl px-4 py-10 text-xs text-muted">
-            <nav aria-label="Footer" className="mb-4 flex flex-wrap gap-x-4 gap-y-2">
+          <main id="main" className="mx-auto max-w-6xl px-4 py-5 sm:py-8">{children}</main>
+          <footer className="mx-auto max-w-6xl px-4 py-8 text-xs text-muted sm:py-10">
+            <nav aria-label="Footer" className="mb-4 flex flex-wrap gap-x-4 gap-y-2.5">
               {FOOTER_LINKS.map(([href, label]) => (
                 <Link key={href} href={href} className="hover:text-white">{label}</Link>
               ))}

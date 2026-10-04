@@ -91,10 +91,10 @@ function Code({ children, label }: { children: string; label?: string }) {
     <div className="relative">
       {label && <div className="mb-1 text-xs uppercase tracking-wide text-muted">{label}</div>}
       <div className="group relative">
-        <pre className="overflow-x-auto rounded-lg border border-edge bg-[#0b0e14] p-3 text-xs leading-relaxed text-sky-100">
+        <pre className="scroll-x max-w-full rounded-lg border border-edge bg-[#0b0e14] p-3 pr-16 text-xs leading-relaxed text-sky-100">
           <code>{children}</code>
         </pre>
-        <div className="absolute right-2 top-2 opacity-0 transition group-hover:opacity-100">
+        <div className="absolute right-2 top-2 transition md:opacity-0 md:group-hover:opacity-100">
           <CopyButton text={children} />
         </div>
       </div>
@@ -154,7 +154,7 @@ export default function ApiMcpPage() {
       </div>
 
       {/* Two surfaces at a glance */}
-      <section className="grid gap-4 lg:grid-cols-2">
+      <section className="grid min-w-0 gap-4 lg:grid-cols-2">
         <div className="card">
           <div className="flex items-center justify-between">
             <h3 className="font-semibold text-white">REST API</h3>
@@ -198,7 +198,7 @@ export default function ApiMcpPage() {
         </p>
 
         <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-brand">Hosted (recommended)</div>
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid min-w-0 gap-4 lg:grid-cols-2">
           <Code label="Claude Code, one line">{hostedAdd}</Code>
           <Code label="Claude Desktop / stdio-only clients (mcp-remote bridge)">{hostedConfig}</Code>
         </div>
@@ -209,7 +209,7 @@ export default function ApiMcpPage() {
         </ul>
 
         <div className="mt-5 mb-2 text-xs font-semibold uppercase tracking-wide text-muted">Or self-host (local stdio)</div>
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid min-w-0 gap-4 lg:grid-cols-2">
           <Code label="claude_desktop_config.json">{localConfig}</Code>
           <div className="text-sm text-muted">
             <p className="mb-2">Run the server yourself:</p>
@@ -274,7 +274,7 @@ export default function ApiMcpPage() {
       {/* Examples */}
       <section className="space-y-3">
         <h2 className="text-lg font-semibold text-white">Usage examples</h2>
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid min-w-0 gap-4 lg:grid-cols-2">
           <Code label="curl: analyze one token">{`curl "${API}/api/analyze?q=rocket-pool&peer_mode=class"`}</Code>
           <Code label="curl: screen DeFi, tier B+, no flags">{`curl "${API}/api/screen?asset_class=defi&min_tier=B&no_flags=true"`}</Code>
           <Code label="JavaScript (fetch)">{`const r = await fetch(

@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { fmtUsd, Spinner } from "@/components/ui";
 import { useStickyState } from "@/components/AppState";
@@ -31,6 +31,9 @@ export default function NarrativesPage() {
     }
   }
 
+  // First visit: load the default ranking instead of showing an empty page.
+  useEffect(() => { if (!rows && !loading && !error) load(by); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const max = rows ? Math.max(...rows.map((r) => Math.abs(r.change_24h ?? 0)), 1) : 1;
 
   return (
@@ -57,14 +60,14 @@ export default function NarrativesPage() {
       {error && <div className="card border-rose-500/30 text-rose-200">{error}</div>}
 
       {rows && (
-        <div className="card !p-0 overflow-x-auto">
+        <div className="card !p-0 scroll-x">
           <table className="w-full text-sm">
             <thead className="text-left text-xs uppercase text-muted">
               <tr className="border-b border-edge">
                 <th className="p-3">Narrative</th>
-                <th className="p-3 w-56">24h</th>
+                <th className="w-36 p-3 sm:w-56">24h</th>
                 <th className="p-3">Market cap</th>
-                <th className="p-3">Volume 24h</th>
+                <th className="hidden p-3 sm:table-cell">Volume 24h</th>
               </tr>
             </thead>
             <tbody>
@@ -79,13 +82,13 @@ export default function NarrativesPage() {
                           <div className={`h-full rounded-full ${c >= 0 ? "bg-emerald-400" : "bg-rose-400"}`}
                                style={{ width: `${(Math.abs(c) / max) * 100}%` }} />
                         </div>
-                        <span className={`w-16 text-right tabular-nums ${c >= 0 ? "text-emerald-300" : "text-rose-300"}`}>
+                        <span className={`w-14 shrink-0 text-right tabular-nums sm:w-16 ${c >= 0 ? "text-emerald-300" : "text-rose-300"}`}>
                           {c > 0 ? "+" : ""}{c.toFixed(1)}%
                         </span>
                       </div>
                     </td>
                     <td className="p-3 tabular-nums text-muted">{fmtUsd(r.market_cap)}</td>
-                    <td className="p-3 tabular-nums text-muted">{fmtUsd(r.volume_24h)}</td>
+                    <td className="hidden p-3 tabular-nums text-muted sm:table-cell">{fmtUsd(r.volume_24h)}</td>
                   </tr>
                 );
               })}

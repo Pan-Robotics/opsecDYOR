@@ -3,6 +3,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { api, type TokenDetail } from "@/lib/api";
 import { fmt, ScoreBar, Spinner, TierBadge } from "@/components/ui";
+import { MobileTokenRow } from "@/components/TokenRows";
+import { NARROW, useMediaQuery } from "@/components/useMediaQuery";
 import { useAppStateHydrated, useStickyState } from "@/components/AppState";
 import { METRICS, fmtMetric, metricByKey, type Metric } from "@/lib/metrics";
 
@@ -31,6 +33,7 @@ function metricPercentile(row: TokenDetail, m: Metric): number | null {
 
 export default function ScreenerPage() {
   const hydrated = useAppStateHydrated();
+  const narrow = useMediaQuery(NARROW);
   const [error, setError] = useState<string | null>(null);
   const [peerGroups, setPeerGroups] = useStickyState("screener:peerGroups", false);
   const [penalize, setPenalize] = useStickyState("screener:penalize", true);
@@ -101,7 +104,7 @@ export default function ScreenerPage() {
             {meta.at ? ` Board run of ${meta.at.slice(0, 10)}.` : ""}
           </p>
         </div>
-        <button onClick={load} className="rounded-lg border border-edge px-3 py-1.5 text-sm text-white hover:bg-panel2">Reload</button>
+        <button onClick={load} className="btn-ghost !min-h-[2.125rem] !px-3 !py-1.5">Reload</button>
       </div>
 
       {/* presets */}
@@ -119,10 +122,9 @@ export default function ScreenerPage() {
 
       {/* controls */}
       <div className="card space-y-3">
-        <div className="flex flex-wrap items-end gap-3 text-sm">
-          <label className="flex flex-col gap-1 text-xs text-muted">Rank by
-            <select value={metricKey} onChange={(e) => setMetricKey(e.target.value)}
-              className="rounded-lg border border-edge bg-panel2 px-2 py-1.5 text-sm text-white">
+        <div className="grid grid-cols-2 gap-3 text-sm sm:flex sm:flex-wrap sm:items-end">
+          <label className="col-span-2 flex flex-col gap-1 text-xs text-muted sm:col-span-1">Rank by
+            <select value={metricKey} onChange={(e) => setMetricKey(e.target.value)} className="select">
               <optgroup label="Composite">{METRICS.filter((m) => m.kind === "score").map((m) => <option key={m.key} value={m.key}>{m.label}</option>)}</optgroup>
               <optgroup label="Domains">{METRICS.filter((m) => m.kind === "domain").map((m) => <option key={m.key} value={m.key}>{m.label}</option>)}</optgroup>
               <optgroup label="Metrics">{METRICS.filter((m) => m.kind === "feature").map((m) => <option key={m.key} value={m.key}>{m.label}</option>)}</optgroup>
@@ -132,34 +134,34 @@ export default function ScreenerPage() {
             <div className="flex overflow-hidden rounded-lg border border-edge">
               {(["best", "worst"] as const).map((o) => (
                 <button key={o} onClick={() => setOrder(o)}
-                  className={`px-3 py-1.5 text-sm ${order === o ? "bg-brand/15 text-white" : "text-muted hover:text-white"}`}>
+                  className={`flex-1 whitespace-nowrap px-2 py-2 text-xs sm:px-3 sm:py-1.5 sm:text-sm ${order === o ? "bg-brand/15 text-white" : "text-muted hover:text-white"}`}>
                   {o === "best" ? "Best first" : "Worst first"}
                 </button>
               ))}
             </div>
           </div>
           <label className="flex flex-col gap-1 text-xs text-muted">Class
-            <select value={fClass} onChange={(e) => setFClass(e.target.value)} className="rounded-lg border border-edge bg-panel2 px-2 py-1.5 text-sm text-white">
+            <select value={fClass} onChange={(e) => setFClass(e.target.value)} className="select">
               <option value="">any</option>{CLASSES.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
           </label>
           <label className="flex flex-col gap-1 text-xs text-muted">Tier
-            <select value={fTier} onChange={(e) => setFTier(e.target.value)} className="rounded-lg border border-edge bg-panel2 px-2 py-1.5 text-sm text-white">
+            <select value={fTier} onChange={(e) => setFTier(e.target.value)} className="select">
               <option value="">any</option>{["A", "B", "C", "D"].map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
           </label>
           <label className="flex flex-col gap-1 text-xs text-muted">Gate flags
-            <select value={fFlags} onChange={(e) => setFFlags(e.target.value as any)} className="rounded-lg border border-edge bg-panel2 px-2 py-1.5 text-sm text-white">
+            <select value={fFlags} onChange={(e) => setFFlags(e.target.value as any)} className="select">
               <option value="any">any</option><option value="none">none</option><option value="flagged">flagged only</option>
             </select>
           </label>
           <label className="flex flex-col gap-1 text-xs text-muted">Min coverage %
             <input value={minCov} onChange={(e) => setMinCov(e.target.value)} placeholder="e.g. 60" inputMode="numeric"
-              className="w-24 rounded-lg border border-edge bg-panel2 px-2 py-1.5 text-sm text-white" />
+              className="select sm:w-24" />
           </label>
-          <label className="flex flex-1 flex-col gap-1 text-xs text-muted">Search
+          <label className="col-span-2 flex flex-col gap-1 text-xs text-muted sm:col-span-1 sm:flex-1">Search
             <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="name, symbol or id"
-              className="min-w-40 rounded-lg border border-edge bg-panel2 px-2 py-1.5 text-sm text-white" />
+              className="select sm:min-w-40" />
           </label>
         </div>
         <div className="flex flex-wrap items-center gap-4 text-xs text-muted">
@@ -175,12 +177,12 @@ export default function ScreenerPage() {
 
       {/* compare tray */}
       {selected.length > 0 && (
-        <div className="card flex flex-wrap items-center gap-3 border-brand/40 bg-brand/5 text-sm">
+        <div className="card flex flex-wrap items-center gap-2 border-brand/40 bg-brand/5 text-sm sm:gap-3">
           <span className="text-white">{selected.length} selected:</span>
           {selected.map((id) => (
             <button key={id} onClick={() => toggle(id)} className="pill border border-edge bg-panel2 text-white hover:border-rose-400/60" title="remove">{id} x</button>
           ))}
-          <Link href={`/compare?tokens=${encodeURIComponent(selected.join(","))}`} className="btn ml-auto">Compare selected</Link>
+          <Link href={`/compare?tokens=${encodeURIComponent(selected.join(","))}`} className="btn w-full sm:ml-auto sm:w-auto">Compare selected</Link>
           <button onClick={() => setSelected([])} className="text-xs text-muted hover:text-white">clear</button>
         </div>
       )}
@@ -192,11 +194,29 @@ export default function ScreenerPage() {
       )}
 
       {rows && rows.length > 0 && (
-        <div className="card !p-0 overflow-x-auto">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-edge px-3 py-2 text-xs text-muted">
+        <div className="card !p-0 overflow-hidden">
+          <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 border-b border-edge px-3 py-2 text-xs text-muted">
             <span>{view.length} of {rows.length} tokens{metric.kind !== "score" ? `, ${withValue} with a ${metric.label.toLowerCase()} value` : ""}</span>
             <span>Sorted by {metric.label.toLowerCase()}, {bestFirst ? "best" : "worst"} first. Tokens without the value are listed last.</span>
           </div>
+
+          {/* phones: one stacked row per token */}
+          {narrow ? (
+          <ul>
+            {view.map(({ r, v, p }, i) => (
+              <MobileTokenRow key={r.id} rank={i + 1} id={r.id} name={r.name} symbol={r.symbol} classLabel={r.class_label}
+                score={r.final_score} tier={r.tier} coverage={r.coverage} flags={r.flags}
+                muted={v === null && metric.kind !== "score"}
+                select={<input type="checkbox" aria-label={`compare ${r.name}`} checked={selected.includes(r.id)} onChange={() => toggle(r.id)} />}
+                extra={metric.kind !== "score" ? (
+                  <span><span className="text-muted">{metric.label}: </span><span className="text-white tabular-nums">{fmtMetric(v, metric.unit)}</span>{p !== null && <span className="ml-2 text-muted">pct {Math.round(p)}</span>}</span>
+                ) : undefined} />
+            ))}
+            {view.length === 0 && <li className="p-4 text-center text-sm text-muted">No tokens match these filters.</li>}
+          </ul>
+          ) : (
+          /* wider screens: the full table */
+          <div className="scroll-x">
           <table className="w-full text-sm">
             <thead className="text-left text-xs uppercase text-muted">
               <tr className="border-b border-edge">
@@ -236,6 +256,8 @@ export default function ScreenerPage() {
               {view.length === 0 && <tr><td colSpan={9} className="p-4 text-center text-muted">No tokens match these filters.</td></tr>}
             </tbody>
           </table>
+          </div>
+          )}
         </div>
       )}
 

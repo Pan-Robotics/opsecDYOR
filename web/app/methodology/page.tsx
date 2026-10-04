@@ -13,6 +13,9 @@ export const metadata: Metadata = pageMeta({
   path: "/methodology",
 });
 
+// Column heads for the per-class weights table on narrow screens.
+const SHORT: Record<string, string> = { fundamental: "fund.", tokenomics: "tokn.", onchain: "chain", social: "social", dev: "dev" };
+
 const FAQ = [
   { q: "What is a DYOR score?",
     a: "A 0 to 100 composite for one crypto token. Each feature (for example price-to-fees or holder concentration) is ranked as a percentile against a fixed reference basket of same-class tokens, features are averaged per domain (fundamentals, tokenomics, on-chain, social, developers), domains are weighted with class-specific weights, and any hard disqualifier that trips caps or zeroes the result." },
@@ -53,7 +56,7 @@ export default async function MethodologyPage() {
       {m && (
         <>
           <section className="grid gap-4 lg:grid-cols-2">
-            <div className="card">
+            <div className="card min-w-0">
               <h2 className="mb-3 font-semibold text-white">Domain weights (default / DeFi)</h2>
               {Object.entries(m.weights).map(([d, w]) => (
                 <div key={d} className="flex items-center gap-3 py-1">
@@ -67,10 +70,12 @@ export default async function MethodologyPage() {
               {m.class_weights && (
                 <div className="mt-4">
                   <div className="mb-1 text-xs uppercase text-muted">Per asset class</div>
-                  <div className="overflow-x-auto">
+                  <div className="scroll-x">
                     <table className="w-full text-xs">
                       <thead className="text-left uppercase text-muted">
-                        <tr><th className="py-1 pr-2">class</th>{Object.keys(m.weights).map((d) => <th key={d} className="pr-2 text-right">{d}</th>)}</tr>
+                        <tr><th className="py-1 pr-2">class</th>{Object.keys(m.weights).map((d) => (
+                          <th key={d} className="pr-2 text-right"><span className="sm:hidden">{SHORT[d] ?? d}</span><span className="hidden sm:inline">{d}</span></th>
+                        ))}</tr>
                       </thead>
                       <tbody>
                         {Object.entries(m.class_weights).filter(([c]) => c !== "general").map(([c, w]) => (
@@ -85,7 +90,7 @@ export default async function MethodologyPage() {
                 </div>
               )}
             </div>
-            <div className="card">
+            <div className="card min-w-0">
               <h2 className="mb-3 font-semibold text-white">Tiers</h2>
               <div className="flex flex-wrap gap-2">
                 {m.tiers.map((t) => (
@@ -141,7 +146,19 @@ export default async function MethodologyPage() {
 
           <section>
             <h2 className="mb-3 font-semibold text-white">Metric glossary</h2>
-            <div className="card !p-0 overflow-x-auto">
+            {/* phones: one stacked entry per metric */}
+            <ul className="card !p-0 md:hidden">
+              {m.glossary.map((g) => (
+                <li key={g.key} className="border-b border-edge/60 px-4 py-3 last:border-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-medium text-white">{g.label}</span>
+                    <span className="pill border border-edge bg-panel2 text-muted">{g.direction === "lower" ? "lower is better" : "higher is better"}</span>
+                  </div>
+                  <p className="mt-1 text-sm text-muted">{g.meaning}</p>
+                </li>
+              ))}
+            </ul>
+            <div className="card !p-0 scroll-x hidden md:block">
               <table className="w-full text-sm">
                 <thead className="text-left text-xs uppercase text-muted">
                   <tr className="border-b border-edge"><th className="p-3">Metric</th><th className="p-3">Good</th><th className="p-3">Meaning</th></tr>
@@ -150,7 +167,7 @@ export default async function MethodologyPage() {
                   {m.glossary.map((g) => (
                     <tr key={g.key} className="border-b border-edge/60">
                       <td className="p-3 font-medium text-white">{g.label}</td>
-                      <td className="p-3">{g.direction === "lower" ? "lower is better" : "higher is better"}</td>
+                      <td className="whitespace-nowrap p-3">{g.direction === "lower" ? "lower is better" : "higher is better"}</td>
                       <td className="p-3 text-muted">{g.meaning}</td>
                     </tr>
                   ))}

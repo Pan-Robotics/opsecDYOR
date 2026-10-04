@@ -99,6 +99,71 @@ function FeatureRow({ f }: { f: ExplainFeature }) {
   );
 }
 
+// The same feature as a stacked entry for narrow screens: name and verdict on
+// one line, then the figures and the calculation underneath at full width.
+function FeatureCard({ f }: { f: ExplainFeature }) {
+  const scored = f.status === "scored";
+  const calc = working(f);
+  return (
+    <li className={`border-t border-edge py-2.5 first:border-0 ${scored ? "" : "text-muted"}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className={scored ? "font-medium text-white" : "font-medium"} title={f.meaning}>{f.label}</div>
+          <div className="text-xs text-muted">{f.direction}{f.source ? `, ${f.source}` : ""}</div>
+        </div>
+        <div className="shrink-0 text-right text-xs tabular-nums">
+          {scored ? (
+            <>
+              <div className="text-sm text-white">pct {fmt(f.percentile, 0)}{f.reference_n ? <span className="text-xs text-muted"> vs {f.reference_n}</span> : null}</div>
+              <div className="text-muted">{f.weight === null ? "" : `${f.weight.toFixed(1)}% weight`}{f.contribution === null ? "" : `, +${fmt(f.contribution)}`}</div>
+            </>
+          ) : <div>not scored</div>}
+        </div>
+      </div>
+      <div className="mt-1.5 space-y-0.5 text-xs">
+        {f.inputs.map((i) => (
+          <div key={i.key}><span className="text-muted">{i.label}:</span> <span className="tabular-nums text-white">{fmtVal(i.value, i.unit)}</span></div>
+        ))}
+        {calc ? (
+          <div className="tabular-nums [overflow-wrap:anywhere]">
+            <span className="text-muted">{calc}</span> <span className="text-white">= <b>{fmtVal(f.value, f.unit)}</b></span>
+          </div>
+        ) : scored ? (
+          <div><span className="text-muted">value:</span> <span className="tabular-nums text-white">{fmtVal(f.value, f.unit)}</span></div>
+        ) : (
+          <div className="italic">{f.missing_reason}</div>
+        )}
+      </div>
+    </li>
+  );
+}
+
+function GateCard({ g }: { g: ExplainGateRule }) {
+  const inactive = !g.active_on_open_data;
+  return (
+    <li className={`border-t border-edge py-2.5 first:border-0 ${inactive ? "text-muted" : ""}`}>
+      <div className="flex items-center justify-between gap-3">
+        <span className={`font-medium ${g.tripped ? "text-rose-300" : inactive ? "line-through decoration-edge" : "text-white"}`}>{g.rule}</span>
+        <span className="shrink-0 text-xs">
+          {g.tripped ? <span className="rounded bg-rose-500/10 px-1.5 py-0.5 text-rose-300">tripped</span>
+            : inactive ? <span title="needs a keyed source; cannot fire on open data">inactive</span>
+            : <span className="text-emerald-300">pass</span>}
+        </span>
+      </div>
+      <div className="mt-1 space-y-0.5 text-xs">
+        {g.evidence.map((e) => (
+          <div key={e.label}>
+            <span className="text-muted">{e.label}:</span>{" "}
+            <span className="tabular-nums text-white">{fmtVal(e.value, e.unit)}</span>
+            {e.threshold ? <span className="text-muted">, {e.threshold}</span> : null}
+          </div>
+        ))}
+        <div className="text-muted">If tripped: {g.action === "zero" ? "zeroes the score" : `caps the score at ${g.cap}`}</div>
+      </div>
+    </li>
+  );
+}
+
 function GateRow({ g }: { g: ExplainGateRule }) {
   const inactive = !g.active_on_open_data;
   return (
@@ -185,11 +250,13 @@ export default function TokenReport({ a, headingTag = "h2", permalink = true }: 
             {rec.class && <div className="mt-2 max-w-xl text-sm text-muted">🏷️ {rec.class.description}</div>}
           </div>
           {s && (
-            <div className="text-right">
-              <div className="text-4xl font-bold text-white">
-                {fmt(s.final_score)}<span className="text-lg font-normal text-muted">/100</span>
+            <div className="w-full sm:w-auto sm:text-right">
+              <div className="flex items-center justify-between gap-3 sm:block">
+                <div className="text-4xl font-bold text-white">
+                  {fmt(s.final_score)}<span className="text-lg font-normal text-muted">/100</span>
+                </div>
+                <div className="sm:mt-1"><TierBadge tier={s.tier} /></div>
               </div>
-              <div className="mt-1"><TierBadge tier={s.tier} /></div>
               <div className="mt-1 text-xs text-muted">
                 coverage {s.coverage === null ? "n/a" : `${Math.round(s.coverage)}%`}
                 {s.confidence ? `, ${s.confidence} confidence` : ""}
@@ -360,7 +427,7 @@ export default function TokenReport({ a, headingTag = "h2", permalink = true }: 
             const wn = d.weight_renormalized === null ? null : Math.round(d.weight_renormalized * 100);
             return (
               <div key={d.domain} className="mt-5">
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1">
                   <div>
                     <span className="font-semibold text-white">{d.label}</span>
                     <span className="ml-2 text-xs text-muted">{d.description}</span>
@@ -373,7 +440,8 @@ export default function TokenReport({ a, headingTag = "h2", permalink = true }: 
                     {d.score === null && !d.penalized && <span className="ml-2">(no data, weight redistributed)</span>}
                   </div>
                 </div>
-                <div className="mt-2 overflow-x-auto">
+                <ul className="mt-2 md:hidden">{rows.map((f) => <FeatureCard key={f.feature} f={f} />)}</ul>
+                <div className="scroll-x mt-2 hidden md:block">
                   <table className="w-full text-sm">
                     <thead className="text-left text-xs uppercase text-muted">
                       <tr>
@@ -395,8 +463,8 @@ export default function TokenReport({ a, headingTag = "h2", permalink = true }: 
           {/* composite */}
           <div className="mt-6">
             <div className="font-semibold text-white">Composite</div>
-            <div className="mt-2 overflow-x-auto">
-              <table className="w-full text-sm">
+            <div className="scroll-x mt-2">
+              <table className="w-full text-xs sm:text-sm">
                 <thead className="text-left text-xs uppercase text-muted">
                   <tr>
                     <th className="py-1 pr-3">Domain</th>
@@ -431,7 +499,13 @@ export default function TokenReport({ a, headingTag = "h2", permalink = true }: 
           <div className="mt-6">
             <div className="font-semibold text-white">Gate: hard disqualifiers</div>
             <p className="mt-1 text-xs text-muted">Each rule is checked against the figures shown; missing data never trips a rule. The strictest tripped rule sets the ceiling.</p>
-            <div className="mt-2 overflow-x-auto">
+            <ul className="mt-2 md:hidden">{ex.gate.rules.map((g) => <GateCard key={g.rule} g={g} />)}</ul>
+            <div className="mt-2 border-t border-edge pt-2 text-sm font-semibold text-white md:hidden">
+              {ex.gate.cap === null
+                ? `No rule tripped, so the final score is the raw score: ${fmt(ex.gate.final_score)}`
+                : `Ceiling ${fmt(ex.gate.cap)}, so the final score is min(${fmt(ex.gate.raw_score)}, ${fmt(ex.gate.cap)}) = ${fmt(ex.gate.final_score)}`}
+            </div>
+            <div className="scroll-x mt-2 hidden md:block">
               <table className="w-full text-sm">
                 <thead className="text-left text-xs uppercase text-muted">
                   <tr>
@@ -487,7 +561,7 @@ export default function TokenReport({ a, headingTag = "h2", permalink = true }: 
               const me = p.token === r.gecko_id;
               return (
                 <div key={p.token} className={`flex items-center gap-3 rounded-lg px-2 py-1 ${me ? "bg-panel2" : ""}`}>
-                  <div className="w-40 shrink-0 truncate text-sm">
+                  <div className="w-28 shrink-0 truncate text-sm sm:w-40">
                     {me ? <span className="text-white">⭐ {p.token}</span> : <TokenLink token={p.token} />}
                   </div>
                   <div className="flex-1"><ScoreBar value={p.final_score} /></div>

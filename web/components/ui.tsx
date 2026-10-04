@@ -11,8 +11,14 @@ export function tierColor(tier: string) {
   return TIER_COLOR[tier?.trim()?.[0]] ?? "bg-slate-500/15 text-slate-300 border-slate-500/30";
 }
 
-export function TierBadge({ tier }: { tier: string }) {
-  return <span className={`pill border ${tierColor(tier)}`}>{tier}</span>;
+export function TierBadge({ tier, compact = false }: { tier: string; compact?: boolean }) {
+  // compact: just the letter, for narrow rows; the full label stays in the tooltip.
+  const letter = tier?.trim()?.[0] ?? "?";
+  return (
+    <span className={`pill border ${tierColor(tier)}`} title={compact ? tier : undefined}>
+      {compact ? letter : tier}
+    </span>
+  );
 }
 
 export function ClassBadge({ label }: { label: string }) {

@@ -535,6 +535,15 @@ Changes (commit `e68acd2`, `docs/DATA-COVERAGE-2026-09-26.md` has the numbers):
   compare link appends to it, and the screener keeps its loaded board in memory
   so returning is instant. `web/scripts/tab-persistence.mjs` drives a headless
   Chrome over the DevTools protocol through 18 checks.
+- **2026-10-04 (evening): responsive pass.** Measured with real phone and
+  desktop screenshots (`web/scripts/screenshots.mjs`). The header no longer
+  wraps into three rows on a phone (brand row + scrolling tab strip); the
+  screener, token index, token ledger and gate tables, and the methodology
+  glossary stack into cards under `md`; the compare table pins its label
+  column and scrolls sideways; the methodology and API pages no longer
+  overflow (grid items are `min-width: 0`); touch targets and form controls
+  were enlarged; narratives load on first visit. Every route reports zero
+  sideways overflow at 390px and 1366px.
 
 ## 9. Gaps in this reconstruction
 

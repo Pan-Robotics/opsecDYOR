@@ -6,9 +6,15 @@
   color-scheme: dark;
 }
 
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-padding-top: 6rem; /* anchors land below the sticky header */
+}
+
 body {
   background: radial-gradient(1100px 550px at 75% -10%, #16314a 0%, transparent 60%), #050f19;
   color: #e6eaf3;
+  overflow-x: clip; /* a stray wide element never gives the whole page a sideways scroll */
 }
 
 @layer base {
@@ -16,20 +22,71 @@ body {
   h1, h2 {
     font-family: var(--font-orbitron), "Orbitron", ui-sans-serif, system-ui, sans-serif;
     letter-spacing: 0.01em;
+    text-wrap: balance;
+  }
+  /* Inline code often carries URLs and ids: let it break rather than push the layout. */
+  code {
+    overflow-wrap: anywhere;
+  }
+  pre code {
+    overflow-wrap: normal;
+  }
+  /* Comfortable tap targets for native form controls on touch screens. */
+  input[type="checkbox"] {
+    width: 1.05rem;
+    height: 1.05rem;
+    accent-color: #c9a31d;
+  }
+  select, input, textarea, button {
+    font-size: max(1em, 16px); /* iOS zooms into inputs below 16px */
+  }
+  @media (min-width: 640px) {
+    select, input, textarea, button { font-size: inherit; }
   }
 }
 
 @layer components {
   .card {
-    @apply rounded-xl border border-edge bg-panel p-5;
+    @apply min-w-0 rounded-xl border border-edge bg-panel p-4 sm:p-5;
   }
   .pill {
     @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium;
   }
+  /* Interactive pills (filters, presets, share buttons) get a finger-sized hit area. */
+  button.pill, a.pill, label.pill {
+    @apply min-h-[2.125rem] px-3 py-1.5;
+  }
   .btn {
-    @apply rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-[#04101b] transition hover:bg-brand2 disabled:opacity-40;
+    @apply inline-flex min-h-[2.5rem] items-center justify-center rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-[#04101b] transition hover:bg-brand2 disabled:opacity-40;
+  }
+  .btn-ghost {
+    @apply inline-flex min-h-[2.5rem] items-center justify-center rounded-lg border border-edge px-4 py-2 text-sm font-semibold text-white transition hover:bg-panel2;
   }
   .input {
     @apply w-full rounded-lg border border-edge bg-panel2 px-4 py-3 text-sm text-white placeholder-muted outline-none focus:border-brand;
   }
+  .select {
+    @apply w-full rounded-lg border border-edge bg-panel2 px-2 py-2 text-sm text-white outline-none focus:border-brand sm:w-auto sm:py-1.5;
+  }
+  /* Grid items never widen a column past the container: a long code line or a
+     wide table scrolls inside its card instead of pushing the page sideways. */
+  .grid > * {
+    min-width: 0;
+  }
+  /* A table that is wider than a phone scrolls inside its card instead of the page. */
+  .scroll-x {
+    @apply overflow-x-auto overscroll-x-contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+  /* First column pinned while the rest scrolls sideways (compare page). */
+  .sticky-col {
+    @apply sticky left-0 z-10 bg-panel;
+    box-shadow: 1px 0 0 #24384f;
+  }
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
 }

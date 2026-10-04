@@ -140,17 +140,21 @@ export default async function ComparePage({ searchParams }: Props) {
       )}
 
       {tokens.length > 0 && (
-        <div className="card !p-0 overflow-x-auto">
-          <table className="w-full text-sm">
+        <div className="card !p-0 overflow-hidden">
+          {tokens.length > 2 && (
+            <div className="border-b border-edge px-3 py-1.5 text-xs text-muted md:hidden">Swipe sideways to see all {tokens.length} tokens. The first column stays put.</div>
+          )}
+          <div className="scroll-x">
+          <table className="w-full text-xs sm:text-sm">
             <thead>
               <tr className="border-b border-edge align-bottom">
-                <th className="p-3 text-left text-xs uppercase text-muted">Line</th>
+                <th className="sticky-col min-w-[7rem] max-w-[9rem] p-2 text-left text-xs uppercase text-muted sm:min-w-[10rem] sm:p-3">Line</th>
                 {tokens.map((t) => (
-                  <th key={t.resolved!.gecko_id} className="p-3 text-left">
-                    <Link href={`/token/${encodeURIComponent(t.resolved!.gecko_id)}`} className="text-base font-semibold text-white hover:text-brand">{t.resolved!.name}</Link>
+                  <th key={t.resolved!.gecko_id} className="min-w-[7.5rem] p-2 text-left sm:min-w-[9rem] sm:p-3">
+                    <Link href={`/token/${encodeURIComponent(t.resolved!.gecko_id)}`} className="text-sm font-semibold text-white hover:text-brand sm:text-base">{t.resolved!.name}</Link>
                     <div className="text-xs text-muted">{t.resolved!.symbol}</div>
                     <div className="mt-1 flex items-center gap-2">
-                      <span className="text-2xl font-bold text-white">{fmt(t.score!.final_score)}</span>
+                      <span className="text-xl font-bold text-white sm:text-2xl">{fmt(t.score!.final_score)}</span>
                       <TierBadge tier={tierLetter(t.score!.tier)} />
                     </div>
                   </th>
@@ -163,6 +167,7 @@ export default async function ComparePage({ searchParams }: Props) {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 
@@ -182,7 +187,7 @@ function GroupRows({ title, rows, n }: { title: string; rows: Row[]; n: number }
   return (
     <>
       <tr className="border-b border-edge bg-panel2/40">
-        <td colSpan={n + 1} className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted">{title}</td>
+        <td colSpan={n + 1} className="sticky-col !bg-[#13273a] px-2 py-2 text-xs font-semibold uppercase tracking-wide text-muted sm:px-3">{title}</td>
       </tr>
       {rows.map((r) => {
         const nums = r.cells.map((c) => (typeof c.value === "number" ? c.value : null));
@@ -191,11 +196,11 @@ function GroupRows({ title, rows, n }: { title: string; rows: Row[]; n: number }
           : (r.higherIsBetter ? Math.max(...present) : Math.min(...present));
         return (
           <tr key={r.label} className="border-b border-edge/60">
-            <td className={`p-3 ${r.muted ? "text-muted" : "text-white"}`}>{r.label}</td>
+            <td className={`sticky-col p-2 sm:p-3 ${r.muted ? "text-muted" : "text-white"}`}>{r.label}</td>
             {r.cells.map((c, i) => {
               const isBest = best !== null && nums[i] === best;
               return (
-                <td key={i} className={`p-3 tabular-nums ${isBest ? "text-emerald-300" : c.value === null && r.higherIsBetter !== undefined ? "text-muted" : "text-white"}`}>
+                <td key={i} className={`p-2 tabular-nums sm:p-3 ${isBest ? "text-emerald-300" : c.value === null && r.higherIsBetter !== undefined ? "text-muted" : "text-white"}`}>
                   <div title={c.sub && c.text === "n/a" ? c.sub : undefined}>{c.text}{isBest ? " *" : ""}</div>
                   {c.sub && c.text !== "n/a" && <div className="text-xs text-muted">{c.sub}</div>}
                 </td>

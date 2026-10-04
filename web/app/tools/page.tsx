@@ -50,7 +50,7 @@ function PortfolioTool() {
             <div><span className="text-muted">Classes</span> <b className="text-white">{Object.entries(res.class_exposure).map(([c, n]) => `${c}:${n}`).join(" ") || "n/a"}</b></div>
           </div>
           {res.notes.map((n) => <div key={n} className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-2 text-sm text-amber-200">⚠ {n}</div>)}
-          <table className="w-full text-sm">
+          <div className="scroll-x"><table className="w-full text-sm">
             <thead className="text-left text-xs uppercase text-muted"><tr className="border-b border-edge"><th className="p-2">Holding</th><th className="p-2">Class</th><th className="p-2">Score</th><th className="p-2">Tier</th></tr></thead>
             <tbody>
               {res.holdings.map((h, i) => (
@@ -60,11 +60,11 @@ function PortfolioTool() {
                   </td>
                   <td className="p-2 text-muted">{h.class ?? (h.error ?? "n/a")}</td>
                   <td className="p-2 tabular-nums">{h.score == null ? "n/a" : fmt(h.score)}</td>
-                  <td className="p-2">{h.tier ? <TierBadge tier={h.tier} /> : "n/a"}</td>
+                  <td className="p-2">{h.tier ? <TierBadge tier={h.tier} compact /> : "n/a"}</td>
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         </div>
       )}
     </section>
@@ -88,7 +88,7 @@ function BarbellTool() {
     <section className="card space-y-3">
       <h2 className="font-semibold text-white">🏋️ Barbell builder</h2>
       <p className="text-sm text-muted">A BTC monetary anchor + top-N ungated, A/B-tier satellites from the saved universe.</p>
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <span className="text-xs text-muted">Satellites</span>
         <input type="number" min={1} max={10} value={n} onChange={(e) => setN(Math.max(1, Math.min(10, Number(e.target.value) || 5)))}
           className="w-20 rounded-lg border border-edge bg-panel2 px-2 py-1 text-sm text-white" />

@@ -54,18 +54,18 @@ export default function Home() {
       {/* hero */}
       <section className="pt-6">
         <div className="pill border border-brand/30 bg-brand/10 text-brand">Flight to fundamentals, open data, agent-ready</div>
-        <h1 className="mt-4 max-w-3xl text-4xl font-bold tracking-tight text-white sm:text-5xl">
+        <h1 className="mt-4 max-w-3xl text-[2rem] font-bold leading-tight tracking-tight text-white sm:text-5xl">
           Qualify any crypto token on the dimensions that actually matter.
         </h1>
-        <p className="mt-4 max-w-2xl text-lg text-muted">
+        <p className="mt-4 max-w-2xl text-base text-muted sm:text-lg">
           DYOR scores tokens on real revenue, durable tokenomics, and actual usage. It is{" "}
           <span className="text-white">asset-class-aware</span>, so Bitcoin is not judged like a DeFi app.
           Search any token, screen a universe, build a portfolio, or call it from your AI agent. Built on free, open data.
         </p>
         <div className="mt-7 flex flex-wrap gap-3">
           <Link href="/analyze" className="btn">🔍 Analyze a token</Link>
-          <Link href="/screener" className="rounded-lg border border-edge px-4 py-2 text-sm font-semibold text-white hover:bg-panel2">Open the screener</Link>
-          <Link href="/methodology" className="rounded-lg border border-edge px-4 py-2 text-sm font-semibold text-muted hover:bg-panel2 hover:text-white">How scoring works</Link>
+          <Link href="/screener" className="btn-ghost">Open the screener</Link>
+          <Link href="/methodology" className="btn-ghost !text-muted hover:!text-white">How scoring works</Link>
         </div>
       </section>
 
@@ -100,7 +100,7 @@ export default function Home() {
               <code>score_portfolio</code>, <code>build_barbell</code>, <code>backtest</code>. No install: point your agent
               at the URL and ask “is $TOKEN worth a look?” for an opinionated, gated read.
             </p>
-            <div className="mt-3 rounded-lg border border-edge bg-bg/60 p-2 font-mono text-xs text-muted">claude mcp add --transport http dyor https://dyor.cryptoopsec.com/mcp</div>
+            <div className="mt-3 break-all rounded-lg border border-edge bg-bg/60 p-2 font-mono text-xs text-muted">claude mcp add --transport http dyor https://dyor.cryptoopsec.com/mcp</div>
             <Link href="/api-mcp" className="mt-3 inline-block text-sm font-semibold text-brand hover:text-brand2">
               API and MCP docs: endpoints, connection, tools
             </Link>

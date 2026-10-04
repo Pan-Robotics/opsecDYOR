@@ -10,8 +10,8 @@ export default function NotFound() {
       <p className="text-muted">Looking for a token? Search it by name, symbol or contract address, or browse every scored token.</p>
       <div className="flex flex-wrap gap-3">
         <Link href="/analyze" className="btn">Analyze a token</Link>
-        <Link href="/tokens" className="rounded-lg border border-edge px-4 py-2 text-sm font-semibold text-white hover:bg-panel2">All scored tokens</Link>
-        <Link href="/" className="rounded-lg border border-edge px-4 py-2 text-sm font-semibold text-muted hover:bg-panel2 hover:text-white">Home</Link>
+        <Link href="/tokens" className="btn-ghost">All scored tokens</Link>
+        <Link href="/" className="btn-ghost !text-muted hover:!text-white">Home</Link>
       </div>
     </div>
   );

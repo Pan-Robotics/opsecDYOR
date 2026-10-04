@@ -116,14 +116,14 @@ function AnalyzeInner() {
               {label}
             </button>
           ))}
-          <button type="submit" className="btn ml-auto" disabled={loading || !q.trim()}>
+          <button type="submit" className="btn w-full sm:ml-auto sm:w-auto" disabled={loading || !q.trim()}>
             {loading ? "Analyzing..." : "Analyze"}
           </button>
         </div>
-        <label className="flex cursor-pointer items-center gap-2 text-xs text-muted">
-          <input type="checkbox" checked={penalize} onChange={(e) => setPenalize(e.target.checked)} />
-          Penalize a missing <span className="text-white">core</span> domain
-          <span className="text-muted/70">(a DeFi app with no fees or revenue is floored, not let off)</span>
+        <label className="flex cursor-pointer items-start gap-2 text-xs text-muted">
+          <input type="checkbox" className="mt-0.5 shrink-0" checked={penalize} onChange={(e) => setPenalize(e.target.checked)} />
+          <span>Penalize a missing <span className="text-white">core</span> domain{" "}
+          <span className="text-muted/70">(a DeFi app with no fees or revenue is floored, not let off)</span></span>
         </label>
       </form>
 
@@ -137,7 +137,7 @@ function AnalyzeInner() {
         <>
           <TokenReport a={result} />
           <div className="card">
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <h3 className="font-semibold text-white">🧠 Analyst memo</h3>
               {!memo && (
                 <button onClick={loadMemo} disabled={memoLoading} className="btn">

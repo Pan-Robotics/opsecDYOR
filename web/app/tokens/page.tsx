@@ -3,6 +3,7 @@ import Link from "next/link";
 import { serverApi, type TokenListing } from "@/lib/api";
 import { breadcrumbJsonLd, jsonLd, pageMeta, tierLetter } from "@/lib/seo";
 import { fmt, ScoreBar, TierBadge } from "@/components/ui";
+import { MobileTokenRow } from "@/components/TokenRows";
 
 // The crawlable index of the board: every scored token with a link to its
 // permanent page, rendered on the server from the latest run.
@@ -52,7 +53,14 @@ export default async function TokensPage() {
           <h2 className="text-lg font-semibold text-white">
             Tier {letter} <span className="text-sm font-normal text-muted">({name}), {byTier[letter].length} token{byTier[letter].length === 1 ? "" : "s"}</span>
           </h2>
-          <div className="card !p-0 overflow-x-auto">
+          <div className="card !p-0 overflow-hidden">
+            <ul className="md:hidden">
+              {byTier[letter].map((t, i) => (
+                <MobileTokenRow key={t.id} rank={i + 1} id={t.id} name={t.name} symbol={t.symbol} classLabel={t.class_label}
+                  score={t.final_score} tier={t.tier} coverage={t.coverage} flags={t.flags} />
+              ))}
+            </ul>
+            <div className="scroll-x hidden md:block">
             <table className="w-full text-sm">
               <thead className="text-left text-xs uppercase text-muted">
                 <tr className="border-b border-edge">
@@ -78,6 +86,7 @@ export default async function TokensPage() {
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
         </section>
       ))}
