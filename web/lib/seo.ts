@@ -20,6 +20,13 @@ export const SITE = {
   ],
 };
 
+// The site-wide card (app/opengraph-image.tsx). A page that sets its own
+// `openGraph` block loses the file-convention image, so pageMeta names it.
+export const DEFAULT_OG_IMAGE = {
+  url: "/opengraph-image", width: 1200, height: 630,
+  alt: "DYOR by CryptoOpsec — crypto token scoring on fundamentals, tokenomics and on-chain data",
+};
+
 export const abs = (path: string) => (path.startsWith("http") ? path : `${SITE.url}${path.startsWith("/") ? path : `/${path}`}`);
 
 /** Metadata for a normal page: title (templated), description, canonical, OG + Twitter. */
@@ -36,11 +43,13 @@ export function pageMeta(opts: { title: string; description: string; path: strin
       siteName: SITE.fullName,
       type: "website",
       locale: "en_US",
+      images: [DEFAULT_OG_IMAGE],
     },
     twitter: {
       card: "summary_large_image",
       title: opts.absoluteTitle ? title : `${title} · ${SITE.fullName}`,
       description,
+      images: [DEFAULT_OG_IMAGE.url],
       ...(SITE.twitter ? { site: SITE.twitter, creator: SITE.twitter } : {}),
     },
     ...(opts.noindex ? { robots: { index: false, follow: true } } : {}),

@@ -7,6 +7,7 @@ export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
 const TIER_COLOR: Record<string, string> = { A: "#34d399", B: "#38bdf8", C: "#fbbf24", D: "#fb7185" };
+// NOTE: Satori (next/og) rejects NUMERIC children ("more than one child node") — render strings only.
 const LABEL: Record<string, string> = {
   fundamental: "Fundamentals", tokenomics: "Tokenomics", onchain: "On-chain", social: "Social", dev: "Developers",
 };
@@ -44,7 +45,7 @@ export default async function Image({ params }: { params: Promise<{ id: string }
           </div>
           <div style={{ display: "flex", alignItems: "flex-end", gap: 24 }}>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
-              <div style={{ fontSize: 96, fontWeight: 700, lineHeight: 1 }}>{score === null ? "—" : score}</div>
+              <div style={{ fontSize: 96, fontWeight: 700, lineHeight: 1 }}>{score === null ? "—" : String(score)}</div>
               <div style={{ fontSize: 24, color: "#7e96b8" }}>/ 100</div>
             </div>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "14px 22px", borderRadius: 16,
@@ -62,7 +63,7 @@ export default async function Image({ params }: { params: Promise<{ id: string }
               <div style={{ flex: 1, height: 14, borderRadius: 7, background: "#24384f", display: "flex" }}>
                 <div style={{ width: `${Math.max(0, Math.min(100, v))}%`, height: "100%", borderRadius: 7, background: "#c9a31d" }} />
               </div>
-              <div style={{ width: 70, textAlign: "right" }}>{Math.round(v)}</div>
+              <div style={{ width: 70, textAlign: "right" }}>{String(Math.round(v))}</div>
               <div style={{ width: 90, textAlign: "right", color: "#7e96b8", fontSize: 18 }}>{weights[d] != null ? `${Math.round(weights[d] * 100)}% wt` : ""}</div>
             </div>
           ))}

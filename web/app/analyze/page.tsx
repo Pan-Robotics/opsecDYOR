@@ -9,9 +9,20 @@ import { useStickyState } from "@/components/AppState";
 
 export default function AnalyzePage() {
   return (
-    <Suspense fallback={<div className="card"><Spinner /></div>}>
-      <AnalyzeInner />
-    </Suspense>
+    <div className="space-y-6">
+      {/* server-rendered: the page's heading and purpose are in the HTML a crawler reads */}
+      <div>
+        <h1 className="text-2xl font-bold text-white">🔍 Analyze a token</h1>
+        <p className="mt-1 text-muted">
+          Search by <b className="text-white">name</b> (Aave), <b className="text-white">symbol</b> (UNI),
+          or <b className="text-white">contract address</b> — an address resolves the unified token across all its chains.
+          You get a 0–100 score against same-class peers, the A–D tier, gate flags, and every raw figure and formula behind it.
+        </p>
+      </div>
+      <Suspense fallback={<div className="card"><Spinner /></div>}>
+        <AnalyzeInner />
+      </Suspense>
+    </div>
   );
 }
 
@@ -79,14 +90,6 @@ function AnalyzeInner() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-white">🔍 Analyze a token</h1>
-        <p className="mt-1 text-muted">
-          Search by <b className="text-white">name</b> (Aave), <b className="text-white">symbol</b> (UNI),
-          or <b className="text-white">contract address</b> — an address resolves the unified token across all its chains.
-        </p>
-      </div>
-
       <form onSubmit={run} className="card space-y-3">
         <input
           className="input"
