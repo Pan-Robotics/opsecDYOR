@@ -490,6 +490,24 @@ Changes (commit `e68acd2`, `docs/DATA-COVERAGE-2026-09-26.md` has the numbers):
   `class_to_dict` carries the class's own weights, methodology returns
   `class_weights`, the methodology page shows them. Live ETH now 54.3 C ==
   board.
+- **2026-10-04 — SEO layer.** The app had one shared title on every page, no
+  OG/Twitter cards, canonical, robots, sitemap, manifest, favicon.ico or
+  structured data, and nothing token-specific indexable (reports lived behind
+  a client-side `?q=`). Now: `web/lib/seo.ts` (identity, `pageMeta`, JSON-LD
+  builders); root metadata with template/keywords/robots/manifest/verification
+  and Organization + WebSite(SearchAction) data; per-route metadata; permanent
+  server-rendered **`/token/<gecko_id>`** pages (ISR hourly, full report in
+  HTML, BreadcrumbList + WebPage data, per-token Open Graph score card via
+  `next/og`, unknown ids → live analysis) fed by new **`/api/token`** and
+  **`/api/tokens`** (stored board, cached per board version); crawlable
+  **`/tokens`** index; `/methodology` server-rendered with FAQPage data;
+  robots.ts, sitemap.ts (all token pages), manifest.ts, icons, not-found;
+  self-hosted fonts (`web/app/fonts`, offline build); `X-Powered-By` off,
+  content security headers in `next.config.mjs`, HSTS snippet in nginx.
+  `web/.env.production` gained `API_URL=http://127.0.0.1:8077` (server-side
+  fetches over loopback) and `NEXT_PUBLIC_DYOR_URL`. Still manual: submit the
+  sitemap in Search Console / Bing (property = the `dyor.` subdomain) and set
+  `NEXT_PUBLIC_GSC_VERIFICATION` / `NEXT_PUBLIC_TWITTER_HANDLE`.
 - `universe.make_target` is the one enrichment path for universe, baskets and
   analyze, so the anchor and live records share feature sets. Baskets rebuilt.
 
