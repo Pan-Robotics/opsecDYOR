@@ -42,6 +42,7 @@ export type Resolved = {
   name: string;
   symbol: string;
   gecko_id: string;
+  image?: string | null;
   matched_by: string;
   market_cap_rank: number | null;
   chains: string[];
@@ -113,9 +114,43 @@ export type Analysis = {
   explain?: Explain | null;
   peer_count: number;
   rank: number | null;
+  on_board?: boolean;                       // a stored row exists → /token/<id> is a permanent page
+  source?: { kind: "stored"; run_id: string | null; collected_at: string | null };
   peers: Score[];
   errors: { token: string; source: string; error: string }[];
   ok: boolean;
+};
+
+export type TokenListing = {
+  id: string; name: string; symbol: string; image?: string | null;
+  class: string | null; class_label: string;
+  final_score: number | null; tier: string; flags: string[];
+  coverage: number | null; confidence: string;
+};
+export type TokenIndex = {
+  scale: number; run_id: string | null; collected_at: string | null; count: number; tokens: TokenListing[];
+};
+
+// --- server-side access (RSC, route handlers, sitemap, OG images) --------------------
+// Inside the server the API is a loopback hop (API_URL); the public URL is the
+// fallback so a local build still resolves. Never used in the browser bundle.
+const SERVER_API = process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8077";
+
+async function serverGet<T>(path: string, revalidate: number | false): Promise<T | null> {
+  try {
+    const r = await fetch(`${SERVER_API}${path}`, revalidate === false ? { cache: "no-store" } : { next: { revalidate } });
+    if (!r.ok) return null;
+    return (await r.json()) as T;
+  } catch {
+    return null;
+  }
+}
+
+export const serverApi = {
+  tokens: (revalidate: number | false = 600) => serverGet<TokenIndex>("/api/tokens", revalidate),
+  token: (id: string, revalidate: number | false = 3600) =>
+    serverGet<Analysis>(`/api/token?id=${encodeURIComponent(id)}`, revalidate),
+  methodology: (revalidate: number | false = 3600) => serverGet<Methodology>("/api/methodology", revalidate),
 };
 
 export type GateRule = { action: string; cap?: number; threshold?: number; active_on_open_data: boolean };

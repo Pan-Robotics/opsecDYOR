@@ -152,7 +152,64 @@ def analyze_to_dict(res) -> dict[str, Any]:
         "explain": explain_d,
         "peer_count": res.peer_count,
         "rank": res.rank,
+        "on_board": bool(getattr(res, "on_board", False)),  # → a permanent /token/<id> page exists
         "peers": [score_to_dict(r) for r in res.all_results],
         "errors": res.errors,
         "ok": res.ok,
     }
+
+
+class _Resolved:
+    """Minimal identity for a token known only from the stored board."""
+
+    def __init__(self, gecko_id: str, name: str | None, symbol: str | None, image: str | None = None):
+        self.gecko_id = gecko_id
+        self.name = name or gecko_id
+        self.symbol = (symbol or "").upper()
+        self.image = image
+        self.matched_by = "stored"
+        self.market_cap_rank = None
+        self.chains: list[str] = []
+        self.platforms: dict[str, str] = {}
+        self.coingecko_url = f"https://www.coingecko.com/en/coins/{gecko_id}"
+        self.links: dict[str, Any] = {}
+
+    def explorer_links(self) -> dict[str, str]:
+        return {}
+
+
+class _StoredRes:
+    """Duck-types AnalyzeResult for the serializers (a board row, not a live collect)."""
+
+    def __init__(self, record, result, resolved, ranked, rank):
+        self.query = record.get("token")
+        self.record = record
+        self.result = result
+        self.resolved = resolved
+        self.all_results = ranked
+        self.rank = rank
+        self.peer_count = max(len(ranked) - 1, 0)
+        self.errors: list = []
+        self.ok = result is not None
+        self.on_board = True
+
+
+def stored_analysis_to_dict(record: dict[str, Any], result: ScoreResult, same_class: list[ScoreResult],
+                            *, run_id: str | None, collected_at: Any, identity: dict[str, Any] | None = None,
+                            peer_limit: int = 12) -> dict[str, Any]:
+    """The analyze payload for a token on the stored board — what the server-
+    rendered /token/<id> page, its Open Graph image and the sitemap read. No
+    live collection: the board is scored once per request set and cached."""
+    m = record.get("_market") or {}
+    ident = identity or {}
+    resolved = _Resolved(record["token"], ident.get("name") or m.get("name"),
+                         ident.get("symbol") or m.get("symbol"), ident.get("image") or m.get("image"))
+    ranked = sorted(same_class, key=lambda r: (r.final_score != r.final_score, -(r.final_score if r.final_score == r.final_score else 0)))
+    rank = next((i + 1 for i, r in enumerate(ranked) if r.token == record["token"]), None)
+    res = _StoredRes(record, result, resolved, ranked, rank)
+    d = analyze_to_dict(res)
+    d["resolved"]["image"] = resolved.image
+    d["peers"] = d["peers"][:peer_limit]
+    d["source"] = {"kind": "stored", "run_id": run_id,
+                   "collected_at": collected_at.isoformat() if hasattr(collected_at, "isoformat") else collected_at}
+    return d

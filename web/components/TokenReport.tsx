@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Analysis, ExplainFeature, ExplainGateRule } from "@/lib/api";
 import { ClassBadge, DomainBars, fmt, fmtNum, fmtUsd, ScoreBar, Stat, TierBadge, tierColor } from "./ui";
 import TokenLink from "./TokenLink";
@@ -123,7 +124,12 @@ function GateRow({ g }: { g: ExplainGateRule }) {
   );
 }
 
-export default function TokenReport({ a }: { a: Analysis }) {
+export default function TokenReport({ a, headingTag = "h2", permalink = true }: {
+  a: Analysis;
+  headingTag?: "h1" | "h2";     // the token name: h1 on its own page, h2 under the analyzer's h1
+  permalink?: boolean;          // link to the permanent /token/<id> page (off on that page)
+}) {
+  const H = headingTag;
   const r = a.resolved!;
   const s = a.score;
   const rec = a.record;
@@ -142,7 +148,7 @@ export default function TokenReport({ a }: { a: Analysis }) {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-bold text-white">{r.name}</h1>
+              <H className="text-2xl font-bold text-white">{r.name}</H>
               <span className="text-muted">{r.symbol}</span>
               {rec.class && <ClassBadge label={rec.class.label} />}
               {rec.contract_verified && (
@@ -162,9 +168,17 @@ export default function TokenReport({ a }: { a: Analysis }) {
               )}
             </div>
             <div className="mt-1 text-sm text-muted">
-              matched by {r.matched_by}
+              {a.source?.kind === "stored"
+                ? <>scored from the board run of {a.source.collected_at ? a.source.collected_at.slice(0, 10) : "—"}</>
+                : <>matched by {r.matched_by}</>}
               {r.market_cap_rank ? ` · CG rank #${r.market_cap_rank}` : ""} ·{" "}
               <code className="text-xs">{r.gecko_id}</code>
+              {permalink && a.on_board && (
+                <> · <Link href={`/token/${encodeURIComponent(r.gecko_id)}`} className="text-brand hover:text-brand2">permanent page ↗</Link></>
+              )}
+              {a.source?.kind === "stored" && (
+                <> · <Link href={`/analyze?q=${encodeURIComponent(r.gecko_id)}`} className="text-brand hover:text-brand2">run a live analysis ↗</Link></>
+              )}
             </div>
             {rec.class && <div className="mt-2 max-w-xl text-sm text-muted">🏷️ {rec.class.description}</div>}
           </div>

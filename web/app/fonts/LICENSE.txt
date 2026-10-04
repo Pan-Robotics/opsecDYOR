@@ -1,0 +1,4 @@
+Inter (Rasmus Andersson), Orbitron (Matt McInerney) and JetBrains Mono (JetBrains)
+are licensed under the SIL Open Font License 1.1 (https://openfontlicense.org).
+These are the latin variable-weight woff2 subsets as served by Google Fonts,
+self-hosted here so the DYOR web app ships no third-party font requests.

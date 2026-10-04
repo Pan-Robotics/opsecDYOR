@@ -23,6 +23,7 @@ from dyor.scoring.gate import rule_activity
 
 from dyor.api.serialize import (
     analyze_to_dict, chart_summary, class_to_dict, record_to_dict, score_to_dict,
+    stored_analysis_to_dict,
 )
 from dyor.app.copy import BREAK_THESIS, DOMAIN_META, FEATURE_META, tier_color
 from dyor.classes import LABELS
@@ -67,6 +68,115 @@ async def _reference_unavailable(_request, exc: ReferenceUnavailable):
 @app.get("/api/health")
 def health() -> dict[str, str]:
     return {"status": "ok", "service": "dyor"}
+
+
+# --- the stored board as pages: /api/tokens and /api/token ----------------------------
+# The web app server-renders /tokens and /token/<id> (and their Open Graph
+# images and the sitemap) from these, so a crawler gets a full, current token
+# report without a live collect. Scored once per board version (run_id + last
+# in-place refresh) and cached in-process.
+
+import threading as _threading
+import time as _time
+
+_BOARD_LOCK = _threading.Lock()
+_BOARD: dict[str, Any] = {"key": None, "value": None}
+_IDENTITY: dict[str, Any] = {"at": 0.0, "map": {}}
+
+
+def _identity_map() -> dict[str, dict[str, str]]:
+    """gecko_id → {name, symbol} for records that predate identity on `_market`
+    (CoinGecko's coin list, cached on disk; rebuilt in-process once a day)."""
+    if _time.time() - _IDENTITY["at"] < 86400 and _IDENTITY["map"]:
+        return _IDENTITY["map"]
+    try:
+        from dyor.ingestion.coingecko import CoinGeckoClient
+
+        with CoinGeckoClient(load_config()) as cg:
+            coins = cg.coins_list()
+        _IDENTITY["map"] = {c["id"]: {"name": c.get("name"), "symbol": (c.get("symbol") or "").upper()}
+                            for c in coins if c.get("id")}
+        _IDENTITY["at"] = _time.time()
+    except Exception:
+        pass
+    return _IDENTITY["map"]
+
+
+def _stored_board(source: str = "stored") -> dict[str, Any]:
+    """{run_id, collected_at, records, results, by_token} for the board, cached
+    by (run_id, last collected_at) so an in-place refresh invalidates it."""
+    from dyor.store import db
+
+    if source != "stored":
+        records = SAMPLE_UNIVERSE
+        key = ("sample", len(records))
+        run_id, collected_at = None, None
+    else:
+        con = db.connect(read_only=True)
+        try:
+            meta = db.latest_run_meta(con)
+            records = db.latest_records(con) if meta else []
+        finally:
+            con.close()
+        run_id, _, collected_at = meta if meta else (None, None, None)
+        key = (run_id, str(collected_at))
+    with _BOARD_LOCK:
+        if _BOARD["key"] == key and _BOARD["value"] is not None:
+            return _BOARD["value"]
+    results = score_universe(records) if records else []
+    value = {"run_id": run_id, "collected_at": collected_at, "records": records, "results": results,
+             "by_token": {r.get("token"): r for r in records},
+             "result_by_token": {r.token: r for r in results}}
+    with _BOARD_LOCK:
+        _BOARD["key"], _BOARD["value"] = key, value
+    return value
+
+
+def _token_identity(rec: dict[str, Any], ident_map: dict[str, dict[str, str]]) -> dict[str, Any]:
+    m = rec.get("_market") or {}
+    fallback = ident_map.get(rec.get("token"), {})
+    return {"name": m.get("name") or fallback.get("name") or rec.get("token"),
+            "symbol": m.get("symbol") or fallback.get("symbol") or "", "image": m.get("image")}
+
+
+@app.get("/api/tokens")
+def tokens(source: str = Query("stored", pattern="^(stored|sample)$")) -> dict[str, Any]:
+    """Every token on the board with identity, class, score and tier — the
+    index behind /tokens, the sitemap and the per-token pages. Scores are
+    0–100 (`scale`)."""
+    board = _stored_board(source)
+    ident = _identity_map() if source == "stored" else {}
+    rows = []
+    for r in board["results"]:
+        rec = board["by_token"].get(r.token, {})
+        who = _token_identity(rec, ident)
+        d = score_to_dict(r)
+        rows.append({"id": r.token, "name": who["name"], "symbol": who["symbol"], "image": who["image"],
+                     "class": rec.get("_class"), "class_label": class_to_dict(rec.get("_class"))["label"],
+                     "final_score": d["final_score"], "tier": d["tier"], "flags": d["flags"],
+                     "coverage": d["coverage"], "confidence": d["confidence"]})
+    ca = board["collected_at"]
+    return {"scale": 100, "run_id": board["run_id"],
+            "collected_at": ca.isoformat() if hasattr(ca, "isoformat") else ca,
+            "count": len(rows), "tokens": rows}
+
+
+@app.get("/api/token")
+def token(id: str = Query(..., description="CoinGecko id, e.g. aave"),
+          source: str = Query("stored", pattern="^(stored|sample)$")) -> dict[str, Any]:
+    """The full analysis (score, record, ledger, summary) for one token on the
+    board — no live collection. 404 when the token is not on the board."""
+    if not is_gecko_id(id):
+        raise HTTPException(422, "not a CoinGecko id")
+    board = _stored_board(source)
+    rec = board["by_token"].get(id)
+    result = board["result_by_token"].get(id)
+    if rec is None or result is None:
+        raise HTTPException(404, f"token '{id}' is not on the board")
+    same_class = [r for r in board["results"] if (board["by_token"].get(r.token) or {}).get("_class") == rec.get("_class")]
+    ident = _token_identity(rec, _identity_map() if source == "stored" else {})
+    return stored_analysis_to_dict(rec, result, same_class, run_id=board["run_id"],
+                                   collected_at=board["collected_at"], identity=ident)
 
 
 @app.get("/api/analyze")

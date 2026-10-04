@@ -303,6 +303,38 @@ timer does it: `systemctl list-timers dyor-reference-refill.timer` (fires
 lock). If it has fired, it is gone; run `dyor reference` under `flock` by hand
 for any later basket change.
 
+## SEO layer (added 2026-10-04)
+
+What the web app ships for search and sharing, and what deployment must keep:
+
+- **Metadata** per page (`title` template, description, canonical, Open Graph,
+  Twitter card, robots), `metadataBase` from `NEXT_PUBLIC_DYOR_URL`
+  (default `https://dyor.cryptoopsec.com`). Optional `NEXT_PUBLIC_TWITTER_HANDLE`
+  and `NEXT_PUBLIC_GSC_VERIFICATION` (Search Console meta tag).
+- **Server-rendered token pages** `/token/<gecko_id>` (ISR, hourly) and the
+  crawlable index `/tokens`, both from the API's `/api/token` and `/api/tokens`
+  (the stored board, scored once per board version and cached in-process).
+  Unknown ids redirect to a live analysis. `/methodology` is server-rendered
+  with FAQ structured data.
+- **Server-side fetches use `API_URL`** (loopback `http://127.0.0.1:8077`, set in
+  `web/.env.production`) so pages, the sitemap and Open Graph images never go
+  through nginx's per-IP rate limit.
+- **robots.txt, sitemap.xml** (static routes + every token page, hourly),
+  **manifest.webmanifest**, favicon.ico / apple-icon / manifest icons
+  (`web/public/icons`, generated from `app/icon.png`).
+- **Open Graph images**: `/opengraph-image` (site) and `/token/<id>/opengraph-image`
+  (score card) rendered with `next/og` at request time.
+- **Structured data**: Organization + WebSite (with SearchAction → `/analyze?q=`)
+  on every page, SoftwareApplication on the landing page, BreadcrumbList +
+  WebPage on token pages, FAQPage on the methodology.
+- **Fonts self-hosted** (`web/app/fonts`, OFL) — the build needs no network;
+  `X-Powered-By` removed; content security headers from `next.config.mjs`; HSTS
+  from `deploy/nginx-dyor-security.conf` included in the 443 block.
+- After a deploy that changes routes: `curl -s https://dyor.cryptoopsec.com/sitemap.xml | head`
+  and submit the sitemap once in Google Search Console / Bing Webmaster Tools
+  (property: the `dyor.` subdomain). Rich-result check:
+  https://search.google.com/test/rich-results on `/`, `/methodology`, `/token/aave`.
+
 ## Coverage matrix
 
 `deploy/coverage-matrix.py` prints, for the latest persisted run, how many

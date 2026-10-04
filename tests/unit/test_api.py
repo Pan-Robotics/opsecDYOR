@@ -182,3 +182,21 @@ def test_analyze_persist_never_adds_unknown_tokens(monkeypatch):
     con = db.connect(read_only=True)
     assert {r["token"] for r in db.latest_records(con)} == {"aave"}
     con.close()
+
+
+def test_tokens_index_and_token_page_payloads():
+    """The server-rendered /tokens and /token/<id> pages (and the sitemap and
+    Open Graph images) read these; they must work without a live collect."""
+    body = client.get("/api/tokens", params={"source": "sample"}).json()
+    assert body["scale"] == 100 and body["count"] == len(body["tokens"]) > 0
+    row = body["tokens"][0]
+    assert {"id", "name", "symbol", "class_label", "final_score", "tier", "flags"} <= set(row)
+    assert all(t["final_score"] is None or 0 <= t["final_score"] <= 100 for t in body["tokens"])
+    tid = body["tokens"][0]["id"]
+    d = client.get("/api/token", params={"id": tid, "source": "sample"}).json()
+    assert d["scale"] == 100 and d["resolved"]["gecko_id"] == tid and d["on_board"] is True
+    assert d["summary"] and "/100" in d["summary"] and d["explain"]["features"]
+    assert d["source"]["kind"] == "stored" and d["score"]["final_score"] == row["final_score"]
+    assert d["rank"] is not None and len(d["peers"]) <= 12
+    assert client.get("/api/token", params={"id": "nope-not-here", "source": "sample"}).status_code == 404
+    assert client.get("/api/token", params={"id": "../etc", "source": "sample"}).status_code == 422

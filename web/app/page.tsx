@@ -1,4 +1,12 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+import { SITE, appJsonLd, jsonLd } from "@/lib/seo";
+
+export const metadata: Metadata = {
+  title: { absolute: SITE.title },
+  description: SITE.description,
+  alternates: { canonical: "/" },
+};
 
 const FEATURES: { href: string; icon: string; title: string; body: string; tag: string }[] = [
   {
@@ -42,6 +50,7 @@ const CLASSES = [
 export default function Home() {
   return (
     <div className="space-y-16">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(appJsonLd()) }} />
       {/* hero */}
       <section className="pt-6">
         <div className="pill border border-brand/30 bg-brand/10 text-brand">Flight to fundamentals · open data · agent-ready</div>

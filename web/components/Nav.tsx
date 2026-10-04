@@ -6,6 +6,7 @@ const LINKS: [string, string][] = [
   ["/", "Home"],
   ["/analyze", "Analyze"],
   ["/screener", "Screener"],
+  ["/tokens", "Tokens"],
   ["/tools", "Tools"],
   ["/narratives", "Narratives"],
   ["/methodology", "Methodology"],
@@ -38,7 +39,7 @@ export default function Nav() {
           DYOR
         </Link>
 
-        <nav className="flex flex-wrap gap-1 text-sm">
+        <nav aria-label="Primary" className="flex flex-wrap gap-1 text-sm">
           {LINKS.map(([href, label]) => {
             const active = path === href;
             return (

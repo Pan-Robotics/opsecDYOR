@@ -351,6 +351,9 @@ def build_record(
         "had_public_sale": (vc or {}).get("had_public_sale"),
         # --- informational (not scored): raw market snapshot for display ---
         "_market": {
+            "name": market.get("name"),            # identity for stored (server-rendered) pages
+            "symbol": (market.get("symbol") or "").upper() or None,
+            "image": market.get("image"),
             "price": market.get("current_price"),
             "market_cap": mc,
             "fdv": market.get("fully_diluted_valuation"),

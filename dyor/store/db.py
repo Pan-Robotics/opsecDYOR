@@ -137,6 +137,16 @@ def token_in_latest_run(con: duckdb.DuckDBPyConnection, token: str) -> bool:
     return row is not None
 
 
+def latest_run_meta(con: duckdb.DuckDBPyConnection) -> tuple[str, Any, Any] | None:
+    """(run_id, first collected_at, last collected_at) of the most recent run —
+    the version key for anything derived from the board (pages, sitemap)."""
+    row = con.execute(
+        "SELECT run_id, min(collected_at), max(collected_at) FROM token_records "
+        "WHERE run_id = (SELECT run_id FROM token_records ORDER BY collected_at DESC LIMIT 1) GROUP BY run_id"
+    ).fetchone()
+    return (row[0], row[1], row[2]) if row else None
+
+
 def latest_record_for(con: duckdb.DuckDBPyConnection, token: str) -> tuple[dict[str, Any], Any] | None:
     """(record, collected_at) of a token's row in the most recent run, or None."""
     run = con.execute(

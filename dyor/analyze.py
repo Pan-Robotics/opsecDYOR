@@ -44,6 +44,7 @@ class AnalyzeResult:
     errors: list[dict] = field(default_factory=list)
     all_results: list[ScoreResult] = field(default_factory=list)  # target + peers, ranked
     rank: int | None = None                                       # target's 1-based rank
+    on_board: bool = False                                        # has a stored row → /token/<id> exists
 
     @property
     def ok(self) -> bool:
@@ -158,12 +159,11 @@ def _analyze_locked(query, cfg, *, peers, peer_mode, penalize_missing_core, use_
     # A feed that failed on THIS collect must not change the token's score: carry
     # the last stored values for that feed (marked `stale`, dated in the report)
     # rather than score without the domains it feeds (see dyor/feeds.py).
-    if any(v == "error" for v in (record.get("_feeds") or {}).values()):
-        stored = _stored_record(record["token"])
-        if stored:
-            from dyor.feeds import carry_forward
+    stored = _stored_record(record["token"])
+    if stored and any(v == "error" for v in (record.get("_feeds") or {}).values()):
+        from dyor.feeds import carry_forward
 
-            carry_forward(record, stored[0], str(stored[1]) if stored[1] else None)
+        carry_forward(record, stored[0], str(stored[1]) if stored[1] else None)
     if persist:
         _persist_live(record)
     live_peers = [r for r in records if r.get("token") != target.gecko_id]
@@ -187,7 +187,7 @@ def _analyze_locked(query, cfg, *, peers, peer_mode, penalize_missing_core, use_
     return AnalyzeResult(
         query=query, resolved=resolved, record=record,
         result=by_token.get(record["token"]), peer_count=len(baseline),
-        errors=errors, all_results=ranked, rank=rank,
+        errors=errors, all_results=ranked, rank=rank, on_board=stored is not None,
     )
 
 
