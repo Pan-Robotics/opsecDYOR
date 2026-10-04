@@ -9,7 +9,7 @@ export const SITE = {
   fullName: "DYOR by CryptoOpsec",
   org: "CryptoOpsec",
   orgUrl: (process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.cryptoopsec.com").replace(/\/$/, ""),
-  twitter: process.env.NEXT_PUBLIC_TWITTER_HANDLE || undefined, // e.g. "@cryptoopsec"
+  twitter: process.env.NEXT_PUBLIC_TWITTER_HANDLE || "@cryptoopseccom", // X / Twitter account for cards + sameAs
   title: "DYOR — Crypto Token Scoring on Fundamentals, Tokenomics & On-chain Data",
   description:
     "DYOR scores crypto tokens 0–100 on real revenue, tokenomics, on-chain usage, social and developer activity — asset-class-aware, gated by hard disqualifiers, built on free open data. Token analyzer, tier screener, portfolio tools and a hosted MCP server for AI agents.",
