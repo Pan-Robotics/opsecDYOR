@@ -249,6 +249,12 @@ refresh log rotates via `deploy/logrotate-dyor-refresh.conf` →
 `/etc/logrotate.d/dyor-refresh`; it needs `su root root` because `/var/log` is
 group-writable on Ubuntu and logrotate silently skips such parents otherwise.
 
+**Web changes need a rebuild — use `deploy/web-build.sh`.** It builds into
+`.next-build` while the running server keeps serving `.next`, swaps the two and
+restarts (about a second), and rolls back if the new build does not answer.
+Never `rm -rf .next` on a live server: on 2026-10-04 Googlebot fetched the
+sitemap during such a window and Search Console recorded "Couldn't fetch".
+
 **Web changes need a rebuild.** An rsync alone leaves the old `.next` serving 200s;
 `deploy/deployment-sweep.sh` now fails if the server's build is older than its
 sources.

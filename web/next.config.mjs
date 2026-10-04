@@ -8,6 +8,10 @@ const SECURITY_HEADERS = [
 
 const nextConfig = {
   reactStrictMode: true,
+  // Zero-downtime deploys: deploy/web-build.sh builds into .next-build while the
+  // running server keeps serving .next, then swaps and restarts (see DEPLOY.md).
+  // `next start` must run WITHOUT this variable so it serves the swapped-in .next.
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   poweredByHeader: false,            // no "X-Powered-By: Next.js"
   compress: true,
   async headers() {
