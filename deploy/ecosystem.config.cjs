@@ -23,8 +23,15 @@ module.exports = {
     {
       name: "dyor-web",                 // Next.js UI on 127.0.0.1:3010 (next start)
       cwd: "/root/DYOR/web",
-      script: "npm",
-      args: "run start",
+      // Cluster mode (one instance) so `pm2 reload dyor-web` brings the new
+      // process up before the old one goes — deploys serve 200s throughout
+      // (deploy/web-build.sh). Fork-mode `restart` had a ~1 s 502 window.
+      script: "node_modules/next/dist/bin/next",
+      args: "start -p 3010",
+      exec_mode: "cluster",
+      instances: 1,
+      kill_timeout: 8000,
+      listen_timeout: 15000,
       env: { NODE_ENV: "production" },
     },
     {

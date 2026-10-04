@@ -16,7 +16,7 @@ NEXT_DIST_DIR=.next-build npm run -s build
 rm -rf .next-prev
 [ -d .next ] && mv .next .next-prev
 mv .next-build .next
-pm2 restart dyor-web --update-env >/dev/null
+pm2 reload dyor-web --update-env >/dev/null   # cluster mode: new process up before the old one stops
 # health: the new build must answer before we call it done
 for i in 1 2 3 4 5 6 7 8 9 10; do
   code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 http://127.0.0.1:3010/ || true)
@@ -24,5 +24,5 @@ for i in 1 2 3 4 5 6 7 8 9 10; do
   sleep 1
 done
 echo "web did not answer 200 after restart — rolling back" >&2
-mv .next .next-failed && mv .next-prev .next && pm2 restart dyor-web --update-env >/dev/null
+mv .next .next-failed && mv .next-prev .next && pm2 reload dyor-web --update-env >/dev/null
 exit 1
