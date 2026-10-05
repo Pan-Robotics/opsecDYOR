@@ -171,7 +171,7 @@ def screen_tokens(
     from dyor.screen import screen
     from dyor.store import db
 
-    con = db.connect()
+    con = db.connect(read_only=True)   # a read; never take the write lock from a request
     try:
         records = db.latest_records(con)
     finally:

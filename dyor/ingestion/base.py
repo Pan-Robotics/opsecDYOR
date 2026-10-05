@@ -171,8 +171,11 @@ class BaseClient:
         src = self.config["ingestion"]["sources"].get(self.name, {})
         return src.get("rate_limit_per_min")
 
+    #: 4xx statuses worth retrying with backoff (rate limiting). Subclasses extend it.
+    retry_statuses: frozenset[int] = frozenset({429})
+
     def default_headers(self) -> dict[str, str]:
-        return {"Accept": "application/json", "User-Agent": "dyor/0.1"}
+        return {"Accept": "application/json", "User-Agent": "dyor/0.1 (+https://dyor.cryptoopsec.com)"}
 
     # -- core request --------------------------------------------------------
     def get_json(self, url: str, params: dict | None = None) -> Any:
@@ -206,8 +209,8 @@ class BaseClient:
             except httpx.HTTPStatusError as exc:
                 last_exc = exc
                 status = exc.response.status_code
-                if status != 429 and status < 500:
-                    raise  # client error (404, 401, 403 ...) — don't retry
+                if status not in self.retry_statuses and status < 500:
+                    raise  # client error (404, 401 ...): do not retry
                 # Honor Retry-After on 429 (capped); else exponential backoff.
                 wait = base * (2**attempt)
                 if status == 429:

@@ -113,7 +113,7 @@ def test_coingecko_pro_key_uses_pro_host_and_pro_header(monkeypatch, sample_conf
     cl.close()
 
 
-def test_coingecko_markets_pages_past_250_ids(monkeypatch, sample_config):
+def test_coingecko_markets_chunks_long_id_lists(monkeypatch, sample_config):
     cl = _cg(monkeypatch, sample_config)
     seen: list[str] = []
     def fake(url, params=None):
@@ -123,7 +123,9 @@ def test_coingecko_markets_pages_past_250_ids(monkeypatch, sample_config):
     monkeypatch.setattr(cl, "get_json", fake)
     rows = cl.markets([f"t{i}" for i in range(601)])
     cl.close()
-    assert seen == [250, 250, 101] and len(rows) == 601
+    # 100 ids per call: CoinGecko answers 403 once the id list passes ~150 (about 2,000 URL
+    # characters), measured 2026-10-05; the 250 page cap is irrelevant for the free tier.
+    assert seen == [100, 100, 100, 100, 100, 100, 1] and len(rows) == 601
 
 
 # --- github ----------------------------------------------------------------------

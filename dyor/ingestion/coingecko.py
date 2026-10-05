@@ -25,6 +25,9 @@ from dyor.ingestion.base import BaseClient
 # One page of /coins/markets. More ids than this would have been silently
 # truncated; `markets()` now pages.
 _MARKETS_PAGE = 250
+# Ids per /coins/markets call. The page cap is 250, but long id lists share one per-IP
+# budget with everything else the app does, and a rejected call loses the whole page.
+_MARKETS_CHUNK = 100
 
 # Minimal coin-detail payload: identity, categories and sentiment only.
 _MINIMAL_DETAIL = {
@@ -53,6 +56,8 @@ class CoinGeckoClient(BaseClient):
         super().__init__(config, **kwargs)
         src = self.config["ingestion"]["sources"]["coingecko"]
         self.base_url = src["pro_base_url"] if self._pro else src["base_url"]
+
+    retry_statuses = frozenset({429, 403})   # the edge answers 403 as well as 429 when the free budget is spent
 
     def default_headers(self) -> dict[str, str]:
         headers = super().default_headers()
@@ -99,8 +104,8 @@ class CoinGeckoClient(BaseClient):
         than one page is never silently truncated.
         """
         out: list[dict[str, Any]] = []
-        for i in range(0, len(ids), _MARKETS_PAGE):
-            chunk = ids[i:i + _MARKETS_PAGE]
+        for i in range(0, len(ids), _MARKETS_CHUNK):
+            chunk = ids[i:i + _MARKETS_CHUNK]
             page = self.get_json(
                 f"{self.base_url}/coins/markets",
                 params={

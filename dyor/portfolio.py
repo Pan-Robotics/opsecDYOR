@@ -72,7 +72,7 @@ def barbell(config: dict | None = None, *, n_satellites: int = 5,
 
     if candidates is None:
         from dyor.store import db
-        con = db.connect()
+        con = db.connect(read_only=True)   # a read; a read-write open would clash with the anchor's read-only handles
         try:
             candidates = db.latest_records(con)
         finally:
