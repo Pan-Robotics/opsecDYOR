@@ -7,8 +7,8 @@ export type Tier = { id: TierId; name: string; price: string; tagline: string; a
 
 export const TIERS: Tier[] = [
   { id: "free", name: "Free", price: "$0", tagline: "The research, open to everyone", audience: "Anyone doing their own research", paid: false },
-  { id: "pro", name: "Pro", price: "Pricing at launch", tagline: "The pipes: keys, agents, tools", audience: "Analysts and agent builders", paid: true },
-  { id: "business", name: "Business", price: "Pricing at launch", tagline: "Pro for a team", audience: "Funds, research desks, trading teams", paid: true },
+  { id: "pro", name: "Pro", price: "$8.99 a month", tagline: "The pipes: keys, agents, tools", audience: "Analysts and agent builders", paid: true },
+  { id: "business", name: "Business", price: "$49.99 a month", tagline: "Pro for a team", audience: "Funds, research desks, trading teams", paid: true },
   { id: "enterprise", name: "Enterprise", price: "Custom", tagline: "Your quota, your terms", audience: "Platforms and data buyers", paid: true },
 ];
 

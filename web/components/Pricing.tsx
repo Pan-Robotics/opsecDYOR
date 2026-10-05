@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { isWaitlistTier, joinWaitlist, leaveWaitlist, loginUrl, useAccount, type WaitlistTier } from "@/lib/account";
+import { CONTACT_KINDS, isWaitlistTier, joinWaitlist, leaveWaitlist, loginUrl, useAccount, type ContactKind, type WaitlistTier } from "@/lib/account";
 import { PAID_TIERS, ROWS, TIERS, tierById, type TierId } from "@/lib/tiers";
 
 // The plans table with the waitlist built in. Nothing is for sale yet: a paid
@@ -12,7 +12,7 @@ import { PAID_TIERS, ROWS, TIERS, tierById, type TierId } from "@/lib/tiers";
 // Layout: one card per tier up to the lg breakpoint, the comparison table above it.
 
 const DRAFT_KEY = "dyor:waitlist-draft";
-type Draft = { tier: WaitlistTier; contact: string; note: string; submit: boolean };
+type Draft = { tier: WaitlistTier; kind: ContactKind; contact: string; note: string; submit: boolean };
 
 const readDraft = (): Draft | null => {
   try { const d = JSON.parse(sessionStorage.getItem(DRAFT_KEY) ?? "null"); return d && isWaitlistTier(d.tier) ? d : null; } catch { return null; }
@@ -29,6 +29,7 @@ const day = (s: string) => new Date(s).toLocaleDateString(undefined, { dateStyle
 export default function Pricing({ heading = "h2" }: { heading?: "h1" | "h2" }) {
   const { loading, user, setUser } = useAccount();
   const [open, setOpen] = useState<WaitlistTier | null>(null);
+  const [kind, setKind] = useState<ContactKind>("email");
   const [contact, setContact] = useState("");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
@@ -41,23 +42,23 @@ export default function Pricing({ heading = "h2" }: { heading?: "h1" | "h2" }) {
 
   const openFor = (tier: WaitlistTier) => {
     setError(null); setJustJoined(null);
-    if (waitlist && !open) { setContact(waitlist.contact ?? ""); setNote(waitlist.note ?? ""); }
+    if (waitlist && !open) { setKind(waitlist.contact_kind ?? "email"); setContact(waitlist.contact ?? ""); setNote(waitlist.note ?? ""); }
     setOpen(tier);
     setTimeout(() => form.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 0);
   };
 
   const signInThenJoin = (tier: WaitlistTier, submit: boolean) => {
-    writeDraft({ tier, contact, note, submit });
+    writeDraft({ tier, kind, contact, note, submit });
     const back = new URL(window.location.href);
     back.searchParams.set("waitlist", tier);
     back.hash = "pricing";
     window.location.assign(loginUrl(back.toString()));
   };
 
-  const submit = async (tier: WaitlistTier, c = contact, n = note) => {
+  const submit = async (tier: WaitlistTier, k = kind, c = contact, n = note) => {
     if (!user) { signInThenJoin(tier, true); return; }
     setBusy(true); setError(null);
-    const r = await joinWaitlist(tier, c, n);
+    const r = await joinWaitlist(tier, k, c, n);
     setBusy(false);
     if ("error" in r) {
       if (r.status === 401) { signInThenJoin(tier, true); return; }
@@ -85,10 +86,11 @@ export default function Pricing({ heading = "h2" }: { heading?: "h1" | "h2" }) {
     url.searchParams.delete("waitlist");
     window.history.replaceState(null, "", url.pathname + url.search + (url.hash || "#pricing"));
     const draft = readDraft();
+    const k = draft?.tier === tier ? draft.kind : "email";
     const c = draft?.tier === tier ? draft.contact : "";
     const n = draft?.tier === tier ? draft.note : "";
-    setContact(c); setNote(n);
-    if (user && draft?.submit && draft.tier === tier) { void submit(tier, c, n); return; }
+    setKind(k); setContact(c); setNote(n);
+    if (user && draft?.submit && draft.tier === tier) { void submit(tier, k, c, n); return; }
     openFor(tier);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading]);
@@ -190,7 +192,7 @@ export default function Pricing({ heading = "h2" }: { heading?: "h1" | "h2" }) {
             {justJoined && !waitlist.activated_at && <span className="ml-1 text-emerald-300">Noted, thank you.</span>}
           </div>
           <div className="mt-1 text-muted">
-            {waitlist.contact ? `The launch notice goes to ${waitlist.contact}. ` : "No contact given; you will see it here and on your account page. "}
+            {waitlist.contact ? `The launch notice goes ${CONTACT_KINDS.find((k) => k.id === waitlist.contact_kind)?.via ?? "to"} ${waitlist.contact}. ` : "No contact given; you will see it here and on your account page. "}
             {!waitlist.activated_at && "The plan is switched on for this account at launch."}
           </div>
           {!waitlist.activated_at && (
@@ -212,16 +214,22 @@ export default function Pricing({ heading = "h2" }: { heading?: "h1" | "h2" }) {
           <label className="block text-sm text-muted">
             Tier
             <select className="select mt-1 w-full sm:w-full" value={open} onChange={(e) => setOpen(e.target.value as WaitlistTier)}>
-              {PAID_TIERS.map((t) => <option key={t.id} value={t.id}>{t.name}: {t.tagline.toLowerCase()}</option>)}
+              {PAID_TIERS.map((t) => <option key={t.id} value={t.id}>{t.name}, {t.price.toLowerCase()}: {t.tagline.toLowerCase()}</option>)}
             </select>
           </label>
+          <div className="text-sm text-muted">
+            <div>Where to send the launch notice (optional)</div>
+            <div className="mt-1 grid gap-2 sm:grid-cols-[11rem_1fr]">
+              <select className="select w-full sm:w-full" aria-label="Channel" value={kind} onChange={(e) => setKind(e.target.value as ContactKind)}>
+                {CONTACT_KINDS.map((k) => <option key={k.id} value={k.id}>{k.label}</option>)}
+              </select>
+              <input className="input" aria-label="Address or handle" value={contact} onChange={(e) => setContact(e.target.value)} maxLength={120}
+                placeholder={CONTACT_KINDS.find((k) => k.id === kind)?.placeholder} autoComplete="off" spellCheck={false}
+                inputMode={kind === "email" ? "email" : "text"} />
+            </div>
+          </div>
           <label className="block text-sm text-muted">
-            Where to send the launch notice (optional)
-            <input className="input mt-1" value={contact} onChange={(e) => setContact(e.target.value)} maxLength={120}
-              placeholder="email, Telegram or X handle" autoComplete="off" spellCheck={false} />
-          </label>
-          <label className="block text-sm text-muted">
-            What would you use it for? (optional, helps decide what to build first)
+            What would you use it for? (optional, lets us know what else we should build for you)
             <textarea className="input mt-1 min-h-[4.5rem]" value={note} onChange={(e) => setNote(e.target.value)} maxLength={500} rows={3} />
           </label>
           {!user && !loading && (
