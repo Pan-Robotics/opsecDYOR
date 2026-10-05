@@ -80,6 +80,10 @@ export default function Home() {
           <Link href="/analyze" className="btn">🔍 Analyze a token</Link>
           <Link href="/screener" className="btn-ghost">Open the screener</Link>
           <Link href="/methodology" className="btn-ghost !text-muted hover:!text-white">How scoring works</Link>
+          {/* straight to the plans and the waitlist; green so it stands apart from the gold actions */}
+          <a href="#pricing" className="inline-flex min-h-[2.5rem] items-center justify-center rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-[#04101b] transition hover:bg-emerald-400">
+            Join now
+          </a>
         </div>
       </section>
 

@@ -53,7 +53,10 @@ export default function UserMenu() {
             <div>{user.plan === "free" ? "Free plan" : `${user.plan} plan`}, {user.wallets} wallet{user.wallets === 1 ? "" : "s"}</div>
             {user.waitlist && !user.waitlist.activated_at && <div className="text-emerald-300">On the {user.waitlist.tier} waitlist</div>}
           </div>
-          <a role="menuitem" href={accountUrl} className="block px-3 py-2 text-sm text-white hover:bg-panel2">Account</a>
+          {/* the account page gets the page we are on, so its header can lead straight back here */}
+          <a role="menuitem" href={accountUrl}
+            onClick={(e) => { e.preventDefault(); window.location.assign(`${accountUrl}?return_to=${encodeURIComponent(window.location.href)}`); }}
+            className="block px-3 py-2 text-sm text-white hover:bg-panel2">Account</a>
           <Link role="menuitem" href="/pricing" onClick={() => setOpen(false)} className="block px-3 py-2 text-sm text-white hover:bg-panel2">Plans and waitlist</Link>
           <button
             role="menuitem"
