@@ -63,6 +63,7 @@ const FOOTER_LINKS: [string, string][] = [
   ["/narratives", "Narrative rotation"],
   ["/methodology", "Methodology"],
   ["/api-mcp", "API & MCP"],
+  ["/pricing", "Plans and waitlist"],
 ];
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

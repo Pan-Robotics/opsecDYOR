@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { accountUrl, loginUrl, signOut, useAccount } from "@/lib/account";
 
@@ -50,8 +51,10 @@ export default function UserMenu() {
           <div className="border-b border-edge px-3 py-2 text-xs text-muted">
             <div className="truncate text-white">@{user.handle}</div>
             <div>{user.plan === "free" ? "Free plan" : `${user.plan} plan`}, {user.wallets} wallet{user.wallets === 1 ? "" : "s"}</div>
+            {user.waitlist && !user.waitlist.activated_at && <div className="text-emerald-300">On the {user.waitlist.tier} waitlist</div>}
           </div>
           <a role="menuitem" href={accountUrl} className="block px-3 py-2 text-sm text-white hover:bg-panel2">Account</a>
+          <Link role="menuitem" href="/pricing" onClick={() => setOpen(false)} className="block px-3 py-2 text-sm text-white hover:bg-panel2">Plans and waitlist</Link>
           <button
             role="menuitem"
             type="button"

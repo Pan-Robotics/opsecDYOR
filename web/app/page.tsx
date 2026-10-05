@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { SITE, appJsonLd, jsonLd } from "@/lib/seo";
+import VideoEmbed from "@/components/VideoEmbed";
+import Pricing from "@/components/Pricing";
 
 export const metadata: Metadata = {
   title: { absolute: SITE.title },
@@ -62,6 +64,18 @@ export default function Home() {
           <span className="text-white">asset-class-aware</span>, so Bitcoin is not judged like a DeFi app.
           Search any token, screen a universe, build a portfolio, or call it from your AI agent. Built on free, open data.
         </p>
+        {/* the case for the whole thing, in someone else's words: two independent Coin Bureau primers */}
+        <div className="mt-6 max-w-3xl">
+          <div className="text-xs font-semibold uppercase tracking-wide text-muted">Why fundamentals, why now</div>
+          <div className="mt-2 grid gap-4 sm:grid-cols-2">
+            <VideoEmbed id="ymC44d3Godo" title="Crypto Has CHANGED (You Need To Know How)" by="Coin Bureau" />
+            <VideoEmbed id="JbnZ4AzZ2ik" title="How to Research Crypto Like a Pro in 2026" by="Coin Bureau" />
+          </div>
+          <p className="mt-2 text-sm text-muted">
+            Two short primers on how the market has changed and how to research a token properly. DYOR turns that process
+            into a score, with the working shown. Independent videos, not affiliated with DYOR.
+          </p>
+        </div>
         <div className="mt-7 flex flex-wrap gap-3">
           <Link href="/analyze" className="btn">🔍 Analyze a token</Link>
           <Link href="/screener" className="btn-ghost">Open the screener</Link>
@@ -147,8 +161,8 @@ export default function Home() {
           <p className="mt-1 text-sm text-muted">Every score says how complete the data is and whether the tier survives re-weighting, so a thin or fragile call is labelled, not hidden.</p>
         </div>
         <div className="card">
-          <div className="font-semibold text-white">🟢 Open &amp; free</div>
-          <p className="mt-1 text-sm text-muted">No paywall, no black box. Built entirely on free/open data, with a transparent, inspectable methodology and an open API.</p>
+          <div className="font-semibold text-white">🟢 Free core, open methodology</div>
+          <p className="mt-1 text-sm text-muted">The analyzer, screener, compare view and token pages are free, need no account, and show the same score to everyone. No black box: the methodology is inspectable and the API is documented. Paid tiers add the pipes and the depth; see the <a href="#pricing" className="text-brand hover:text-brand2">plans</a>.</p>
         </div>
       </section>
 
@@ -174,6 +188,9 @@ export default function Home() {
           </figcaption>
         </figure>
       </section>
+
+      {/* plans and the waitlist */}
+      <Pricing />
 
       {/* CTA */}
       <section className="card flex flex-col items-start gap-3 bg-gradient-to-br from-panel to-panel2 sm:flex-row sm:items-center sm:justify-between">

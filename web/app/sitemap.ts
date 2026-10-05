@@ -16,6 +16,7 @@ const STATIC: { path: string; priority: number; changeFrequency: MetadataRoute.S
   { path: "/api-mcp", priority: 0.7, changeFrequency: "monthly" },
   { path: "/tools", priority: 0.6, changeFrequency: "monthly" },
   { path: "/narratives", priority: 0.6, changeFrequency: "daily" },
+  { path: "/pricing", priority: 0.7, changeFrequency: "monthly" },
 ];
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
