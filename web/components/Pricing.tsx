@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { CONTACT_KINDS, isWaitlistTier, joinWaitlist, leaveWaitlist, loginUrl, useAccount, type ContactKind, type WaitlistTier } from "@/lib/account";
+import { CONTACT_KINDS, captureCampaign, isWaitlistTier, joinWaitlist, leaveWaitlist, loginUrl, useAccount, type ContactKind, type WaitlistTier } from "@/lib/account";
 import { PAID_TIERS, ROWS, TIERS, tierById, type TierId } from "@/lib/tiers";
 
 // The plans table with the waitlist built in. Nothing is for sale yet: a paid
@@ -77,6 +77,8 @@ export default function Pricing({ heading = "h2" }: { heading?: "h1" | "h2" }) {
 
   // Back from sign-in (or a link straight to a tier): ?waitlist=pro opens the form on
   // that tier, or completes the join the person already asked for before signing in.
+  useEffect(() => { captureCampaign(); }, []);
+
   useEffect(() => {
     if (loading || handled.current) return;
     handled.current = true;
